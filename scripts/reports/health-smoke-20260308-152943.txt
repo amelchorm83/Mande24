@@ -1,0 +1,41 @@
+﻿**********************
+Inicio de la transcripción de Windows PowerShell
+Hora de inicio: 20260308152943
+Nombre de usuario: PAQUETIPS002\CP. Adan Melchor
+Usuario RunAs: PAQUETIPS002\CP. Adan Melchor
+Nombre de la configuración: 
+Máquina: PAQUETIPS002 (Microsoft Windows NT 10.0.19045.0)
+Aplicación host: C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe -ExecutionPolicy Bypass -File C:/Users/Lenovo/Documents/myproyect/mande24_independent/scripts/health-smoke.ps1
+Id. de proceso: 22176
+PSVersion: 5.1.19041.6456
+PSEdition: Desktop
+PSCompatibleVersions: 1.0, 2.0, 3.0, 4.0, 5.0, 5.1.19041.6456
+BuildVersion: 10.0.19041.6456
+CLRVersion: 4.0.30319.42000
+WSManStackVersion: 3.0
+PSRemotingProtocolVersion: 2.3
+SerializationVersion: 1.1.0.1
+**********************
+=== Mande24 Health + Smoke Check ===
+[INFO] Reporte: C:\Users\Lenovo\Documents\myproyect\mande24_independent\scripts\reports\health-smoke-20260308-152943.txt
+[STEP] Containers status
+
+[STEP] Base health endpoints
+[OK] API health -> 200
+[OK] ERP backend UI -> 200
+[OK] Portal auth -> 200
+[OK] Portal client -> 200
+[OK] Portal rider -> 200
+[OK] Portal station -> 200
+[STEP] Backend guide creation smoke flow
+[OK] Seed demo data
+[OK] Activate demo service -> 303 (/backend/catalogs/services?msg=Servicio+Servicio+Demo+actualizado+a+activo.&kind=ok)
+[OK] Activate demo station -> 303 (/backend/catalogs/stations?msg=Estacion+Estacion+Demo+actualizada+a+activa.&kind=ok)
+[OK] Create backend guide -> 303 (/backend/guides/new?msg=Guia+M24-20260308-B067BD+creada+con+delivery+bc441739b82440a38ec359eb5fd27227+%28120.00+MXN%29.&kind=ok)
+[OK] Guides list -> 200
+[OK] Smoke guide appears in guides list
+=== RESULT: PASS ===
+**********************
+Fin de la transcripción de Windows PowerShell
+Hora de finalización: 20260308152944
+**********************

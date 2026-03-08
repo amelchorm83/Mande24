@@ -1,0 +1,1911 @@
+from datetime import datetime, timedelta, timezone
+from html import escape
+import csv
+import io
+from urllib.parse import quote_plus, urlencode
+from uuid import uuid4
+
+from fastapi import APIRouter, Depends, Form, Request
+from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse, Response
+from sqlalchemy import func
+from sqlalchemy.orm import Session
+
+from app.db.models import (
+    Delivery,
+    Guide,
+    PricingRule,
+    Rider,
+    RiderCommission,
+    Service,
+    ServiceType,
+    Station,
+    StationCommission,
+    User,
+    UserRole,
+    WorkflowStage,
+    Zone,
+)
+from app.core.security import hash_password
+from app.db.session import get_db
+from app.services.commissions import close_rider_week, close_station_week, resolve_week_window
+
+router = APIRouter(prefix="/backend", tags=["backend-ui"])
+
+MENU = [
+    ("dashboard", "Dashboard", "/backend"),
+    ("guides_new", "Generar Guia", "/backend/guides/new"),
+    ("guides", "Guias", "/backend/guides"),
+    ("deliveries", "Entregas", "/backend/deliveries"),
+    ("services", "Servicios", "/backend/catalogs/services"),
+    ("zones", "Zonas", "/backend/catalogs/zones"),
+    ("stations", "Estaciones", "/backend/catalogs/stations"),
+    ("riders", "Riders", "/backend/catalogs/riders"),
+    ("pricing", "Tarifas", "/backend/catalogs/pricing-rules"),
+    ("users", "Usuarios", "/backend/users"),
+    ("comm_rider", "Comisiones Rider", "/backend/commissions/riders"),
+    ("comm_station", "Comisiones Estacion", "/backend/commissions/stations"),
+]
+
+ROLE_OPTIONS = ["admin", "station", "rider", "client"]
+
+
+def _base_css() -> str:
+    return """
+:root {
+  --bg: #f3efe5;
+  --surface: #ffffff;
+  --surface-2: #f6f7f9;
+  --sidebar: #1f2937;
+  --sidebar-line: #3f4f63;
+  --ink: #1f2937;
+  --ink-soft: #6b7280;
+  --line: #d2d6db;
+  --brand: #0f766e;
+  --brand-2: #0b4f53;
+  --ok: #166534;
+  --warn: #9a3412;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  color: var(--ink);
+  font-family: "Avenir Next", "Trebuchet MS", sans-serif;
+  background:
+    radial-gradient(circle at 0% 0%, #fff8e7 0%, transparent 30%),
+    radial-gradient(circle at 100% 0%, #dceef4 0%, transparent 28%),
+    var(--bg);
+}
+
+.layout {
+  min-height: 100vh;
+  display: grid;
+  grid-template-columns: 270px 1fr;
+}
+
+.sidebar {
+  background: linear-gradient(170deg, #111827 0%, var(--sidebar) 70%, #2b3b4f 100%);
+  color: #dbe7ff;
+  padding: 1rem;
+  border-right: 1px solid var(--sidebar-line);
+}
+
+.brand-row {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+}
+
+.brand-mark {
+  width: 26px;
+  height: 26px;
+  border-radius: 8px;
+  background: linear-gradient(130deg, #0f766e, #0ea5a3);
+}
+
+.brand-row h2 {
+  margin: 0;
+  font-size: 1.05rem;
+}
+
+.tag {
+  display: inline-block;
+  margin-top: 0.5rem;
+  font-size: 0.76rem;
+  border-radius: 999px;
+  padding: 0.16rem 0.52rem;
+  background: #134e4a;
+  color: #cffafe;
+}
+
+.menu {
+  margin-top: 1rem;
+  display: grid;
+  gap: 0.42rem;
+}
+
+.menu a {
+  color: #d6e0ef;
+  text-decoration: none;
+  border: 1px solid #3b4959;
+  border-radius: 8px;
+  padding: 0.38rem 0.55rem;
+  font-size: 0.9rem;
+  background: rgba(17, 24, 39, 0.35);
+}
+
+.menu a.active {
+  background: linear-gradient(120deg, var(--brand), #0d9488);
+  border-color: transparent;
+  color: #fff;
+}
+
+.content {
+  padding: 1rem;
+}
+
+.header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.8rem;
+  flex-wrap: wrap;
+}
+
+h1 {
+  margin: 0.2rem 0;
+  font-size: clamp(1.45rem, 3vw, 2.05rem);
+  line-height: 1.06;
+}
+
+.subtitle {
+  margin: 0;
+  color: var(--ink-soft);
+  max-width: 76ch;
+}
+
+.top-actions {
+  display: flex;
+  gap: 0.55rem;
+  flex-wrap: wrap;
+}
+
+.panel {
+  margin-top: 1rem;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--surface);
+  box-shadow: 0 8px 18px rgba(15, 23, 42, 0.08);
+  padding: 0.95rem;
+}
+
+.panel h3 {
+  margin: 0.05rem 0 0.75rem;
+}
+
+.kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 0.62rem;
+}
+
+.kpi {
+  border: 1px solid #cdd8de;
+  border-radius: 10px;
+  background: linear-gradient(180deg, #f1f8f9, #ffffff);
+  padding: 0.55rem;
+}
+
+.kpi small {
+  color: #4f5f67;
+  display: block;
+}
+
+.kpi strong {
+  display: block;
+  margin-top: 0.2rem;
+  font-size: 1.08rem;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(220px, 1fr));
+  gap: 0.72rem;
+}
+
+.grid-3 {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(180px, 1fr));
+  gap: 0.72rem;
+}
+
+label {
+  display: grid;
+  gap: 0.35rem;
+  font-weight: 600;
+}
+
+input,
+select,
+textarea {
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  padding: 0.52rem 0.62rem;
+  background: #fff;
+  color: var(--ink);
+}
+
+textarea {
+  min-height: 80px;
+}
+
+.full {
+  grid-column: 1 / -1;
+}
+
+.actions {
+  margin-top: 0.35rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.55rem;
+}
+
+button,
+.btn {
+  cursor: pointer;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  padding: 0.5rem 0.84rem;
+  background: #fff;
+  color: var(--ink);
+  text-decoration: none;
+  display: inline-block;
+}
+
+button.primary,
+.btn.primary {
+  border-color: transparent;
+  color: #fff;
+  background: linear-gradient(120deg, var(--brand), var(--brand-2));
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 640px;
+}
+
+th,
+td {
+  text-align: left;
+  border-bottom: 1px solid #e2e8f0;
+  padding: 0.52rem;
+  font-size: 0.9rem;
+  vertical-align: top;
+}
+
+th {
+  background: var(--surface-2);
+}
+
+.table-wrap {
+  overflow-x: auto;
+}
+
+.msg {
+  margin-top: 0.55rem;
+  font-weight: 700;
+  color: var(--ok);
+}
+
+.msg.error {
+  color: var(--warn);
+}
+
+.inline-form {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  flex-wrap: wrap;
+}
+
+.badge {
+  border: 1px solid #cadce1;
+  border-radius: 999px;
+  padding: 0.1rem 0.48rem;
+  background: #f0f9ff;
+  font-size: 0.78rem;
+}
+
+.tabs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.45rem;
+    margin-bottom: 0.6rem;
+}
+
+.tabs a {
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    padding: 0.24rem 0.65rem;
+    text-decoration: none;
+    color: var(--ink);
+    font-size: 0.86rem;
+    background: #fff;
+}
+
+.empty {
+  padding: 0.65rem;
+  border: 1px dashed #d1c7b8;
+  border-radius: 10px;
+  background: #fffaf2;
+  color: #5f4d34;
+}
+
+@media (max-width: 1040px) {
+  .layout { grid-template-columns: 1fr; }
+  .sidebar { border-right: 0; border-bottom: 1px solid var(--sidebar-line); }
+}
+
+@media (max-width: 760px) {
+  .grid, .grid-3 { grid-template-columns: 1fr; }
+}
+"""
+
+
+def _menu_html(active: str) -> str:
+    rows: list[str] = []
+    for key, label, href in MENU:
+        cls = "active" if key == active else ""
+        rows.append(f'<a href="{href}" class="{cls}">{label}</a>')
+    rows.append('<a href="/docs">Swagger API</a>')
+    return "".join(rows)
+
+
+def _role_from_request(request: Request) -> str:
+    role = (request.cookies.get("m24_backend_role") or "admin").strip().lower()
+    return role if role in ROLE_OPTIONS else "admin"
+
+
+def _role_switcher(current_role: str, return_to: str) -> str:
+    options = "".join(
+        [
+            f'<option value="{item}" {"selected" if item == current_role else ""}>{item}</option>'
+            for item in ROLE_OPTIONS
+        ]
+    )
+    return (
+        '<section style="margin-top:0.8rem;padding-top:0.8rem;border-top:1px solid #3b4959;">'
+        '<small style="color:#b6c8dc;display:block;margin-bottom:0.3rem;">Rol Backend</small>'
+        '<form method="post" action="/backend/role/select" style="display:grid;gap:0.35rem;">'
+        f'<input type="hidden" name="return_to" value="{escape(return_to)}" />'
+        f'<select name="role">{options}</select>'
+        '<button type="submit">Aplicar Rol</button>'
+        '</form></section>'
+    )
+
+
+def _can_manage(role: str) -> bool:
+    return role == "admin"
+
+
+def _can_ops(role: str) -> bool:
+    return role in {"admin", "station"}
+
+
+def _check_role_or_redirect(role: str, allowed: set[str], redirect_to: str, action_label: str) -> RedirectResponse | None:
+    if role not in allowed:
+        return _redirect(redirect_to, f"Sin permisos para {action_label} con rol {role}.", "error")
+    return None
+
+
+def _pagination(path: str, page: int, page_size: int, total: int, query_params: dict[str, str] | None = None) -> str:
+    if total <= page_size:
+        return ""
+    total_pages = max(1, (total + page_size - 1) // page_size)
+    prev_page = max(1, page - 1)
+    next_page = min(total_pages, page + 1)
+
+    base_params = dict(query_params or {})
+
+    def _build_link(target_page: int) -> str:
+        params = {**base_params, "page": str(target_page), "page_size": str(page_size)}
+        return f"{path}?{urlencode(params)}"
+
+    return (
+        '<div class="actions">'
+        f'<span class="badge">Pagina {page} de {total_pages}</span>'
+        f'<a class="btn" href="{_build_link(1)}">Primera</a>'
+        f'<a class="btn" href="{_build_link(prev_page)}">Anterior</a>'
+        f'<a class="btn" href="{_build_link(next_page)}">Siguiente</a>'
+        f'<a class="btn" href="{_build_link(total_pages)}">Ultima</a>'
+        '</div>'
+    )
+
+
+def _timeline(events: list[tuple[str, str]]) -> str:
+    if not events:
+        return '<div class="empty">Sin eventos disponibles.</div>'
+    lines = []
+    for when, text in events:
+        lines.append(
+            "<div style=\"display:grid;grid-template-columns:150px 1fr;gap:0.5rem;padding:0.35rem 0;border-bottom:1px dashed #d8dde4;\">"
+            f"<small>{escape(when)}</small><div>{escape(text)}</div></div>"
+        )
+    return "".join(lines)
+
+
+def _render_layout(
+    active: str,
+    title: str,
+    subtitle: str,
+    content: str,
+    msg: str = "",
+    kind: str = "ok",
+    request: Request | None = None,
+    current_role: str | None = None,
+    current_path: str | None = None,
+) -> str:
+    role_value = current_role or (_role_from_request(request) if request else "admin")
+    path_value = current_path or (str(request.url.path) if request else "/backend")
+
+    msg_html = ""
+    if msg:
+        css = "msg error" if kind == "error" else "msg"
+        msg_html = f'<p class="{css}">{escape(msg)}</p>'
+
+    script = (
+        "<script>"
+        "document.addEventListener('submit', function (ev) {"
+        "  var form = ev.target;"
+        "  var message = form.getAttribute('data-confirm');"
+        "  if (message && !window.confirm(message)) { ev.preventDefault(); }"
+        "});"
+        "</script>"
+    )
+
+    return (
+        "<!doctype html><html lang=\"es\"><head><meta charset=\"utf-8\" />"
+        "<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\" />"
+        f"<title>Mande24 Backend | {escape(title)}</title>"
+        f"<style>{_base_css()}</style></head><body>"
+        "<div class=\"layout\">"
+        "<aside class=\"sidebar\">"
+        "<div class=\"brand-row\"><div class=\"brand-mark\"></div><h2>Mande24 Backend</h2></div>"
+        "<span class=\"tag\">Admin Style</span>"
+        f"<nav class=\"menu\">{_menu_html(active)}</nav>{_role_switcher(role_value, path_value)}</aside>"
+        "<main class=\"content\">"
+        f"<header class=\"header\"><div><h1>{escape(title)}</h1><p class=\"subtitle\">{escape(subtitle)}</p></div>"
+        "<div class=\"top-actions\"><a class=\"btn\" href=\"/backend\">Dashboard</a><a class=\"btn primary\" href=\"/backend/guides/new\">Nueva Guia</a></div></header>"
+        f"{msg_html}{content}</main></div>{script}</body></html>"
+    )
+
+
+def _table(headers: list[str], rows: list[list[str]]) -> str:
+    if not rows:
+        return '<div class="empty">Sin registros para mostrar.</div>'
+    head = "".join([f"<th>{escape(item)}</th>" for item in headers])
+    body_rows = []
+    for row in rows:
+        body_rows.append("<tr>" + "".join([f"<td>{item}</td>" for item in row]) + "</tr>")
+    return f'<div class="table-wrap"><table><thead><tr>{head}</tr></thead><tbody>{"".join(body_rows)}</tbody></table></div>'
+
+
+def _redirect(url: str, msg: str, kind: str = "ok") -> RedirectResponse:
+    sep = "&" if "?" in url else "?"
+    target = f"{url}{sep}msg={quote_plus(msg)}&kind={quote_plus(kind)}"
+    return RedirectResponse(url=target, status_code=303)
+
+
+def _querybox(action: str, placeholder: str, q_value: str = "") -> str:
+    return (
+        f'<form class="actions" method="get" action="{action}">'
+        f'<input name="q" value="{escape(q_value)}" placeholder="{escape(placeholder)}" />'
+        '<button type="submit">Buscar</button>'
+        f'<a class="btn" href="{action}">Limpiar</a>'
+        '</form>'
+    )
+
+
+def _bar_chart(title: str, points: list[tuple[str, int]]) -> str:
+    if not points:
+        return f'<section class="panel"><h3>{escape(title)}</h3><div class="empty">Sin datos.</div></section>'
+
+    max_value = max(value for _, value in points) or 1
+    bars: list[str] = []
+    for label, value in points:
+        width = max(2, int((value / max_value) * 100))
+        bars.append(
+            "<div style=\"display:grid;grid-template-columns:130px 1fr 50px;gap:0.5rem;align-items:center;margin:0.35rem 0;\">"
+            f"<small>{escape(label)}</small>"
+            f"<div style=\"height:12px;border-radius:99px;background:#e4edf1;overflow:hidden;\"><div style=\"height:100%;width:{width}%;background:linear-gradient(120deg,#0f766e,#0ea5a3);\"></div></div>"
+            f"<strong style=\"font-size:0.86rem;\">{value}</strong>"
+            "</div>"
+        )
+
+    return f'<section class="panel"><h3>{escape(title)}</h3>{"".join(bars)}</section>'
+
+
+def _bulk_form(form_id: str, action: str, label: str) -> str:
+    return (
+        f'<form id="{form_id}" class="actions" method="post" action="{action}" data-confirm="Esta accion cambiara multiples registros. Deseas continuar?">'
+        '<select name="active">'
+        '<option value="true">Activar seleccionados</option>'
+        '<option value="false">Desactivar seleccionados</option>'
+        '</select>'
+        f'<button type="submit">{escape(label)}</button>'
+        '</form>'
+    )
+
+
+def _tabs(items: list[tuple[str, str]]) -> str:
+    links = "".join([f'<a href="#{escape(anchor)}">{escape(label)}</a>' for anchor, label in items])
+    return f'<div class="tabs">{links}</div>'
+
+
+def _csv_response(filename: str, headers: list[str], rows: list[list[str]]) -> Response:
+    buffer = io.StringIO()
+    writer = csv.writer(buffer)
+    writer.writerow(headers)
+    writer.writerows(rows)
+    content = buffer.getvalue()
+    return Response(
+        content=content,
+        media_type="text/csv; charset=utf-8",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
+
+
+def _require_manage(request: Request, redirect_to: str, action_label: str) -> RedirectResponse | None:
+    role = _role_from_request(request)
+    return _check_role_or_redirect(role, {"admin"}, redirect_to, action_label)
+
+
+def _require_ops(request: Request, redirect_to: str, action_label: str) -> RedirectResponse | None:
+    role = _role_from_request(request)
+    return _check_role_or_redirect(role, {"admin", "station"}, redirect_to, action_label)
+
+
+@router.post("/role/select")
+def backend_select_role(role: str = Form("admin"), return_to: str = Form("/backend")) -> RedirectResponse:
+    selected = role if role in ROLE_OPTIONS else "admin"
+    response = RedirectResponse(url=return_to or "/backend", status_code=303)
+    response.set_cookie("m24_backend_role", selected, httponly=False, samesite="lax")
+    return response
+
+
+def _seed_demo_data(db: Session) -> dict[str, str]:
+    zone = db.query(Zone).filter(Zone.code == "ZN-DEMO").first()
+    if not zone:
+        zone = Zone(name="Zona Demo", code="ZN-DEMO", active=True)
+        db.add(zone)
+        db.flush()
+
+    station = db.query(Station).filter(Station.name == "Estacion Demo").first()
+    if not station:
+        station = Station(name="Estacion Demo", zone_id=zone.id, active=True)
+        db.add(station)
+        db.flush()
+
+    service = db.query(Service).filter(Service.name == "Servicio Demo").first()
+    if not service:
+        service = Service(
+            name="Servicio Demo",
+            description="Servicio base demo",
+            service_type=ServiceType.messaging,
+            active=True,
+        )
+        db.add(service)
+        db.flush()
+
+    rule = (
+        db.query(PricingRule)
+        .filter(PricingRule.service_id == service.id, PricingRule.station_id == station.id)
+        .first()
+    )
+    if not rule:
+        db.add(PricingRule(service_id=service.id, station_id=station.id, price=120.0, currency="MXN", active=True))
+
+    db.commit()
+    return {"zone_id": zone.id, "station_id": station.id, "service_id": service.id}
+
+
+@router.get("", response_class=HTMLResponse)
+def backend_dashboard(db: Session = Depends(get_db), msg: str = "", kind: str = "ok") -> str:
+    today = datetime.now(timezone.utc).date()
+
+    guides_total = db.query(func.count(Guide.id)).scalar() or 0
+    deliveries_total = db.query(func.count(Delivery.id)).scalar() or 0
+    delivered_total = db.query(func.count(Delivery.id)).filter(Delivery.stage == WorkflowStage.delivered).scalar() or 0
+    services_total = db.query(func.count(Service.id)).scalar() or 0
+    stations_total = db.query(func.count(Station.id)).scalar() or 0
+    riders_total = db.query(func.count(Rider.id)).scalar() or 0
+
+    guides_today = db.query(func.count(Guide.id)).filter(func.date(Guide.created_at) == today).scalar() or 0
+    deliveries_today = db.query(func.count(Delivery.id)).filter(func.date(Delivery.created_at) == today).scalar() or 0
+
+    stage_rows = (
+        db.query(Delivery.stage, func.count(Delivery.id))
+        .group_by(Delivery.stage)
+        .order_by(func.count(Delivery.id).desc())
+        .all()
+    )
+
+    seven_days = []
+    for offset in range(6, -1, -1):
+        day = today - timedelta(days=offset)
+        count = db.query(func.count(Guide.id)).filter(func.date(Guide.created_at) == day).scalar() or 0
+        seven_days.append((day.strftime("%m-%d"), int(count)))
+
+    latest_guides = db.query(Guide).order_by(Guide.created_at.desc()).limit(10).all()
+
+    stage_table = _table(
+        ["Etapa", "Cantidad"],
+        [[escape(item[0].value), str(item[1])] for item in stage_rows],
+    )
+    stage_chart = _bar_chart("Entregas Por Etapa", [(item[0].value, int(item[1])) for item in stage_rows])
+    guides_7d_chart = _bar_chart("Guias Ultimos 7 Dias", seven_days)
+
+    guide_table = _table(
+        ["Guia", "Cliente", "Destino", "Monto", "Fecha"],
+        [
+            [
+                f'<a href="/backend/guides">{escape(item.guide_code)}</a>',
+                escape(item.customer_name),
+                escape(item.destination_name),
+                f"{item.sale_amount:.2f} {escape(item.currency)}",
+                item.created_at.strftime("%Y-%m-%d %H:%M"),
+            ]
+            for item in latest_guides
+        ],
+    )
+
+    content = (
+        "<section class=\"panel\"><h3>Indicadores Principales</h3>"
+        "<div class=\"kpi-grid\">"
+        f"<article class=\"kpi\"><small>Guias Totales</small><strong>{guides_total}</strong></article>"
+        f"<article class=\"kpi\"><small>Entregas Totales</small><strong>{deliveries_total}</strong></article>"
+        f"<article class=\"kpi\"><small>Entregadas</small><strong>{delivered_total}</strong></article>"
+        f"<article class=\"kpi\"><small>Guias Hoy</small><strong>{guides_today}</strong></article>"
+        f"<article class=\"kpi\"><small>Entregas Hoy</small><strong>{deliveries_today}</strong></article>"
+        f"<article class=\"kpi\"><small>Servicios</small><strong>{services_total}</strong></article>"
+        f"<article class=\"kpi\"><small>Estaciones</small><strong>{stations_total}</strong></article>"
+        f"<article class=\"kpi\"><small>Riders</small><strong>{riders_total}</strong></article>"
+        "</div></section>"
+        f"<section class=\"panel\"><h3>Distribucion por Etapa</h3>{stage_table}</section>"
+        f"{stage_chart}"
+        f"{guides_7d_chart}"
+        f"<section class=\"panel\"><h3>Ultimas Guias</h3>{guide_table}</section>"
+    )
+
+    return _render_layout("dashboard", "Dashboard Operativo", "Panel administrativo general con estadisticas y monitoreo por modelo.", content, msg, kind)
+
+
+@router.get("/guides/new", response_class=HTMLResponse)
+def backend_new_guide_page(db: Session = Depends(get_db), msg: str = "", kind: str = "ok") -> str:
+    services = db.query(Service).filter(Service.active.is_(True)).order_by(Service.name.asc()).all()
+    stations = db.query(Station).filter(Station.active.is_(True)).order_by(Station.name.asc()).all()
+
+    service_options = "".join([f'<option value="{item.id}">{escape(item.name)} ({item.service_type.value})</option>' for item in services])
+    station_options = "".join([f'<option value="{item.id}">{escape(item.name)}</option>' for item in stations])
+
+    catalog_hint = ""
+    if not services or not stations:
+        catalog_hint = '<p class="msg error">No hay servicios o estaciones activas. Usa "Generar datos demo" para iniciar rapido.</p>'
+
+    content = (
+        "<section class=\"panel\"><h3>Captura de Guia</h3>"
+        "<form class=\"grid\" method=\"post\" action=\"/backend/guides/create\">"
+        "<label>Nombre cliente<input name=\"customer_name\" minlength=\"2\" maxlength=\"150\" value=\"Cliente Backend\" required /></label>"
+        "<label>Nombre destino<input name=\"destination_name\" minlength=\"2\" maxlength=\"150\" value=\"Destino Backend\" required /></label>"
+        f"<label>Servicio<select name=\"service_id\" required><option value=\"\">Selecciona</option>{service_options}</select></label>"
+        f"<label>Estacion<select name=\"station_id\" required><option value=\"\">Selecciona</option>{station_options}</select></label>"
+        "<div class=\"full actions\"><button class=\"primary\" type=\"submit\">Generar Guia</button></div>"
+        "</form>"
+        "<div class=\"actions\"><form method=\"post\" action=\"/backend/demo/seed/form\"><button type=\"submit\">Generar datos demo</button></form>"
+        "<a class=\"btn\" href=\"/backend/guides\">Ver listado de guias</a></div>"
+        f"{catalog_hint}</section>"
+    )
+
+    return _render_layout("guides_new", "Generar Guia", "Formulario backend para crear guias con precio automatico por tarifario.", content, msg, kind)
+
+
+@router.post("/guides/create")
+def backend_create_guide(
+    customer_name: str = Form(...),
+    destination_name: str = Form(...),
+    service_id: str = Form(...),
+    station_id: str = Form(...),
+    request: Request = None,
+    db: Session = Depends(get_db),
+) -> RedirectResponse:
+    forbidden = _require_ops(request, "/backend/guides/new", "crear guia")
+    if forbidden:
+        return forbidden
+    service = db.query(Service).filter(Service.id == service_id, Service.active.is_(True)).first()
+    if not service:
+        return _redirect("/backend/guides/new", "Servicio no encontrado o inactivo.", "error")
+
+    station = db.query(Station).filter(Station.id == station_id, Station.active.is_(True)).first()
+    if not station:
+        return _redirect("/backend/guides/new", "Estacion no encontrada o inactiva.", "error")
+
+    pricing_rule = (
+        db.query(PricingRule)
+        .filter(
+            PricingRule.service_id == service_id,
+            PricingRule.station_id == station_id,
+            PricingRule.active.is_(True),
+        )
+        .first()
+    )
+    if not pricing_rule:
+        return _redirect("/backend/guides/new", "No existe tarifa activa para servicio + estacion.", "error")
+
+    guide_code = f"M24-{datetime.now(timezone.utc).strftime('%Y%m%d')}-{uuid4().hex[:6].upper()}"
+    guide = Guide(
+        guide_code=guide_code,
+        customer_name=customer_name.strip(),
+        destination_name=destination_name.strip(),
+        service_type=service.service_type.value,
+        service_id=service.id,
+        station_id=station.id,
+        sale_amount=pricing_rule.price,
+        currency=pricing_rule.currency,
+    )
+    db.add(guide)
+    db.flush()
+
+    delivery = Delivery(guide_id=guide.id, stage=WorkflowStage.assigned)
+    db.add(delivery)
+    db.commit()
+
+    return _redirect(
+        "/backend/guides/new",
+        f"Guia {guide.guide_code} creada con delivery {delivery.id} ({guide.sale_amount:.2f} {guide.currency}).",
+        "ok",
+    )
+
+
+@router.get("/guides", response_class=HTMLResponse)
+def backend_guides(
+    request: Request,
+    db: Session = Depends(get_db),
+    q: str = "",
+    page: int = 1,
+    page_size: int = 25,
+    msg: str = "",
+    kind: str = "ok",
+) -> str:
+    safe_page = max(1, page)
+    safe_page_size = max(5, min(page_size, 100))
+    guides_query = db.query(Guide)
+    if q.strip():
+        term = f"%{q.strip()}%"
+        guides_query = guides_query.filter(
+            Guide.guide_code.ilike(term)
+            | Guide.customer_name.ilike(term)
+            | Guide.destination_name.ilike(term)
+        )
+
+    total = guides_query.count()
+    offset = (safe_page - 1) * safe_page_size
+    guides = guides_query.order_by(Guide.created_at.desc()).offset(offset).limit(safe_page_size).all()
+    rows = []
+    for item in guides:
+        rows.append(
+            [
+                f'<a href="/backend/guides/{escape(item.guide_code)}">{escape(item.guide_code)}</a>',
+                escape(item.customer_name),
+                escape(item.destination_name),
+                escape(item.service_type),
+                f"{item.sale_amount:.2f} {escape(item.currency)}",
+                item.created_at.strftime("%Y-%m-%d %H:%M"),
+            ]
+        )
+
+    pager = _pagination(
+        "/backend/guides",
+        safe_page,
+        safe_page_size,
+        total,
+        query_params={"q": q.strip()} if q.strip() else None,
+    )
+
+    content = (
+        "<section class=\"panel\"><h3>Listado de Guias</h3>"
+        f"{_querybox('/backend/guides', 'Buscar por guia, cliente o destino', q)}"
+        f"{pager}"
+        "<div class=\"actions\"><a class=\"btn\" href=\"/backend/export/guides.csv\">Exportar CSV</a></div>"
+        f"{_table(['Guia', 'Cliente', 'Destino', 'Tipo Servicio', 'Monto', 'Creada'], rows)}"
+        f"{pager}</section>"
+    )
+    return _render_layout("guides", "Guias", "Vista tipo lista del modelo Guide.", content, msg, kind, request=request)
+
+
+@router.get("/guides/{guide_code}", response_class=HTMLResponse)
+def backend_guide_detail(guide_code: str, request: Request, db: Session = Depends(get_db), msg: str = "", kind: str = "ok") -> str:
+    guide = db.query(Guide).filter(Guide.guide_code == guide_code).first()
+    if not guide:
+        return _render_layout("guides", "Guia", "Detalle", '<section class="panel"><div class="empty">Guia no encontrada.</div></section>', msg, "error", request=request)
+
+    deliveries = db.query(Delivery).filter(Delivery.guide_id == guide.id).order_by(Delivery.created_at.asc()).all()
+    delivery_rows = [
+        [
+            f'<a href="/backend/deliveries/{escape(item.id)}">{escape(item.id)}</a>',
+            escape(item.stage.value),
+            "si" if item.has_evidence else "no",
+            "si" if item.has_signature else "no",
+            item.updated_at.strftime("%Y-%m-%d %H:%M"),
+        ]
+        for item in deliveries
+    ]
+
+    timeline_events = [(guide.created_at.strftime("%Y-%m-%d %H:%M"), f"Guia creada ({guide.guide_code})")]
+    for item in deliveries:
+        label = f"Delivery {item.id} -> {item.stage.value}"
+        if item.delivered_at:
+            label = f"{label} (entregada)"
+        timeline_events.append((item.updated_at.strftime("%Y-%m-%d %H:%M"), label))
+
+    details = (
+        f"{_tabs([('resumen', 'Resumen'), ('entregas', 'Entregas'), ('timeline', 'Timeline'), ('operacion', 'Operacion')])}"
+        "<section id=\"resumen\" class=\"panel\"><h3>Ficha de Guia</h3>"
+        "<div class=\"kpi-grid\">"
+        f"<article class=\"kpi\"><small>Codigo</small><strong>{escape(guide.guide_code)}</strong></article>"
+        f"<article class=\"kpi\"><small>Cliente</small><strong>{escape(guide.customer_name)}</strong></article>"
+        f"<article class=\"kpi\"><small>Destino</small><strong>{escape(guide.destination_name)}</strong></article>"
+        f"<article class=\"kpi\"><small>Monto</small><strong>{guide.sale_amount:.2f} {escape(guide.currency)}</strong></article>"
+        "</div></section>"
+        "<section id=\"operacion\" class=\"panel\"><h3>Operacion</h3><div class=\"actions\"><a class=\"btn\" href=\"/backend/guides\">Volver a listado</a><a class=\"btn\" href=\"/backend/guides/new\">Nueva Guia</a></div></section>"
+    )
+    content = (
+        details
+        + f"<section id=\"entregas\" class=\"panel\"><h3>Entregas de la Guia</h3>{_table(['Delivery ID', 'Etapa', 'Evidencia', 'Firma', 'Actualizada'], delivery_rows)}</section>"
+        + f"<section id=\"timeline\" class=\"panel\"><h3>Timeline</h3>{_timeline(timeline_events)}</section>"
+    )
+    return _render_layout("guides", f"Guia {guide.guide_code}", "Vista detalle tipo formulario.", content, msg, kind, request=request)
+
+
+@router.get("/deliveries", response_class=HTMLResponse)
+def backend_deliveries(
+    request: Request,
+    db: Session = Depends(get_db),
+    q: str = "",
+    stage: str = "",
+    page: int = 1,
+    page_size: int = 25,
+    msg: str = "",
+    kind: str = "ok",
+) -> str:
+    safe_page = max(1, page)
+    safe_page_size = max(5, min(page_size, 100))
+    deliveries_query = db.query(Delivery)
+    if q.strip():
+        term = f"%{q.strip()}%"
+        deliveries_query = deliveries_query.join(Guide).filter(
+            Delivery.id.ilike(term) | Guide.guide_code.ilike(term)
+        )
+    if stage.strip():
+        try:
+            deliveries_query = deliveries_query.filter(Delivery.stage == WorkflowStage(stage.strip()))
+        except ValueError:
+            pass
+
+    total = deliveries_query.count()
+    offset = (safe_page - 1) * safe_page_size
+    deliveries = deliveries_query.order_by(Delivery.updated_at.desc()).offset(offset).limit(safe_page_size).all()
+    rows = []
+    for item in deliveries:
+        rows.append(
+            [
+                f'<a href="/backend/deliveries/{escape(item.id)}">{escape(item.id)}</a>',
+                f'<a href="/backend/guides/{escape(item.guide.guide_code if item.guide else "")}">{escape(item.guide.guide_code if item.guide else "-")}</a>',
+                f"<span class=\"badge\">{escape(item.stage.value)}</span>",
+                "si" if item.has_evidence else "no",
+                "si" if item.has_signature else "no",
+                item.updated_at.strftime("%Y-%m-%d %H:%M"),
+            ]
+        )
+
+    form = (
+        "<section class=\"panel\"><h3>Actualizar Etapa de Entrega</h3>"
+        "<form class=\"grid\" method=\"post\" action=\"/backend/deliveries/stage\">"
+        "<label>Delivery ID<input name=\"delivery_id\" required /></label>"
+        "<label>Etapa<select name=\"stage\">"
+        "<option value=\"assigned\">assigned</option><option value=\"picked_up\">picked_up</option>"
+        "<option value=\"in_transit\">in_transit</option><option value=\"at_station\">at_station</option>"
+        "<option value=\"out_for_delivery\">out_for_delivery</option><option value=\"delivered\">delivered</option>"
+        "<option value=\"failed\">failed</option></select></label>"
+        "<label class=\"full\">Nota<textarea name=\"note\" placeholder=\"Opcional\"></textarea></label>"
+        "<label><input type=\"checkbox\" name=\"has_evidence\" /> Tiene evidencia</label>"
+        "<label><input type=\"checkbox\" name=\"has_signature\" /> Tiene firma</label>"
+        "<div class=\"full actions\"><button class=\"primary\" type=\"submit\">Actualizar</button></div>"
+        "</form></section>"
+    )
+
+    stage_options = "".join(
+        [
+            f'<option value="{item.value}" {"selected" if stage == item.value else ""}>{item.value}</option>'
+            for item in WorkflowStage
+        ]
+    )
+
+    filter_box = (
+        "<section class=\"panel\"><h3>Filtros</h3>"
+        "<form class=\"actions\" method=\"get\" action=\"/backend/deliveries\">"
+        f'<input name="q" value="{escape(q)}" placeholder="Buscar por delivery o guia" />'
+        f'<select name="stage"><option value="">Todas las etapas</option>{stage_options}</select>'
+        "<button type=\"submit\">Aplicar</button>"
+        "<a class=\"btn\" href=\"/backend/deliveries\">Limpiar</a>"
+        "</form></section>"
+    )
+
+    pager_params: dict[str, str] = {}
+    if q.strip():
+        pager_params["q"] = q.strip()
+    if stage.strip():
+        pager_params["stage"] = stage.strip()
+    pager = _pagination("/backend/deliveries", safe_page, safe_page_size, total, query_params=pager_params or None)
+
+    content = (
+        filter_box
+        + form
+        + "<section class=\"panel\"><h3>Listado de Entregas</h3>"
+        + pager
+        + "<div class=\"actions\"><a class=\"btn\" href=\"/backend/export/deliveries.csv\">Exportar CSV</a></div>"
+        + _table(['Delivery ID', 'Guia', 'Etapa', 'Evidencia', 'Firma', 'Actualizada'], rows)
+        + pager
+        + "</section>"
+    )
+    return _render_layout("deliveries", "Entregas", "Control de estado y trazabilidad de deliveries.", content, msg, kind, request=request)
+
+
+@router.get("/deliveries/{delivery_id}", response_class=HTMLResponse)
+def backend_delivery_detail(delivery_id: str, request: Request, db: Session = Depends(get_db), msg: str = "", kind: str = "ok") -> str:
+    item = db.query(Delivery).filter(Delivery.id == delivery_id).first()
+    if not item:
+        return _render_layout("deliveries", "Entrega", "Detalle", '<section class="panel"><div class="empty">Entrega no encontrada.</div></section>', msg, "error", request=request)
+
+    timeline_events = [(item.created_at.strftime("%Y-%m-%d %H:%M"), f"Delivery creado ({item.id})")]
+    if item.delivered_at:
+        timeline_events.append((item.delivered_at.strftime("%Y-%m-%d %H:%M"), "Marcada como delivered"))
+    if item.note:
+        timeline_events.append((item.updated_at.strftime("%Y-%m-%d %H:%M"), f"Nota: {item.note}"))
+    timeline_events.append((item.updated_at.strftime("%Y-%m-%d %H:%M"), f"Etapa actual: {item.stage.value}"))
+
+    details = (
+        f"{_tabs([('resumen', 'Resumen'), ('timeline', 'Timeline'), ('operacion', 'Operacion')])}"
+        "<section id=\"resumen\" class=\"panel\"><h3>Ficha de Entrega</h3>"
+        "<div class=\"kpi-grid\">"
+        f"<article class=\"kpi\"><small>Delivery ID</small><strong>{escape(item.id)}</strong></article>"
+        f"<article class=\"kpi\"><small>Guia</small><strong><a href=\"/backend/guides/{escape(item.guide.guide_code if item.guide else '')}\">{escape(item.guide.guide_code if item.guide else '-')}</a></strong></article>"
+        f"<article class=\"kpi\"><small>Etapa</small><strong>{escape(item.stage.value)}</strong></article>"
+        f"<article class=\"kpi\"><small>Evidencia/Firma</small><strong>{'si' if item.has_evidence else 'no'} / {'si' if item.has_signature else 'no'}</strong></article>"
+        "</div></section>"
+        f"<section id=\"timeline\" class=\"panel\"><h3>Timeline</h3>{_timeline(timeline_events)}</section>"
+        "<section id=\"operacion\" class=\"panel\"><h3>Operacion</h3><div class=\"actions\"><a class=\"btn\" href=\"/backend/deliveries\">Volver a entregas</a></div></section>"
+    )
+    return _render_layout("deliveries", f"Entrega {item.id}", "Vista detalle tipo formulario.", details, msg, kind, request=request)
+
+
+@router.post("/deliveries/stage")
+def backend_update_delivery_stage(
+    delivery_id: str = Form(...),
+    stage: str = Form(...),
+    note: str = Form(""),
+    has_evidence: str | None = Form(None),
+    has_signature: str | None = Form(None),
+    request: Request = None,
+    db: Session = Depends(get_db),
+) -> RedirectResponse:
+    forbidden = _require_ops(request, "/backend/deliveries", "actualizar entrega")
+    if forbidden:
+        return forbidden
+    delivery = db.query(Delivery).filter(Delivery.id == delivery_id.strip()).first()
+    if not delivery:
+        return _redirect("/backend/deliveries", "Delivery no encontrado.", "error")
+
+    try:
+        new_stage = WorkflowStage(stage)
+    except ValueError:
+        return _redirect("/backend/deliveries", "Etapa no valida.", "error")
+
+    ev = has_evidence == "on"
+    sg = has_signature == "on"
+    if new_stage == WorkflowStage.delivered and not (ev and sg):
+        return _redirect("/backend/deliveries", "Para delivered se requiere evidencia y firma.", "error")
+
+    delivery.stage = new_stage
+    delivery.note = note.strip() if note else None
+    delivery.has_evidence = ev
+    delivery.has_signature = sg
+    if new_stage == WorkflowStage.delivered and not delivery.delivered_at:
+        delivery.delivered_at = datetime.now(timezone.utc)
+    delivery.updated_at = datetime.now(timezone.utc)
+    db.commit()
+
+    return _redirect("/backend/deliveries", f"Delivery {delivery.id} actualizado a {delivery.stage.value}.")
+
+
+@router.get("/catalogs/services", response_class=HTMLResponse)
+def backend_services(db: Session = Depends(get_db), q: str = "", msg: str = "", kind: str = "ok") -> str:
+    services_query = db.query(Service)
+    if q.strip():
+        services_query = services_query.filter(Service.name.ilike(f"%{q.strip()}%"))
+    services = services_query.order_by(Service.name.asc()).all()
+    rows = [
+        [
+            f'<input type="checkbox" name="ids" value="{escape(item.id)}" form="bulk-services" />',
+            escape(item.id),
+            f'<a href="/backend/catalogs/services/{escape(item.id)}">{escape(item.name)}</a>',
+            escape(item.service_type.value),
+            "activo" if item.active else "inactivo",
+            (
+                f'<form class="inline-form" method="post" action="/backend/catalogs/services/{escape(item.id)}/toggle">'
+                f'<input type="hidden" name="active" value="{"false" if item.active else "true"}" />'
+                f'<button type="submit">{"Desactivar" if item.active else "Activar"}</button></form>'
+            ),
+        ]
+        for item in services
+    ]
+
+    form = (
+        "<section class=\"panel\"><h3>Nuevo Servicio</h3>"
+        "<form class=\"grid\" method=\"post\" action=\"/backend/catalogs/services/create\">"
+        "<label>Nombre<input name=\"name\" required minlength=\"2\" maxlength=\"120\" /></label>"
+        "<label>Tipo<select name=\"service_type\"><option value=\"messaging\">messaging</option><option value=\"package\">package</option><option value=\"errand\">errand</option></select></label>"
+        "<label class=\"full\">Descripcion<textarea name=\"description\"></textarea></label>"
+        "<div class=\"full actions\"><button class=\"primary\" type=\"submit\">Crear Servicio</button></div>"
+        "</form></section>"
+    )
+
+    content = form + f"<section class=\"panel\"><h3>Lista de Servicios</h3>{_querybox('/backend/catalogs/services', 'Buscar servicio por nombre', q)}<div class=\"actions\"><a class=\"btn\" href=\"/backend/export/services.csv\">Exportar CSV</a></div>{_bulk_form('bulk-services', '/backend/catalogs/services/bulk-toggle', 'Aplicar cambios')}{_table(['Sel', 'ID', 'Nombre', 'Tipo', 'Estado', 'Accion'], rows)}</section>"
+    return _render_layout("services", "Catalogo de Servicios", "Mantenimiento de servicios operativos.", content, msg, kind)
+
+
+@router.get("/catalogs/services/{service_id}", response_class=HTMLResponse)
+def backend_service_detail(service_id: str, db: Session = Depends(get_db), msg: str = "", kind: str = "ok") -> str:
+    service = db.query(Service).filter(Service.id == service_id).first()
+    if not service:
+        return _render_layout("services", "Servicio", "Detalle", '<section class="panel"><div class="empty">Servicio no encontrado.</div></section>', msg, "error")
+    content = (
+        f"{_tabs([('resumen', 'Resumen'), ('operacion', 'Operacion')])}"
+        "<section id=\"resumen\" class=\"panel\"><h3>Ficha de Servicio</h3>"
+        "<div class=\"kpi-grid\">"
+        f"<article class=\"kpi\"><small>ID</small><strong>{escape(service.id)}</strong></article>"
+        f"<article class=\"kpi\"><small>Nombre</small><strong>{escape(service.name)}</strong></article>"
+        f"<article class=\"kpi\"><small>Tipo</small><strong>{escape(service.service_type.value)}</strong></article>"
+        f"<article class=\"kpi\"><small>Estado</small><strong>{'activo' if service.active else 'inactivo'}</strong></article>"
+        "</div></section>"
+        "<section id=\"operacion\" class=\"panel\"><h3>Operacion</h3><div class=\"actions\"><a class=\"btn\" href=\"/backend/catalogs/services\">Volver a servicios</a></div></section>"
+    )
+    return _render_layout("services", f"Servicio {service.name}", "Vista detalle tipo formulario.", content, msg, kind)
+
+
+@router.post("/catalogs/services/{service_id}/toggle")
+def backend_toggle_service(
+    service_id: str,
+    active: str = Form(...),
+    request: Request = None,
+    db: Session = Depends(get_db),
+) -> RedirectResponse:
+    forbidden = _require_manage(request, "/backend/catalogs/services", "editar servicio")
+    if forbidden:
+        return forbidden
+    service = db.query(Service).filter(Service.id == service_id).first()
+    if not service:
+        return _redirect("/backend/catalogs/services", "Servicio no encontrado.", "error")
+    service.active = active == "true"
+    db.commit()
+    return _redirect("/backend/catalogs/services", f"Servicio {service.name} actualizado a {'activo' if service.active else 'inactivo'}.")
+
+
+@router.post("/catalogs/services/bulk-toggle")
+def backend_bulk_toggle_services(
+    ids: list[str] = Form(default=[]),
+    active: str = Form(...),
+    request: Request = None,
+    db: Session = Depends(get_db),
+) -> RedirectResponse:
+    forbidden = _require_manage(request, "/backend/catalogs/services", "editar servicios")
+    if forbidden:
+        return forbidden
+    if not ids:
+        return _redirect("/backend/catalogs/services", "Selecciona al menos un servicio.", "error")
+    value = active == "true"
+    updated = db.query(Service).filter(Service.id.in_(ids)).update({Service.active: value}, synchronize_session=False)
+    db.commit()
+    return _redirect("/backend/catalogs/services", f"Servicios actualizados: {updated}.")
+
+
+@router.post("/catalogs/services/create")
+def backend_create_service(
+    name: str = Form(...),
+    service_type: str = Form("messaging"),
+    description: str = Form(""),
+    request: Request = None,
+    db: Session = Depends(get_db),
+) -> RedirectResponse:
+    forbidden = _require_manage(request, "/backend/catalogs/services", "crear servicio")
+    if forbidden:
+        return forbidden
+    if db.query(Service).filter(Service.name == name.strip()).first():
+        return _redirect("/backend/catalogs/services", "Ya existe un servicio con ese nombre.", "error")
+
+    try:
+        stype = ServiceType(service_type)
+    except ValueError:
+        return _redirect("/backend/catalogs/services", "Tipo de servicio no valido.", "error")
+
+    service = Service(name=name.strip(), description=(description.strip() or None), service_type=stype, active=True)
+    db.add(service)
+    db.commit()
+    return _redirect("/backend/catalogs/services", f"Servicio {service.name} creado.")
+
+
+@router.get("/catalogs/zones", response_class=HTMLResponse)
+def backend_zones(db: Session = Depends(get_db), q: str = "", msg: str = "", kind: str = "ok") -> str:
+    zones_query = db.query(Zone)
+    if q.strip():
+        term = f"%{q.strip()}%"
+        zones_query = zones_query.filter(Zone.name.ilike(term) | Zone.code.ilike(term))
+    zones = zones_query.order_by(Zone.name.asc()).all()
+    rows = [
+        [
+            f'<input type="checkbox" name="ids" value="{escape(item.id)}" form="bulk-zones" />',
+            escape(item.id),
+            f'<a href="/backend/catalogs/zones/{escape(item.id)}">{escape(item.name)}</a>',
+            escape(item.code),
+            "activo" if item.active else "inactivo",
+            (
+                f'<form class="inline-form" method="post" action="/backend/catalogs/zones/{escape(item.id)}/toggle">'
+                f'<input type="hidden" name="active" value="{"false" if item.active else "true"}" />'
+                f'<button type="submit">{"Desactivar" if item.active else "Activar"}</button></form>'
+            ),
+        ]
+        for item in zones
+    ]
+
+    form = (
+        "<section class=\"panel\"><h3>Nueva Zona</h3>"
+        "<form class=\"grid\" method=\"post\" action=\"/backend/catalogs/zones/create\">"
+        "<label>Nombre<input name=\"name\" required minlength=\"2\" maxlength=\"120\" /></label>"
+        "<label>Codigo<input name=\"code\" required minlength=\"2\" maxlength=\"30\" /></label>"
+        "<div class=\"full actions\"><button class=\"primary\" type=\"submit\">Crear Zona</button></div>"
+        "</form></section>"
+    )
+
+    content = form + f"<section class=\"panel\"><h3>Lista de Zonas</h3>{_querybox('/backend/catalogs/zones', 'Buscar por nombre o codigo', q)}<div class=\"actions\"><a class=\"btn\" href=\"/backend/export/zones.csv\">Exportar CSV</a></div>{_bulk_form('bulk-zones', '/backend/catalogs/zones/bulk-toggle', 'Aplicar cambios')}{_table(['Sel', 'ID', 'Nombre', 'Codigo', 'Estado', 'Accion'], rows)}</section>"
+    return _render_layout("zones", "Catalogo de Zonas", "Mantenimiento de zonas logisticas.", content, msg, kind)
+
+
+@router.post("/catalogs/zones/{zone_id}/toggle")
+def backend_toggle_zone(zone_id: str, active: str = Form(...), request: Request = None, db: Session = Depends(get_db)) -> RedirectResponse:
+    forbidden = _require_manage(request, "/backend/catalogs/zones", "editar zona")
+    if forbidden:
+        return forbidden
+    zone = db.query(Zone).filter(Zone.id == zone_id).first()
+    if not zone:
+        return _redirect("/backend/catalogs/zones", "Zona no encontrada.", "error")
+    zone.active = active == "true"
+    db.commit()
+    return _redirect("/backend/catalogs/zones", f"Zona {zone.name} actualizada a {'activa' if zone.active else 'inactiva'}.")
+
+
+@router.post("/catalogs/zones/bulk-toggle")
+def backend_bulk_toggle_zones(
+    ids: list[str] = Form(default=[]),
+    active: str = Form(...),
+    request: Request = None,
+    db: Session = Depends(get_db),
+) -> RedirectResponse:
+    forbidden = _require_manage(request, "/backend/catalogs/zones", "editar zonas")
+    if forbidden:
+        return forbidden
+    if not ids:
+        return _redirect("/backend/catalogs/zones", "Selecciona al menos una zona.", "error")
+    value = active == "true"
+    updated = db.query(Zone).filter(Zone.id.in_(ids)).update({Zone.active: value}, synchronize_session=False)
+    db.commit()
+    return _redirect("/backend/catalogs/zones", f"Zonas actualizadas: {updated}.")
+
+
+@router.get("/catalogs/zones/{zone_id}", response_class=HTMLResponse)
+def backend_zone_detail(zone_id: str, db: Session = Depends(get_db), msg: str = "", kind: str = "ok") -> str:
+    zone = db.query(Zone).filter(Zone.id == zone_id).first()
+    if not zone:
+        return _render_layout("zones", "Zona", "Detalle", '<section class="panel"><div class="empty">Zona no encontrada.</div></section>', msg, "error")
+    stations = db.query(Station).filter(Station.zone_id == zone.id).order_by(Station.name.asc()).all()
+    station_rows = [[escape(item.id), f'<a href="/backend/catalogs/stations/{escape(item.id)}">{escape(item.name)}</a>', "activa" if item.active else "inactiva"] for item in stations]
+    content = (
+        f"{_tabs([('resumen', 'Resumen'), ('relacionados', 'Relacionados')])}"
+        "<section id=\"resumen\" class=\"panel\"><h3>Ficha de Zona</h3>"
+        "<div class=\"kpi-grid\">"
+        f"<article class=\"kpi\"><small>ID</small><strong>{escape(zone.id)}</strong></article>"
+        f"<article class=\"kpi\"><small>Nombre</small><strong>{escape(zone.name)}</strong></article>"
+        f"<article class=\"kpi\"><small>Codigo</small><strong>{escape(zone.code)}</strong></article>"
+        f"<article class=\"kpi\"><small>Estado</small><strong>{'activa' if zone.active else 'inactiva'}</strong></article>"
+        "</div></section>"
+    )
+    content += f"<section id=\"relacionados\" class=\"panel\"><h3>Estaciones en la Zona</h3>{_table(['ID', 'Nombre', 'Estado'], station_rows)}</section>"
+    return _render_layout("zones", f"Zona {zone.name}", "Vista detalle tipo formulario.", content, msg, kind)
+
+
+@router.post("/catalogs/zones/create")
+def backend_create_zone(name: str = Form(...), code: str = Form(...), request: Request = None, db: Session = Depends(get_db)) -> RedirectResponse:
+    forbidden = _require_manage(request, "/backend/catalogs/zones", "crear zona")
+    if forbidden:
+        return forbidden
+    code_value = code.strip().upper()
+    if db.query(Zone).filter(Zone.code == code_value).first():
+        return _redirect("/backend/catalogs/zones", "Ya existe una zona con ese codigo.", "error")
+
+    zone = Zone(name=name.strip(), code=code_value, active=True)
+    db.add(zone)
+    db.commit()
+    return _redirect("/backend/catalogs/zones", f"Zona {zone.name} creada.")
+
+
+@router.get("/catalogs/stations", response_class=HTMLResponse)
+def backend_stations(db: Session = Depends(get_db), q: str = "", msg: str = "", kind: str = "ok") -> str:
+    zones = db.query(Zone).order_by(Zone.name.asc()).all()
+    stations_query = db.query(Station)
+    if q.strip():
+        stations_query = stations_query.filter(Station.name.ilike(f"%{q.strip()}%"))
+    stations = stations_query.order_by(Station.name.asc()).all()
+
+    zone_options = "".join([f'<option value="{item.id}">{escape(item.name)} ({escape(item.code)})</option>' for item in zones])
+    rows = []
+    zone_map = {item.id: item for item in zones}
+    for item in stations:
+        zone = zone_map.get(item.zone_id)
+        zone_label = f"{zone.name} ({zone.code})" if zone else "-"
+        rows.append(
+            [
+                f'<input type="checkbox" name="ids" value="{escape(item.id)}" form="bulk-stations" />',
+                escape(item.id),
+                f'<a href="/backend/catalogs/stations/{escape(item.id)}">{escape(item.name)}</a>',
+                escape(zone_label),
+                "activo" if item.active else "inactivo",
+                (
+                    f'<form class="inline-form" method="post" action="/backend/catalogs/stations/{escape(item.id)}/toggle">'
+                    f'<input type="hidden" name="active" value="{"false" if item.active else "true"}" />'
+                    f'<button type="submit">{"Desactivar" if item.active else "Activar"}</button></form>'
+                ),
+            ]
+        )
+
+    form = (
+        "<section class=\"panel\"><h3>Nueva Estacion</h3>"
+        "<form class=\"grid\" method=\"post\" action=\"/backend/catalogs/stations/create\">"
+        "<label>Nombre<input name=\"name\" required minlength=\"2\" maxlength=\"120\" /></label>"
+        f"<label>Zona<select name=\"zone_id\" required><option value=\"\">Selecciona</option>{zone_options}</select></label>"
+        "<div class=\"full actions\"><button class=\"primary\" type=\"submit\">Crear Estacion</button></div>"
+        "</form></section>"
+    )
+
+    content = form + f"<section class=\"panel\"><h3>Lista de Estaciones</h3>{_querybox('/backend/catalogs/stations', 'Buscar estacion por nombre', q)}<div class=\"actions\"><a class=\"btn\" href=\"/backend/export/stations.csv\">Exportar CSV</a></div>{_bulk_form('bulk-stations', '/backend/catalogs/stations/bulk-toggle', 'Aplicar cambios')}{_table(['Sel', 'ID', 'Nombre', 'Zona', 'Estado', 'Accion'], rows)}</section>"
+    return _render_layout("stations", "Catalogo de Estaciones", "Mantenimiento de estaciones por zona.", content, msg, kind)
+
+
+@router.post("/catalogs/stations/{station_id}/toggle")
+def backend_toggle_station(station_id: str, active: str = Form(...), request: Request = None, db: Session = Depends(get_db)) -> RedirectResponse:
+    forbidden = _require_manage(request, "/backend/catalogs/stations", "editar estacion")
+    if forbidden:
+        return forbidden
+    station = db.query(Station).filter(Station.id == station_id).first()
+    if not station:
+        return _redirect("/backend/catalogs/stations", "Estacion no encontrada.", "error")
+    station.active = active == "true"
+    db.commit()
+    return _redirect("/backend/catalogs/stations", f"Estacion {station.name} actualizada a {'activa' if station.active else 'inactiva'}.")
+
+
+@router.post("/catalogs/stations/bulk-toggle")
+def backend_bulk_toggle_stations(
+    ids: list[str] = Form(default=[]),
+    active: str = Form(...),
+    request: Request = None,
+    db: Session = Depends(get_db),
+) -> RedirectResponse:
+    forbidden = _require_manage(request, "/backend/catalogs/stations", "editar estaciones")
+    if forbidden:
+        return forbidden
+    if not ids:
+        return _redirect("/backend/catalogs/stations", "Selecciona al menos una estacion.", "error")
+    value = active == "true"
+    updated = db.query(Station).filter(Station.id.in_(ids)).update({Station.active: value}, synchronize_session=False)
+    db.commit()
+    return _redirect("/backend/catalogs/stations", f"Estaciones actualizadas: {updated}.")
+
+
+@router.get("/catalogs/stations/{station_id}", response_class=HTMLResponse)
+def backend_station_detail(station_id: str, db: Session = Depends(get_db), msg: str = "", kind: str = "ok") -> str:
+    station = db.query(Station).filter(Station.id == station_id).first()
+    if not station:
+        return _render_layout("stations", "Estacion", "Detalle", '<section class="panel"><div class="empty">Estacion no encontrada.</div></section>', msg, "error")
+    zone = db.query(Zone).filter(Zone.id == station.zone_id).first()
+    guides = db.query(Guide).filter(Guide.station_id == station.id).order_by(Guide.created_at.desc()).limit(20).all()
+    guide_rows = [[f'<a href="/backend/guides/{escape(item.guide_code)}">{escape(item.guide_code)}</a>', escape(item.customer_name), f"{item.sale_amount:.2f} {escape(item.currency)}", item.created_at.strftime("%Y-%m-%d %H:%M")] for item in guides]
+    content = (
+        f"{_tabs([('resumen', 'Resumen'), ('guias', 'Guias')])}"
+        "<section id=\"resumen\" class=\"panel\"><h3>Ficha de Estacion</h3>"
+        "<div class=\"kpi-grid\">"
+        f"<article class=\"kpi\"><small>ID</small><strong>{escape(station.id)}</strong></article>"
+        f"<article class=\"kpi\"><small>Nombre</small><strong>{escape(station.name)}</strong></article>"
+        f"<article class=\"kpi\"><small>Zona</small><strong>{escape(zone.name if zone else '-')}</strong></article>"
+        f"<article class=\"kpi\"><small>Estado</small><strong>{'activa' if station.active else 'inactiva'}</strong></article>"
+        "</div></section>"
+    )
+    content += f"<section id=\"guias\" class=\"panel\"><h3>Ultimas Guias de la Estacion</h3>{_table(['Guia', 'Cliente', 'Monto', 'Creada'], guide_rows)}</section>"
+    return _render_layout("stations", f"Estacion {station.name}", "Vista detalle tipo formulario.", content, msg, kind)
+
+
+@router.post("/catalogs/stations/create")
+def backend_create_station(name: str = Form(...), zone_id: str = Form(...), request: Request = None, db: Session = Depends(get_db)) -> RedirectResponse:
+    forbidden = _require_manage(request, "/backend/catalogs/stations", "crear estacion")
+    if forbidden:
+        return forbidden
+    if not db.query(Zone).filter(Zone.id == zone_id).first():
+        return _redirect("/backend/catalogs/stations", "Zona no encontrada.", "error")
+
+    if db.query(Station).filter(Station.name == name.strip()).first():
+        return _redirect("/backend/catalogs/stations", "Ya existe una estacion con ese nombre.", "error")
+
+    station = Station(name=name.strip(), zone_id=zone_id, active=True)
+    db.add(station)
+    db.commit()
+    return _redirect("/backend/catalogs/stations", f"Estacion {station.name} creada.")
+
+
+@router.get("/catalogs/riders", response_class=HTMLResponse)
+def backend_riders(db: Session = Depends(get_db), q: str = "", msg: str = "", kind: str = "ok") -> str:
+    riders_query = db.query(Rider)
+    if q.strip():
+        term = f"%{q.strip()}%"
+        riders_query = riders_query.join(User, Rider.user_id == User.id).filter(
+            Rider.id.ilike(term) | User.full_name.ilike(term) | User.email.ilike(term)
+        )
+    riders = riders_query.order_by(Rider.id.desc()).limit(200).all()
+    users = {item.id: item for item in db.query(User).all()}
+    zones = {item.id: item for item in db.query(Zone).all()}
+    zone_options = "".join([f'<option value="{escape(item.id)}">{escape(item.name)} ({escape(item.code)})</option>' for item in zones.values()])
+
+    rows = []
+    for item in riders:
+        user = users.get(item.user_id)
+        zone = zones.get(item.zone_id) if item.zone_id else None
+        rows.append(
+            [
+                f'<input type="checkbox" name="ids" value="{escape(item.id)}" form="bulk-riders" />',
+                f'<a href="/backend/catalogs/riders/{escape(item.id)}">{escape(item.id)}</a>',
+                escape(user.full_name if user else "-"),
+                escape(user.email if user else "-"),
+                escape(zone.name if zone else "-"),
+                escape(item.vehicle_type),
+                escape(item.state.value),
+                "activo" if item.active else "inactivo",
+                (
+                    f'<form class="inline-form" method="post" action="/backend/catalogs/riders/{escape(item.id)}/toggle">'
+                    f'<input type="hidden" name="active" value="{"false" if item.active else "true"}" />'
+                    f'<button type="submit">{"Desactivar" if item.active else "Activar"}</button></form>'
+                ),
+            ]
+        )
+
+    create_form = (
+        "<section class=\"panel\"><h3>Alta de Rider</h3>"
+        "<form class=\"grid\" method=\"post\" action=\"/backend/catalogs/riders/create\">"
+        "<label>Nombre completo<input name=\"full_name\" required minlength=\"2\" maxlength=\"150\" /></label>"
+        "<label>Email<input name=\"email\" type=\"email\" required /></label>"
+        "<label>Password<input name=\"password\" type=\"password\" required minlength=\"8\" /></label>"
+        f"<label>Zona<select name=\"zone_id\"><option value=\"\">Sin zona</option>{zone_options}</select></label>"
+        "<label>Vehiculo<input name=\"vehicle_type\" value=\"motorcycle\" minlength=\"2\" maxlength=\"30\" /></label>"
+        "<div class=\"full actions\"><button class=\"primary\" type=\"submit\">Crear Rider</button></div>"
+        "</form></section>"
+    )
+    content = create_form + f"<section class=\"panel\"><h3>Lista de Riders</h3>{_querybox('/backend/catalogs/riders', 'Buscar rider por ID, nombre o email', q)}<div class=\"actions\"><a class=\"btn\" href=\"/backend/export/riders.csv\">Exportar CSV</a></div>{_bulk_form('bulk-riders', '/backend/catalogs/riders/bulk-toggle', 'Aplicar cambios')}{_table(['Sel', 'ID', 'Nombre', 'Email', 'Zona', 'Vehiculo', 'Estado', 'Activo', 'Accion'], rows)}</section>"
+    return _render_layout("riders", "Catalogo de Riders", "Vista de riders y su estado operativo.", content, msg, kind)
+
+
+@router.post("/catalogs/riders/create")
+def backend_create_rider(
+    full_name: str = Form(...),
+    email: str = Form(...),
+    password: str = Form(...),
+    zone_id: str = Form(""),
+    vehicle_type: str = Form("motorcycle"),
+    request: Request = None,
+    db: Session = Depends(get_db),
+) -> RedirectResponse:
+    forbidden = _require_manage(request, "/backend/catalogs/riders", "crear rider")
+    if forbidden:
+        return forbidden
+    clean_email = email.strip().lower()
+    if db.query(User).filter(User.email == clean_email).first():
+        return _redirect("/backend/catalogs/riders", "Ese email ya existe.", "error")
+
+    if zone_id.strip() and not db.query(Zone).filter(Zone.id == zone_id.strip()).first():
+        return _redirect("/backend/catalogs/riders", "Zona no encontrada.", "error")
+
+    user = User(
+        email=clean_email,
+        full_name=full_name.strip(),
+        password_hash=hash_password(password),
+        role=UserRole.rider,
+        is_active=True,
+    )
+    db.add(user)
+    db.flush()
+
+    rider = Rider(
+        user_id=user.id,
+        zone_id=zone_id.strip() or None,
+        vehicle_type=vehicle_type.strip() or "motorcycle",
+        active=True,
+    )
+    db.add(rider)
+    db.commit()
+    return _redirect("/backend/catalogs/riders", f"Rider creado: {rider.id} ({user.email}).")
+
+
+@router.post("/catalogs/riders/{rider_id}/toggle")
+def backend_toggle_rider(rider_id: str, active: str = Form(...), request: Request = None, db: Session = Depends(get_db)) -> RedirectResponse:
+    forbidden = _require_manage(request, "/backend/catalogs/riders", "editar rider")
+    if forbidden:
+        return forbidden
+    rider = db.query(Rider).filter(Rider.id == rider_id).first()
+    if not rider:
+        return _redirect("/backend/catalogs/riders", "Rider no encontrado.", "error")
+    rider.active = active == "true"
+    db.commit()
+    return _redirect("/backend/catalogs/riders", f"Rider {rider.id} actualizado a {'activo' if rider.active else 'inactivo'}.")
+
+
+@router.post("/catalogs/riders/bulk-toggle")
+def backend_bulk_toggle_riders(
+    ids: list[str] = Form(default=[]),
+    active: str = Form(...),
+    request: Request = None,
+    db: Session = Depends(get_db),
+) -> RedirectResponse:
+    forbidden = _require_manage(request, "/backend/catalogs/riders", "editar riders")
+    if forbidden:
+        return forbidden
+    if not ids:
+        return _redirect("/backend/catalogs/riders", "Selecciona al menos un rider.", "error")
+    value = active == "true"
+    updated = db.query(Rider).filter(Rider.id.in_(ids)).update({Rider.active: value}, synchronize_session=False)
+    db.commit()
+    return _redirect("/backend/catalogs/riders", f"Riders actualizados: {updated}.")
+
+
+@router.get("/catalogs/riders/{rider_id}", response_class=HTMLResponse)
+def backend_rider_detail(rider_id: str, db: Session = Depends(get_db), msg: str = "", kind: str = "ok") -> str:
+    rider = db.query(Rider).filter(Rider.id == rider_id).first()
+    if not rider:
+        return _render_layout("riders", "Rider", "Detalle", '<section class="panel"><div class="empty">Rider no encontrado.</div></section>', msg, "error")
+    user = db.query(User).filter(User.id == rider.user_id).first()
+    zone = db.query(Zone).filter(Zone.id == rider.zone_id).first() if rider.zone_id else None
+    deliveries = db.query(Delivery).filter(Delivery.rider_id == rider.id).order_by(Delivery.updated_at.desc()).limit(20).all()
+    delivery_rows = [[f'<a href="/backend/deliveries/{escape(item.id)}">{escape(item.id)}</a>', escape(item.guide.guide_code if item.guide else '-'), escape(item.stage.value), item.updated_at.strftime('%Y-%m-%d %H:%M')] for item in deliveries]
+    content = (
+        f"{_tabs([('resumen', 'Resumen'), ('entregas', 'Entregas')])}"
+        "<section id=\"resumen\" class=\"panel\"><h3>Ficha de Rider</h3>"
+        "<div class=\"kpi-grid\">"
+        f"<article class=\"kpi\"><small>ID</small><strong>{escape(rider.id)}</strong></article>"
+        f"<article class=\"kpi\"><small>Nombre</small><strong>{escape(user.full_name if user else '-')}</strong></article>"
+        f"<article class=\"kpi\"><small>Email</small><strong>{escape(user.email if user else '-')}</strong></article>"
+        f"<article class=\"kpi\"><small>Zona</small><strong>{escape(zone.name if zone else '-')}</strong></article>"
+        f"<article class=\"kpi\"><small>Vehiculo</small><strong>{escape(rider.vehicle_type)}</strong></article>"
+        f"<article class=\"kpi\"><small>Estado</small><strong>{escape(rider.state.value)}</strong></article>"
+        "</div></section>"
+    )
+    content += f"<section id=\"entregas\" class=\"panel\"><h3>Entregas Asignadas</h3>{_table(['Delivery', 'Guia', 'Etapa', 'Actualizada'], delivery_rows)}</section>"
+    return _render_layout("riders", f"Rider {rider.id}", "Vista detalle tipo formulario.", content, msg, kind)
+
+
+@router.get("/catalogs/pricing-rules", response_class=HTMLResponse)
+def backend_pricing_rules(db: Session = Depends(get_db), msg: str = "", kind: str = "ok") -> str:
+    services = db.query(Service).order_by(Service.name.asc()).all()
+    stations = db.query(Station).order_by(Station.name.asc()).all()
+    rules = db.query(PricingRule).order_by(PricingRule.id.desc()).limit(300).all()
+
+    service_map = {item.id: item for item in services}
+    station_map = {item.id: item for item in stations}
+    service_options = "".join([f'<option value="{item.id}">{escape(item.name)}</option>' for item in services])
+    station_options = "".join([f'<option value="{item.id}">{escape(item.name)}</option>' for item in stations])
+
+    rows = []
+    for item in rules:
+        service = service_map.get(item.service_id)
+        station = station_map.get(item.station_id)
+        rows.append(
+            [
+                f'<input type="checkbox" name="ids" value="{escape(item.id)}" form="bulk-pricing" />',
+                escape(item.id),
+                escape(service.name if service else item.service_id),
+                escape(station.name if station else item.station_id),
+                f"{item.price:.2f} {escape(item.currency)}",
+                "activa" if item.active else "inactiva",
+                (
+                    f'<form class="inline-form" method="post" action="/backend/catalogs/pricing-rules/{escape(item.id)}/toggle">'
+                    f'<input type="hidden" name="active" value="{"false" if item.active else "true"}" />'
+                    f'<button type="submit">{"Desactivar" if item.active else "Activar"}</button></form>'
+                ),
+            ]
+        )
+
+    form = (
+        "<section class=\"panel\"><h3>Nueva Regla de Precio</h3>"
+        "<form class=\"grid\" method=\"post\" action=\"/backend/catalogs/pricing-rules/create\">"
+        f"<label>Servicio<select name=\"service_id\" required><option value=\"\">Selecciona</option>{service_options}</select></label>"
+        f"<label>Estacion<select name=\"station_id\" required><option value=\"\">Selecciona</option>{station_options}</select></label>"
+        "<label>Precio<input name=\"price\" type=\"number\" step=\"0.01\" min=\"0.01\" required /></label>"
+        "<label>Moneda<input name=\"currency\" value=\"MXN\" maxlength=\"10\" /></label>"
+        "<div class=\"full actions\"><button class=\"primary\" type=\"submit\">Crear Regla</button></div>"
+        "</form></section>"
+    )
+
+    content = form + f"<section class=\"panel\"><h3>Lista de Tarifas</h3><div class=\"actions\"><a class=\"btn\" href=\"/backend/export/pricing-rules.csv\">Exportar CSV</a></div>{_bulk_form('bulk-pricing', '/backend/catalogs/pricing-rules/bulk-toggle', 'Aplicar cambios')}{_table(['Sel', 'ID', 'Servicio', 'Estacion', 'Precio', 'Estado', 'Accion'], rows)}</section>"
+    return _render_layout("pricing", "Catalogo de Tarifas", "Reglas de precio por servicio y estacion.", content, msg, kind)
+
+
+@router.post("/catalogs/pricing-rules/create")
+def backend_create_pricing_rule(
+    service_id: str = Form(...),
+    station_id: str = Form(...),
+    price: float = Form(...),
+    currency: str = Form("MXN"),
+    request: Request = None,
+    db: Session = Depends(get_db),
+) -> RedirectResponse:
+    forbidden = _require_manage(request, "/backend/catalogs/pricing-rules", "crear tarifa")
+    if forbidden:
+        return forbidden
+    if price <= 0:
+        return _redirect("/backend/catalogs/pricing-rules", "El precio debe ser mayor a cero.", "error")
+
+    if not db.query(Service).filter(Service.id == service_id).first():
+        return _redirect("/backend/catalogs/pricing-rules", "Servicio no encontrado.", "error")
+
+    if not db.query(Station).filter(Station.id == station_id).first():
+        return _redirect("/backend/catalogs/pricing-rules", "Estacion no encontrada.", "error")
+
+    if db.query(PricingRule).filter(PricingRule.service_id == service_id, PricingRule.station_id == station_id).first():
+        return _redirect("/backend/catalogs/pricing-rules", "Ya existe una tarifa para ese servicio y estacion.", "error")
+
+    rule = PricingRule(service_id=service_id, station_id=station_id, price=price, currency=currency.strip().upper(), active=True)
+    db.add(rule)
+    db.commit()
+    return _redirect("/backend/catalogs/pricing-rules", "Tarifa creada correctamente.")
+
+
+@router.post("/catalogs/pricing-rules/{rule_id}/toggle")
+def backend_toggle_pricing_rule(rule_id: str, active: str = Form(...), request: Request = None, db: Session = Depends(get_db)) -> RedirectResponse:
+    forbidden = _require_manage(request, "/backend/catalogs/pricing-rules", "editar tarifa")
+    if forbidden:
+        return forbidden
+    rule = db.query(PricingRule).filter(PricingRule.id == rule_id).first()
+    if not rule:
+        return _redirect("/backend/catalogs/pricing-rules", "Regla no encontrada.", "error")
+    rule.active = active == "true"
+    db.commit()
+    return _redirect("/backend/catalogs/pricing-rules", f"Regla {rule.id} actualizada a {'activa' if rule.active else 'inactiva'}.")
+
+
+@router.post("/catalogs/pricing-rules/bulk-toggle")
+def backend_bulk_toggle_pricing_rules(
+    ids: list[str] = Form(default=[]),
+    active: str = Form(...),
+    request: Request = None,
+    db: Session = Depends(get_db),
+) -> RedirectResponse:
+    forbidden = _require_manage(request, "/backend/catalogs/pricing-rules", "editar tarifas")
+    if forbidden:
+        return forbidden
+    if not ids:
+        return _redirect("/backend/catalogs/pricing-rules", "Selecciona al menos una tarifa.", "error")
+    value = active == "true"
+    updated = db.query(PricingRule).filter(PricingRule.id.in_(ids)).update({PricingRule.active: value}, synchronize_session=False)
+    db.commit()
+    return _redirect("/backend/catalogs/pricing-rules", f"Tarifas actualizadas: {updated}.")
+
+
+@router.get("/users", response_class=HTMLResponse)
+def backend_users(
+    request: Request,
+    db: Session = Depends(get_db),
+    q: str = "",
+    page: int = 1,
+    page_size: int = 25,
+    msg: str = "",
+    kind: str = "ok",
+) -> str:
+    safe_page = max(1, page)
+    safe_page_size = max(5, min(page_size, 100))
+    users_query = db.query(User)
+    if q.strip():
+        term = f"%{q.strip()}%"
+        users_query = users_query.filter(User.full_name.ilike(term) | User.email.ilike(term))
+
+    total = users_query.count()
+    offset = (safe_page - 1) * safe_page_size
+    users = users_query.order_by(User.created_at.desc()).offset(offset).limit(safe_page_size).all()
+    rows = []
+    for item in users:
+        rows.append(
+            [
+                f'<input type="checkbox" name="ids" value="{escape(item.id)}" form="bulk-users" />',
+                escape(item.id),
+                f'<a href="/backend/users/{escape(item.id)}">{escape(item.full_name)}</a>',
+                escape(item.email),
+                escape(item.role.value),
+                "activo" if item.is_active else "inactivo",
+                item.created_at.strftime("%Y-%m-%d %H:%M"),
+                (
+                    f'<form class="inline-form" method="post" action="/backend/users/{escape(item.id)}/toggle">'
+                    f'<input type="hidden" name="active" value="{"false" if item.is_active else "true"}" />'
+                    f'<button type="submit">{"Desactivar" if item.is_active else "Activar"}</button></form>'
+                ),
+            ]
+        )
+
+    pager = _pagination(
+        "/backend/users",
+        safe_page,
+        safe_page_size,
+        total,
+        query_params={"q": q.strip()} if q.strip() else None,
+    )
+    content = (
+        f"<section class=\"panel\"><h3>Lista de Usuarios</h3>{_querybox('/backend/users', 'Buscar por nombre o email', q)}"
+        f"{pager}"
+        "<div class=\"actions\"><a class=\"btn\" href=\"/backend/export/users.csv\">Exportar CSV</a></div>"
+        f"{_bulk_form('bulk-users', '/backend/users/bulk-toggle', 'Aplicar cambios')}"
+        f"{_table(['Sel', 'ID', 'Nombre', 'Email', 'Rol', 'Estado', 'Creado', 'Accion'], rows)}"
+        f"{pager}</section>"
+    )
+    return _render_layout("users", "Usuarios", "Modelo de usuarios del sistema y roles.", content, msg, kind, request=request)
+
+
+@router.post("/users/{user_id}/toggle")
+def backend_toggle_user(user_id: str, active: str = Form(...), request: Request = None, db: Session = Depends(get_db)) -> RedirectResponse:
+    forbidden = _require_manage(request, "/backend/users", "editar usuario")
+    if forbidden:
+        return forbidden
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        return _redirect("/backend/users", "Usuario no encontrado.", "error")
+    user.is_active = active == "true"
+    db.commit()
+    return _redirect("/backend/users", f"Usuario {user.email} actualizado a {'activo' if user.is_active else 'inactivo'}.")
+
+
+@router.post("/users/bulk-toggle")
+def backend_bulk_toggle_users(
+    ids: list[str] = Form(default=[]),
+    active: str = Form(...),
+    request: Request = None,
+    db: Session = Depends(get_db),
+) -> RedirectResponse:
+    forbidden = _require_manage(request, "/backend/users", "editar usuarios")
+    if forbidden:
+        return forbidden
+    if not ids:
+        return _redirect("/backend/users", "Selecciona al menos un usuario.", "error")
+    value = active == "true"
+    updated = db.query(User).filter(User.id.in_(ids)).update({User.is_active: value}, synchronize_session=False)
+    db.commit()
+    return _redirect("/backend/users", f"Usuarios actualizados: {updated}.")
+
+
+@router.get("/users/{user_id}", response_class=HTMLResponse)
+def backend_user_detail(user_id: str, request: Request, db: Session = Depends(get_db), msg: str = "", kind: str = "ok") -> str:
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        return _render_layout("users", "Usuario", "Detalle", '<section class="panel"><div class="empty">Usuario no encontrado.</div></section>', msg, "error", request=request)
+    rider = db.query(Rider).filter(Rider.user_id == user.id).first()
+    timeline_events = [(user.created_at.strftime("%Y-%m-%d %H:%M"), "Usuario creado")]
+    timeline_events.append((user.created_at.strftime("%Y-%m-%d %H:%M"), f"Rol inicial: {user.role.value}"))
+    timeline_events.append((user.created_at.strftime("%Y-%m-%d %H:%M"), f"Estado: {'activo' if user.is_active else 'inactivo'}"))
+    if rider:
+        timeline_events.append((user.created_at.strftime("%Y-%m-%d %H:%M"), f"Rider vinculado: {rider.id}"))
+
+    content = (
+        f"{_tabs([('resumen', 'Resumen'), ('timeline', 'Timeline'), ('operacion', 'Operacion')])}"
+        "<section id=\"resumen\" class=\"panel\"><h3>Ficha de Usuario</h3>"
+        "<div class=\"kpi-grid\">"
+        f"<article class=\"kpi\"><small>ID</small><strong>{escape(user.id)}</strong></article>"
+        f"<article class=\"kpi\"><small>Nombre</small><strong>{escape(user.full_name)}</strong></article>"
+        f"<article class=\"kpi\"><small>Email</small><strong>{escape(user.email)}</strong></article>"
+        f"<article class=\"kpi\"><small>Rol</small><strong>{escape(user.role.value)}</strong></article>"
+        f"<article class=\"kpi\"><small>Estado</small><strong>{'activo' if user.is_active else 'inactivo'}</strong></article>"
+        f"<article class=\"kpi\"><small>Rider Relacionado</small><strong>{escape(rider.id if rider else 'N/A')}</strong></article>"
+        "</div></section>"
+        f"<section id=\"timeline\" class=\"panel\"><h3>Timeline</h3>{_timeline(timeline_events)}</section>"
+        "<section id=\"operacion\" class=\"panel\"><h3>Operacion</h3><div class=\"actions\"><a class=\"btn\" href=\"/backend/users\">Volver a usuarios</a></div></section>"
+    )
+    return _render_layout("users", f"Usuario {user.email}", "Vista detalle tipo formulario.", content, msg, kind, request=request)
+
+
+@router.get("/commissions/riders", response_class=HTMLResponse)
+def backend_rider_commissions(db: Session = Depends(get_db), msg: str = "", kind: str = "ok") -> str:
+    rows_db = db.query(RiderCommission).order_by(RiderCommission.week_start.desc()).limit(200).all()
+    rows = [
+        [
+            escape(item.id),
+            escape(item.rider_id),
+            item.week_start.isoformat(),
+            str(item.delivery_count),
+            f"{item.total_amount:.2f}",
+            escape(item.state),
+        ]
+        for item in rows_db
+    ]
+    close_form = (
+        "<section class=\"panel\"><h3>Cierre Semanal Riders</h3>"
+        "<form class=\"actions\" method=\"post\" action=\"/backend/commissions/riders/close\" data-confirm=\"Se ejecutara el cierre semanal de comisiones rider. Continuar?\">"
+        "<input name=\"week_start\" placeholder=\"YYYY-MM-DD (opcional)\" />"
+        "<button class=\"primary\" type=\"submit\">Cerrar Semana Riders</button>"
+        "</form></section>"
+    )
+    content = close_form + f"<section class=\"panel\"><h3>Historico Comisiones Rider</h3><div class=\"actions\"><a class=\"btn\" href=\"/backend/export/commissions-riders.csv\">Exportar CSV</a></div>{_table(['ID', 'Rider ID', 'Week Start', 'Entregas', 'Total', 'Estado'], rows)}</section>"
+    return _render_layout("comm_rider", "Comisiones Rider", "Snapshots semanales de comision por rider.", content, msg, kind)
+
+
+@router.get("/commissions/stations", response_class=HTMLResponse)
+def backend_station_commissions(db: Session = Depends(get_db), msg: str = "", kind: str = "ok") -> str:
+    rows_db = db.query(StationCommission).order_by(StationCommission.week_start.desc()).limit(200).all()
+    rows = [
+        [
+            escape(item.id),
+            escape(item.station_id),
+            item.week_start.isoformat(),
+            str(item.sold_guide_count),
+            f"{item.sold_guide_amount:.2f}",
+            f"{item.total_amount:.2f}",
+            escape(item.state),
+        ]
+        for item in rows_db
+    ]
+    close_form = (
+        "<section class=\"panel\"><h3>Cierre Semanal Estaciones</h3>"
+        "<form class=\"actions\" method=\"post\" action=\"/backend/commissions/stations/close\" data-confirm=\"Se ejecutara el cierre semanal de comisiones estacion. Continuar?\">"
+        "<input name=\"week_start\" placeholder=\"YYYY-MM-DD (opcional)\" />"
+        "<button class=\"primary\" type=\"submit\">Cerrar Semana Estaciones</button>"
+        "</form></section>"
+    )
+    content = close_form + f"<section class=\"panel\"><h3>Historico Comisiones Estacion</h3><div class=\"actions\"><a class=\"btn\" href=\"/backend/export/commissions-stations.csv\">Exportar CSV</a></div>{_table(['ID', 'Station ID', 'Week Start', 'Guias', 'Venta', 'Total', 'Estado'], rows)}</section>"
+    return _render_layout("comm_station", "Comisiones Estacion", "Snapshots semanales de comision por estacion.", content, msg, kind)
+
+
+@router.post("/commissions/riders/close")
+def backend_close_rider_commissions(week_start: str = Form(""), request: Request = None, db: Session = Depends(get_db)) -> RedirectResponse:
+    forbidden = _require_ops(request, "/backend/commissions/riders", "cerrar comisiones rider")
+    if forbidden:
+        return forbidden
+    try:
+        start_dt, end_dt, monday = resolve_week_window(week_start.strip() or None)
+        rows = close_rider_week(db, monday, start_dt, end_dt)
+        return _redirect("/backend/commissions/riders", f"Cierre rider ejecutado: {len(rows)} registros.")
+    except Exception as exc:
+        return _redirect("/backend/commissions/riders", f"Error en cierre rider: {exc}", "error")
+
+
+@router.post("/commissions/stations/close")
+def backend_close_station_commissions(week_start: str = Form(""), request: Request = None, db: Session = Depends(get_db)) -> RedirectResponse:
+    forbidden = _require_ops(request, "/backend/commissions/stations", "cerrar comisiones estacion")
+    if forbidden:
+        return forbidden
+    try:
+        start_dt, end_dt, monday = resolve_week_window(week_start.strip() or None)
+        rows = close_station_week(db, monday, start_dt, end_dt)
+        return _redirect("/backend/commissions/stations", f"Cierre estacion ejecutado: {len(rows)} registros.")
+    except Exception as exc:
+        return _redirect("/backend/commissions/stations", f"Error en cierre estacion: {exc}", "error")
+
+
+@router.post("/demo/seed")
+def backend_seed_demo_data(db: Session = Depends(get_db)) -> JSONResponse:
+    data = _seed_demo_data(db)
+    return JSONResponse(status_code=200, content=data)
+
+
+@router.post("/demo/seed/form")
+def backend_seed_demo_data_form(db: Session = Depends(get_db)) -> RedirectResponse:
+    _seed_demo_data(db)
+    return _redirect("/backend/guides/new", "Datos demo creados correctamente.")
+
+
+@router.get("/export/guides.csv")
+def backend_export_guides_csv(db: Session = Depends(get_db)) -> Response:
+    guides = db.query(Guide).order_by(Guide.created_at.desc()).limit(2000).all()
+    rows = [
+        [
+            item.guide_code,
+            item.customer_name,
+            item.destination_name,
+            item.service_type,
+            f"{item.sale_amount:.2f}",
+            item.currency,
+            item.created_at.isoformat(),
+        ]
+        for item in guides
+    ]
+    return _csv_response("guides.csv", ["guide_code", "customer_name", "destination_name", "service_type", "sale_amount", "currency", "created_at"], rows)
+
+
+@router.get("/export/deliveries.csv")
+def backend_export_deliveries_csv(db: Session = Depends(get_db)) -> Response:
+    deliveries = db.query(Delivery).order_by(Delivery.updated_at.desc()).limit(3000).all()
+    rows = [
+        [
+            item.id,
+            item.guide.guide_code if item.guide else "",
+            item.stage.value,
+            str(item.has_evidence),
+            str(item.has_signature),
+            item.updated_at.isoformat(),
+        ]
+        for item in deliveries
+    ]
+    return _csv_response("deliveries.csv", ["delivery_id", "guide_code", "stage", "has_evidence", "has_signature", "updated_at"], rows)
+
+
+@router.get("/export/services.csv")
+def backend_export_services_csv(db: Session = Depends(get_db)) -> Response:
+    services = db.query(Service).order_by(Service.name.asc()).all()
+    rows = [[item.id, item.name, item.service_type.value, str(item.active), item.description or ""] for item in services]
+    return _csv_response("services.csv", ["id", "name", "service_type", "active", "description"], rows)
+
+
+@router.get("/export/zones.csv")
+def backend_export_zones_csv(db: Session = Depends(get_db)) -> Response:
+    zones = db.query(Zone).order_by(Zone.name.asc()).all()
+    rows = [[item.id, item.name, item.code, str(item.active)] for item in zones]
+    return _csv_response("zones.csv", ["id", "name", "code", "active"], rows)
+
+
+@router.get("/export/stations.csv")
+def backend_export_stations_csv(db: Session = Depends(get_db)) -> Response:
+    stations = db.query(Station).order_by(Station.name.asc()).all()
+    rows = [[item.id, item.name, item.zone_id, str(item.active)] for item in stations]
+    return _csv_response("stations.csv", ["id", "name", "zone_id", "active"], rows)
+
+
+@router.get("/export/riders.csv")
+def backend_export_riders_csv(db: Session = Depends(get_db)) -> Response:
+    riders = db.query(Rider).order_by(Rider.id.desc()).all()
+    rows = [[item.id, item.user_id, item.zone_id or "", item.vehicle_type, item.state.value, str(item.active)] for item in riders]
+    return _csv_response("riders.csv", ["id", "user_id", "zone_id", "vehicle_type", "state", "active"], rows)
+
+
+@router.get("/export/pricing-rules.csv")
+def backend_export_pricing_rules_csv(db: Session = Depends(get_db)) -> Response:
+    rules = db.query(PricingRule).order_by(PricingRule.id.desc()).all()
+    rows = [[item.id, item.service_id, item.station_id, f"{item.price:.2f}", item.currency, str(item.active)] for item in rules]
+    return _csv_response("pricing_rules.csv", ["id", "service_id", "station_id", "price", "currency", "active"], rows)
+
+
+@router.get("/export/users.csv")
+def backend_export_users_csv(db: Session = Depends(get_db)) -> Response:
+    users = db.query(User).order_by(User.created_at.desc()).all()
+    rows = [[item.id, item.full_name, item.email, item.role.value, str(item.is_active), item.created_at.isoformat()] for item in users]
+    return _csv_response("users.csv", ["id", "full_name", "email", "role", "is_active", "created_at"], rows)
+
+
+@router.get("/export/commissions-riders.csv")
+def backend_export_commissions_riders_csv(db: Session = Depends(get_db)) -> Response:
+    items = db.query(RiderCommission).order_by(RiderCommission.week_start.desc()).all()
+    rows = [[item.id, item.rider_id, item.week_start.isoformat(), item.delivery_count, f"{item.total_amount:.2f}", item.state] for item in items]
+    return _csv_response("commissions_riders.csv", ["id", "rider_id", "week_start", "delivery_count", "total_amount", "state"], rows)
+
+
+@router.get("/export/commissions-stations.csv")
+def backend_export_commissions_stations_csv(db: Session = Depends(get_db)) -> Response:
+    items = db.query(StationCommission).order_by(StationCommission.week_start.desc()).all()
+    rows = [[item.id, item.station_id, item.week_start.isoformat(), item.sold_guide_count, f"{item.sold_guide_amount:.2f}", f"{item.total_amount:.2f}", item.state] for item in items]
+    return _csv_response("commissions_stations.csv", ["id", "station_id", "week_start", "sold_guide_count", "sold_guide_amount", "total_amount", "state"], rows)

@@ -1,0 +1,10 @@
+[Unit]
+Description=Run Mande24 weekly commission close every Monday
+
+[Timer]
+OnCalendar=Mon *-*-* 01:00:00 UTC
+Persistent=true
+Unit=mande24-weekly-commission-close.service
+
+[Install]
+WantedBy=timers.target

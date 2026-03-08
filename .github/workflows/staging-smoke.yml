@@ -1,0 +1,90 @@
+name: Staging Smoke
+
+on:
+  workflow_dispatch:
+    inputs:
+      api_base:
+        description: "Override staging API base URL (e.g. https://api-staging.example.com)"
+        required: false
+        type: string
+      web_base:
+        description: "Override staging WEB base URL (e.g. https://staging.example.com)"
+        required: false
+        type: string
+      run_guide_flow:
+        description: "Run backend guide creation smoke flow (mutates staging data)"
+        required: false
+        default: false
+        type: boolean
+
+  workflow_run:
+    workflows: ["API Tests", "Web Build"]
+    types: [completed]
+    branches: [main]
+
+jobs:
+  smoke:
+    if: ${{ github.event_name == 'workflow_dispatch' || (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success') }}
+    runs-on: ubuntu-latest
+    concurrency:
+      group: staging-smoke
+      cancel-in-progress: false
+    environment:
+      name: staging
+      url: ${{ steps.urls.outputs.web_base }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Resolve staging URLs
+        id: urls
+        shell: bash
+        env:
+          INPUT_API: ${{ github.event.inputs.api_base }}
+          INPUT_WEB: ${{ github.event.inputs.web_base }}
+          SECRET_API: ${{ secrets.STAGING_API_BASE }}
+          SECRET_WEB: ${{ secrets.STAGING_WEB_BASE }}
+        run: |
+          API_BASE="${INPUT_API:-$SECRET_API}"
+          WEB_BASE="${INPUT_WEB:-$SECRET_WEB}"
+
+          if [ -z "$API_BASE" ] || [ -z "$WEB_BASE" ]; then
+            echo "Missing staging URLs. Set workflow_dispatch inputs or repository secrets STAGING_API_BASE/STAGING_WEB_BASE."
+            exit 1
+          fi
+
+          echo "api_base=$API_BASE" >> "$GITHUB_OUTPUT"
+          echo "web_base=$WEB_BASE" >> "$GITHUB_OUTPUT"
+
+      - name: Run staging smoke script
+        shell: pwsh
+        run: |
+          $apiBase = "${{ steps.urls.outputs.api_base }}"
+          $webBase = "${{ steps.urls.outputs.web_base }}"
+          $reportPath = "${{ github.workspace }}/staging-health-smoke.txt"
+
+          $args = @(
+            "-ExecutionPolicy", "Bypass",
+            "-File", "${{ github.workspace }}/scripts/health-smoke.ps1",
+            "-ApiBase", $apiBase,
+            "-WebBase", $webBase,
+            "-SkipContainerStatus",
+            "-ReportPath", $reportPath
+          )
+
+          if ("${{ github.event.inputs.run_guide_flow }}" -eq "true") {
+            $args += "-SkipCleanupSmokeData"
+          } else {
+            $args += "-SkipGuideFlow"
+          }
+
+          & pwsh @args
+
+      - name: Upload smoke report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: staging-health-smoke-report
+          path: staging-health-smoke.txt
+          if-no-files-found: ignore

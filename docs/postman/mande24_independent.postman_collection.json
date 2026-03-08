@@ -1,0 +1,457 @@
+{
+  "info": {
+    "name": "Mande24 Independent API",
+    "_postman_id": "d5f8d5d7-8d37-4a0e-b954-9d8d7e7ca001",
+    "description": "Coleccion E2E para auth, catalogos, guias, entregas y comisiones.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:8000/api/v1" },
+    { "key": "admin_email", "value": "admin1@mande24.local" },
+    { "key": "admin_password", "value": "Admin123*" },
+    { "key": "rider_email", "value": "rider1@mande24.local" },
+    { "key": "rider_password", "value": "Rider123*" },
+    { "key": "token", "value": "" },
+    { "key": "zone_id", "value": "" },
+    { "key": "service_id", "value": "" },
+    { "key": "station_id", "value": "" },
+    { "key": "rider_user_id", "value": "" },
+    { "key": "rider_id", "value": "" },
+    { "key": "pricing_rule_id", "value": "" },
+    { "key": "guide_code", "value": "" },
+    { "key": "delivery_id", "value": "" }
+  ],
+  "item": [
+    {
+      "name": "00 Health",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{baseUrl}}/health"
+      }
+    },
+    {
+      "name": "01 Register Admin",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"email\": \"{{admin_email}}\",\n  \"full_name\": \"Admin Test\",\n  \"password\": \"{{admin_password}}\",\n  \"role\": \"admin\"\n}"
+        },
+        "url": "{{baseUrl}}/auth/register"
+      }
+    },
+    {
+      "name": "02 Login Admin (save token)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status 200', function () { pm.response.to.have.status(200); });",
+              "const data = pm.response.json();",
+              "pm.collectionVariables.set('token', data.access_token);"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"email\": \"{{admin_email}}\",\n  \"password\": \"{{admin_password}}\"\n}"
+        },
+        "url": "{{baseUrl}}/auth/login"
+      }
+    },
+    {
+      "name": "03 Me",
+      "request": {
+        "method": "GET",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{token}}" }
+        ],
+        "url": "{{baseUrl}}/auth/me"
+      }
+    },
+    {
+      "name": "04 Register Rider User",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "if (pm.response.code === 200 || pm.response.code === 201) {",
+              "  const data = pm.response.json();",
+              "  pm.collectionVariables.set('rider_user_id', data.id);",
+              "}"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"email\": \"{{rider_email}}\",\n  \"full_name\": \"Rider Test\",\n  \"password\": \"{{rider_password}}\",\n  \"role\": \"rider\"\n}"
+        },
+        "url": "{{baseUrl}}/auth/register"
+      }
+    },
+    {
+      "name": "05 Login Rider (fallback user id)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "if (pm.response.code === 200) {",
+              "  pm.collectionVariables.set('rider_token', pm.response.json().access_token);",
+              "}"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"email\": \"{{rider_email}}\",\n  \"password\": \"{{rider_password}}\"\n}"
+        },
+        "url": "{{baseUrl}}/auth/login"
+      }
+    },
+    {
+      "name": "06 Rider Me (save rider_user_id)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "if (pm.response.code === 200) {",
+              "  const data = pm.response.json();",
+              "  pm.collectionVariables.set('rider_user_id', data.id);",
+              "}"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{rider_token}}" }
+        ],
+        "url": "{{baseUrl}}/auth/me"
+      }
+    },
+    {
+      "name": "07 Create Zone",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "if (pm.response.code === 200 || pm.response.code === 201) {",
+              "  pm.collectionVariables.set('zone_id', pm.response.json().id);",
+              "}"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{token}}" },
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"name\": \"Zona Centro\",\n  \"code\": \"ZN01\"\n}"
+        },
+        "url": "{{baseUrl}}/catalogs/zones"
+      }
+    },
+    {
+      "name": "08 Create Service",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "if (pm.response.code === 200 || pm.response.code === 201) {",
+              "  pm.collectionVariables.set('service_id', pm.response.json().id);",
+              "}"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{token}}" },
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"name\": \"Servicio Estandar\",\n  \"description\": \"Prueba E2E\",\n  \"service_type\": \"messaging\"\n}"
+        },
+        "url": "{{baseUrl}}/catalogs/services"
+      }
+    },
+    {
+      "name": "09 Create Station",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "if (pm.response.code === 200 || pm.response.code === 201) {",
+              "  pm.collectionVariables.set('station_id', pm.response.json().id);",
+              "}"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{token}}" },
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"name\": \"Estacion Centro\",\n  \"zone_id\": \"{{zone_id}}\"\n}"
+        },
+        "url": "{{baseUrl}}/catalogs/stations"
+      }
+    },
+    {
+      "name": "10 Create Rider",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "if (pm.response.code === 200 || pm.response.code === 201) {",
+              "  pm.collectionVariables.set('rider_id', pm.response.json().id);",
+              "}"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{token}}" },
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"user_id\": \"{{rider_user_id}}\",\n  \"zone_id\": \"{{zone_id}}\",\n  \"vehicle_type\": \"motorcycle\"\n}"
+        },
+        "url": "{{baseUrl}}/catalogs/riders"
+      }
+    },
+    {
+      "name": "11 Create Pricing Rule",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "if (pm.response.code === 200 || pm.response.code === 201) {",
+              "  pm.collectionVariables.set('pricing_rule_id', pm.response.json().id);",
+              "}"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{token}}" },
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"service_id\": \"{{service_id}}\",\n  \"station_id\": \"{{station_id}}\",\n  \"price\": 120.0,\n  \"currency\": \"MXN\"\n}"
+        },
+        "url": "{{baseUrl}}/catalogs/pricing-rules"
+      }
+    },
+    {
+      "name": "12 Create Guide",
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "const suffix = Date.now().toString().slice(-6);",
+              "pm.collectionVariables.set('customer_name', 'Cliente ' + suffix);",
+              "pm.collectionVariables.set('destination_name', 'Destino ' + suffix);"
+            ]
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "if (pm.response.code === 200 || pm.response.code === 201) {",
+              "  pm.collectionVariables.set('guide_code', pm.response.json().guide_code);",
+              "}"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{token}}" },
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"customer_name\": \"{{customer_name}}\",\n  \"destination_name\": \"{{destination_name}}\",\n  \"service_id\": \"{{service_id}}\",\n  \"station_id\": \"{{station_id}}\"\n}"
+        },
+        "url": "{{baseUrl}}/guides"
+      }
+    },
+    {
+      "name": "13 Get Guide Deliveries (save delivery_id)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "if (pm.response.code === 200) {",
+              "  const rows = pm.response.json();",
+              "  if (rows.length > 0) pm.collectionVariables.set('delivery_id', rows[0].delivery_id);",
+              "}"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{token}}" }
+        ],
+        "url": "{{baseUrl}}/guides/{{guide_code}}/deliveries"
+      }
+    },
+    {
+      "name": "14 Update Delivery Stage -> in_transit",
+      "request": {
+        "method": "PATCH",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{token}}" },
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"stage\": \"in_transit\",\n  \"note\": \"Salida a ruta\",\n  \"has_evidence\": false,\n  \"has_signature\": false\n}"
+        },
+        "url": "{{baseUrl}}/guides/deliveries/{{delivery_id}}/stage"
+      }
+    },
+    {
+      "name": "15 Update Delivery Stage -> delivered",
+      "request": {
+        "method": "PATCH",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{token}}" },
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"stage\": \"delivered\",\n  \"note\": \"Entrega completa\",\n  \"has_evidence\": true,\n  \"has_signature\": true\n}"
+        },
+        "url": "{{baseUrl}}/guides/deliveries/{{delivery_id}}/stage"
+      }
+    },
+    {
+      "name": "16 Rider Weekly",
+      "request": {
+        "method": "GET",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{token}}" }
+        ],
+        "url": "{{baseUrl}}/commissions/riders/weekly"
+      }
+    },
+    {
+      "name": "17 Close Rider Weekly",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{token}}" }
+        ],
+        "url": "{{baseUrl}}/commissions/riders/weekly/close"
+      }
+    },
+    {
+      "name": "18 Rider Weekly History",
+      "request": {
+        "method": "GET",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{token}}" }
+        ],
+        "url": "{{baseUrl}}/commissions/riders/weekly/history"
+      }
+    },
+    {
+      "name": "19 Station Weekly",
+      "request": {
+        "method": "GET",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{token}}" }
+        ],
+        "url": "{{baseUrl}}/commissions/stations/weekly"
+      }
+    },
+    {
+      "name": "20 Close Station Weekly",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{token}}" }
+        ],
+        "url": "{{baseUrl}}/commissions/stations/weekly/close"
+      }
+    },
+    {
+      "name": "21 Station Weekly History",
+      "request": {
+        "method": "GET",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{token}}" }
+        ],
+        "url": "{{baseUrl}}/commissions/stations/weekly/history"
+      }
+    }
+  ]
+}
