@@ -180,11 +180,11 @@ try {
         Write-Output "[OK] Smoke guide appears in guides list"
     }
 
-    if (-not $SkipCleanupSmokeData) {
+    if ((-not $SkipGuideFlow) -and (-not $SkipCleanupSmokeData)) {
         Write-Output "[STEP] Cleanup smoke data"
         Cleanup-SmokeData -ComposeFilePath $composeFile
     } else {
-        Write-Output "[STEP] Cleanup smoke data skipped by flag"
+        Write-Output "[STEP] Cleanup smoke data skipped"
     }
 
     Write-Output "=== RESULT: PASS ==="
