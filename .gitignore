@@ -13,3 +13,8 @@ node_modules/
 # OS/Editor
 .DS_Store
 .vscode/
+
+# Generated ops reports
+scripts/reports/*.log
+scripts/reports/*.err.log
+scripts/reports/health-smoke-*.txt

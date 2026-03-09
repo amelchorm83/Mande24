@@ -8,49 +8,49 @@ def main() -> None:
     cases = [
         (
             "ADMIN_MANAGE",
-            "/backend/catalogs/services/bulk-toggle",
+            "/ERPMande24/catalogs/services/bulk-toggle",
             {"active": "true"},
-            {"m24_backend_role": "admin"},
+            {"m24_erpmande24_role": "admin"},
         ),
         (
             "STATION_MANAGE",
-            "/backend/catalogs/services/bulk-toggle",
+            "/ERPMande24/catalogs/services/bulk-toggle",
             {"active": "true"},
-            {"m24_backend_role": "station"},
+            {"m24_erpmande24_role": "station"},
         ),
         (
             "STATION_OPS",
-            "/backend/guides/create",
+            "/ERPMande24/guides/create",
             {
                 "customer_name": "A",
                 "destination_name": "B",
                 "service_id": "fake",
                 "station_id": "fake",
             },
-            {"m24_backend_role": "station"},
+            {"m24_erpmande24_role": "station"},
         ),
         (
             "RIDER_OPS",
-            "/backend/guides/create",
+            "/ERPMande24/guides/create",
             {
                 "customer_name": "A",
                 "destination_name": "B",
                 "service_id": "fake",
                 "station_id": "fake",
             },
-            {"m24_backend_role": "rider"},
+            {"m24_erpmande24_role": "rider"},
         ),
         (
             "CLIENT_OPS_DELIVERY",
-            "/backend/deliveries/stage",
+            "/ERPMande24/deliveries/stage",
             {"delivery_id": "fake", "stage": "assigned"},
-            {"m24_backend_role": "client"},
+            {"m24_erpmande24_role": "client"},
         ),
         (
             "ADMIN_OPS_DELIVERY",
-            "/backend/deliveries/stage",
+            "/ERPMande24/deliveries/stage",
             {"delivery_id": "fake", "stage": "assigned"},
-            {"m24_backend_role": "admin"},
+            {"m24_erpmande24_role": "admin"},
         ),
     ]
 

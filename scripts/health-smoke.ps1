@@ -144,17 +144,17 @@ try {
 
     Write-Output "[STEP] Base health endpoints"
         Assert-Status -Name "API health" -Url "$ApiBase/api/v1/health" | Out-Null
-        Assert-Status -Name "ERP backend UI" -Url "$ApiBase/backend" | Out-Null
+        Assert-Status -Name "ERPMande24 UI" -Url "$ApiBase/ERPMande24" | Out-Null
         Assert-Status -Name "Portal auth" -Url "$WebBase/auth" | Out-Null
         Assert-Status -Name "Portal client" -Url "$WebBase/client" | Out-Null
         Assert-Status -Name "Portal rider" -Url "$WebBase/rider" | Out-Null
         Assert-Status -Name "Portal station" -Url "$WebBase/station" | Out-Null
 
     if (-not $SkipGuideFlow) {
-        Write-Output "[STEP] Backend guide creation smoke flow"
-        $roleHeaders = @{ Cookie = "m24_backend_role=admin" }
+        Write-Output "[STEP] ERPMande24 guide creation smoke flow"
+        $roleHeaders = @{ Cookie = "m24_erpmande24_role=admin" }
 
-        $seedResponse = Invoke-RestMethod -Uri "$ApiBase/backend/demo/seed" -Method Post -Headers $roleHeaders
+        $seedResponse = Invoke-RestMethod -Uri "$ApiBase/ERPMande24/demo/seed" -Method Post -Headers $roleHeaders
         if (-not $seedResponse.service_id -or -not $seedResponse.station_id) {
             throw "Seed demo data did not return service_id/station_id."
         }
@@ -168,12 +168,12 @@ try {
         }
 
         # Keep demo catalogs active so the guide creation smoke flow is deterministic.
-        Assert-RedirectSuccess -Name "Activate demo service" -Url "$ApiBase/backend/catalogs/services/$($seedResponse.service_id)/toggle" -Body @{ active = "true" } -Headers $roleHeaders | Out-Null
-        Assert-RedirectSuccess -Name "Activate demo station" -Url "$ApiBase/backend/catalogs/stations/$($seedResponse.station_id)/toggle" -Body @{ active = "true" } -Headers $roleHeaders | Out-Null
-        Assert-RedirectSuccess -Name "Create backend guide" -Url "$ApiBase/backend/guides/create" -Body $createBody -Headers $roleHeaders | Out-Null
+        Assert-RedirectSuccess -Name "Activate demo service" -Url "$ApiBase/ERPMande24/catalogs/services/$($seedResponse.service_id)/toggle" -Body @{ active = "true" } -Headers $roleHeaders | Out-Null
+        Assert-RedirectSuccess -Name "Activate demo station" -Url "$ApiBase/ERPMande24/catalogs/stations/$($seedResponse.station_id)/toggle" -Body @{ active = "true" } -Headers $roleHeaders | Out-Null
+        Assert-RedirectSuccess -Name "Create backend guide" -Url "$ApiBase/ERPMande24/guides/create" -Body $createBody -Headers $roleHeaders | Out-Null
 
         $guidesQuery = [System.Uri]::EscapeDataString("Smoke Script")
-        $guidesPage = Assert-Status -Name "Guides list" -Url "$ApiBase/backend/guides?q=$guidesQuery" -Headers $roleHeaders
+        $guidesPage = Assert-Status -Name "Guides list" -Url "$ApiBase/ERPMande24/guides?q=$guidesQuery" -Headers $roleHeaders
         if ($guidesPage.Content -notmatch "Smoke Script") {
             throw "Guides list does not show 'Smoke Script'."
         }

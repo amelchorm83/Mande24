@@ -1,7 +1,7 @@
 # Operacion Diaria Mande24 Independent
 
 ## Objetivo
-Guia rapida para validar operatividad del ERP backend y portales web en ambiente local.
+Guia rapida para validar operatividad de ERPMande24 y portales web en ambiente local.
 
 ## Pre-requisitos
 - Docker Desktop activo.
@@ -44,14 +44,14 @@ powershell -ExecutionPolicy Bypass -File ./scripts/health-smoke.ps1 -SkipCleanup
 2. Cliente: `http://localhost:3000/client`
 3. Rider: `http://localhost:3000/rider`
 4. Estacion: `http://localhost:3000/station`
-5. ERP backend: `http://localhost:8000/backend`
+5. ERPMande24: `http://localhost:8000/ERPMande24`
 
 Flujo recomendado:
 1. Login en Auth.
 2. Crear guia en Cliente.
 3. Actualizar etapa en Rider con `delivery_id`.
 4. Revisar comisiones en Estacion.
-5. Confirmar registros en ERP backend.
+5. Confirmar registros en ERPMande24.
 
 ## Tarea de VS Code (Un Clic)
 Ya existe la tarea:
@@ -82,7 +82,7 @@ docker compose up -d --build
 ## Fallas Comunes
 - `Connection refused` en `3000` o `8000`:
   - Verificar `docker compose ps` y puertos ocupados.
-- `kind=error` en creacion de guia backend:
+- `kind=error` en creacion de guia ERPMande24:
   - Ejecutar nuevamente `health-smoke.ps1` (activa servicio/estacion demo de forma automatica).
 - Portal sin token:
   - Ir a `/auth` y autenticar para guardar `m24_token` en navegador.
@@ -117,3 +117,23 @@ Nota:
 Notas:
 - Por defecto en staging corre solo health de endpoints (`-SkipGuideFlow`) para no mutar datos.
 - Si quieres flujo funcional de creacion de guia desde workflow manual, activa `run_guide_flow=true`.
+
+## Renovar URLs Temporales (sin dominio)
+Si usas `trycloudflare` (URLs temporales), ejecuta:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File ./scripts/renew-staging-tunnels.ps1 -TriggerSmoke
+```
+
+Esto hace en automatico:
+1. Abre tunel publico para API (puerto 8000).
+2. Abre tunel publico para WEB (puerto 3000).
+3. Actualiza secrets GitHub:
+  - `STAGING_API_BASE`
+  - `STAGING_WEB_BASE`
+4. Dispara workflow `Staging Smoke`.
+5. Cierra tuneles `cloudflared` previos que ya usaban esos puertos, para evitar procesos duplicados.
+
+Opcional:
+- Para ejecutar smoke con flujo de guia (mutacion), agrega `-RunGuideFlow`.
+- Para NO cerrar tuneles previos automaticamente, agrega `-SkipStopExistingTunnels`.

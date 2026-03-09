@@ -4,6 +4,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.v1.router import api_router
+from app.backend_ui import legacy_router as backend_ui_legacy_router
 from app.backend_ui import router as backend_ui_router
 from app.core.config import settings
 from app.db.init_db import init_db
@@ -41,8 +42,9 @@ app.add_middleware(
 
 app.include_router(api_router, prefix=settings.api_prefix)
 app.include_router(backend_ui_router)
+app.include_router(backend_ui_legacy_router)
 
 
 @app.get("/")
 def root() -> dict[str, str]:
-    return {"message": "Mande24 Independent API running"}
+    return {"message": "ERPMande24 API running"}

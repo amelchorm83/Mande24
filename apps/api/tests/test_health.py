@@ -214,27 +214,27 @@ def test_weekly_commissions() -> None:
 
 def test_backend_ui_role_guards() -> None:
     service_block = client.post(
-        "/backend/catalogs/services/bulk-toggle",
+        "/ERPMande24/catalogs/services/bulk-toggle",
         data={"active": "true"},
-        cookies={"m24_backend_role": "station"},
+        cookies={"m24_erpmande24_role": "station"},
         follow_redirects=False,
     )
     assert service_block.status_code == 303
     assert "Sin+permisos+para+editar+servicios+con+rol+station" in (service_block.headers.get("location") or "")
 
     rider_block = client.post(
-        "/backend/guides/create",
+        "/ERPMande24/guides/create",
         data={"customer_name": "A", "destination_name": "B", "service_id": "fake", "station_id": "fake"},
-        cookies={"m24_backend_role": "rider"},
+        cookies={"m24_erpmande24_role": "rider"},
         follow_redirects=False,
     )
     assert rider_block.status_code == 303
     assert "Sin+permisos+para+crear+guia+con+rol+rider" in (rider_block.headers.get("location") or "")
 
     station_ops = client.post(
-        "/backend/guides/create",
+        "/ERPMande24/guides/create",
         data={"customer_name": "A", "destination_name": "B", "service_id": "fake", "station_id": "fake"},
-        cookies={"m24_backend_role": "station"},
+        cookies={"m24_erpmande24_role": "station"},
         follow_redirects=False,
     )
     assert station_ops.status_code == 303
@@ -242,25 +242,25 @@ def test_backend_ui_role_guards() -> None:
 
 
 def test_backend_ui_pagination_and_timeline() -> None:
-    seed_response = client.post("/backend/demo/seed")
+    seed_response = client.post("/ERPMande24/demo/seed")
     assert seed_response.status_code == 200
     seed = seed_response.json()
 
     for idx in range(23):
         created = client.post(
-            "/backend/guides/create",
+            "/ERPMande24/guides/create",
             data={
                 "customer_name": f"Cliente {idx}",
                 "destination_name": f"Destino {idx}",
                 "service_id": seed["service_id"],
                 "station_id": seed["station_id"],
             },
-            cookies={"m24_backend_role": "admin"},
+            cookies={"m24_erpmande24_role": "admin"},
             follow_redirects=False,
         )
         assert created.status_code == 303
 
-    guides_page = client.get("/backend/guides?page=2&page_size=10")
+    guides_page = client.get("/ERPMande24/guides?page=2&page_size=10")
     assert guides_page.status_code == 200
     assert "Pagina 2 de 3" in guides_page.text
     assert "page=1&page_size=10" in guides_page.text
@@ -274,10 +274,10 @@ def test_backend_ui_pagination_and_timeline() -> None:
     finally:
         db.close()
 
-    guide_detail = client.get(f"/backend/guides/{guide_code}")
+    guide_detail = client.get(f"/ERPMande24/guides/{guide_code}")
     assert guide_detail.status_code == 200
     assert "<h3>Timeline</h3>" in guide_detail.text
 
-    delivery_detail = client.get(f"/backend/deliveries/{latest_guide.id}")
+    delivery_detail = client.get(f"/ERPMande24/deliveries/{latest_guide.id}")
     assert delivery_detail.status_code == 200
     assert "<h3>Timeline</h3>" in delivery_detail.text

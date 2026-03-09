@@ -29,24 +29,34 @@ from app.core.security import hash_password
 from app.db.session import get_db
 from app.services.commissions import close_rider_week, close_station_week, resolve_week_window
 
-router = APIRouter(prefix="/backend", tags=["backend-ui"])
+router = APIRouter(prefix="/ERPMande24", tags=["backend-ui"])
+legacy_router = APIRouter(prefix="/backend", include_in_schema=False)
 
 MENU = [
-    ("dashboard", "Dashboard", "/backend"),
-    ("guides_new", "Generar Guia", "/backend/guides/new"),
-    ("guides", "Guias", "/backend/guides"),
-    ("deliveries", "Entregas", "/backend/deliveries"),
-    ("services", "Servicios", "/backend/catalogs/services"),
-    ("zones", "Zonas", "/backend/catalogs/zones"),
-    ("stations", "Estaciones", "/backend/catalogs/stations"),
-    ("riders", "Riders", "/backend/catalogs/riders"),
-    ("pricing", "Tarifas", "/backend/catalogs/pricing-rules"),
-    ("users", "Usuarios", "/backend/users"),
-    ("comm_rider", "Comisiones Rider", "/backend/commissions/riders"),
-    ("comm_station", "Comisiones Estacion", "/backend/commissions/stations"),
+    ("dashboard", "Dashboard", "/ERPMande24"),
+    ("guides_new", "Generar Guia", "/ERPMande24/guides/new"),
+    ("guides", "Guias", "/ERPMande24/guides"),
+    ("deliveries", "Entregas", "/ERPMande24/deliveries"),
+    ("services", "Servicios", "/ERPMande24/catalogs/services"),
+    ("zones", "Zonas", "/ERPMande24/catalogs/zones"),
+    ("stations", "Estaciones", "/ERPMande24/catalogs/stations"),
+    ("riders", "Riders", "/ERPMande24/catalogs/riders"),
+    ("pricing", "Tarifas", "/ERPMande24/catalogs/pricing-rules"),
+    ("users", "Usuarios", "/ERPMande24/users"),
+    ("comm_rider", "Comisiones Rider", "/ERPMande24/commissions/riders"),
+    ("comm_station", "Comisiones Estacion", "/ERPMande24/commissions/stations"),
 ]
 
 ROLE_OPTIONS = ["admin", "station", "rider", "client"]
+
+
+@legacy_router.api_route("", methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS", "HEAD"])
+@legacy_router.api_route("/{full_path:path}", methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS", "HEAD"])
+def backend_legacy_redirect(request: Request, full_path: str = "") -> RedirectResponse:
+    target = f"/ERPMande24/{full_path}" if full_path else "/ERPMande24"
+    if request.url.query:
+        target = f"{target}?{request.url.query}"
+    return RedirectResponse(url=target, status_code=307)
 
 
 def _base_css() -> str:
@@ -364,7 +374,8 @@ def _menu_html(active: str) -> str:
 
 
 def _role_from_request(request: Request) -> str:
-    role = (request.cookies.get("m24_backend_role") or "admin").strip().lower()
+    role_cookie = request.cookies.get("m24_erpmande24_role") or request.cookies.get("m24_backend_role") or "admin"
+    role = role_cookie.strip().lower()
     return role if role in ROLE_OPTIONS else "admin"
 
 
@@ -377,8 +388,8 @@ def _role_switcher(current_role: str, return_to: str) -> str:
     )
     return (
         '<section style="margin-top:0.8rem;padding-top:0.8rem;border-top:1px solid #3b4959;">'
-        '<small style="color:#b6c8dc;display:block;margin-bottom:0.3rem;">Rol Backend</small>'
-        '<form method="post" action="/backend/role/select" style="display:grid;gap:0.35rem;">'
+        '<small style="color:#b6c8dc;display:block;margin-bottom:0.3rem;">Rol ERPMande24</small>'
+        '<form method="post" action="/ERPMande24/role/select" style="display:grid;gap:0.35rem;">'
         f'<input type="hidden" name="return_to" value="{escape(return_to)}" />'
         f'<select name="role">{options}</select>'
         '<button type="submit">Aplicar Rol</button>'
@@ -448,7 +459,7 @@ def _render_layout(
     current_path: str | None = None,
 ) -> str:
     role_value = current_role or (_role_from_request(request) if request else "admin")
-    path_value = current_path or (str(request.url.path) if request else "/backend")
+    path_value = current_path or (str(request.url.path) if request else "/ERPMande24")
 
     msg_html = ""
     if msg:
@@ -468,16 +479,16 @@ def _render_layout(
     return (
         "<!doctype html><html lang=\"es\"><head><meta charset=\"utf-8\" />"
         "<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\" />"
-        f"<title>Mande24 Backend | {escape(title)}</title>"
+        f"<title>ERPMande24 | {escape(title)}</title>"
         f"<style>{_base_css()}</style></head><body>"
         "<div class=\"layout\">"
         "<aside class=\"sidebar\">"
-        "<div class=\"brand-row\"><div class=\"brand-mark\"></div><h2>Mande24 Backend</h2></div>"
-        "<span class=\"tag\">Admin Style</span>"
+        "<div class=\"brand-row\"><div class=\"brand-mark\"></div><h2>ERPMande24</h2></div>"
+        "<span class=\"tag\">ERPMande24 Admin</span>"
         f"<nav class=\"menu\">{_menu_html(active)}</nav>{_role_switcher(role_value, path_value)}</aside>"
         "<main class=\"content\">"
         f"<header class=\"header\"><div><h1>{escape(title)}</h1><p class=\"subtitle\">{escape(subtitle)}</p></div>"
-        "<div class=\"top-actions\"><a class=\"btn\" href=\"/backend\">Dashboard</a><a class=\"btn primary\" href=\"/backend/guides/new\">Nueva Guia</a></div></header>"
+        "<div class=\"top-actions\"><a class=\"btn\" href=\"/ERPMande24\">Dashboard</a><a class=\"btn primary\" href=\"/ERPMande24/guides/new\">Nueva Guia</a></div></header>"
         f"{msg_html}{content}</main></div>{script}</body></html>"
     )
 
@@ -568,10 +579,10 @@ def _require_ops(request: Request, redirect_to: str, action_label: str) -> Redir
 
 
 @router.post("/role/select")
-def backend_select_role(role: str = Form("admin"), return_to: str = Form("/backend")) -> RedirectResponse:
+def backend_select_role(role: str = Form("admin"), return_to: str = Form("/ERPMande24")) -> RedirectResponse:
     selected = role if role in ROLE_OPTIONS else "admin"
-    response = RedirectResponse(url=return_to or "/backend", status_code=303)
-    response.set_cookie("m24_backend_role", selected, httponly=False, samesite="lax")
+    response = RedirectResponse(url=return_to or "/ERPMande24", status_code=303)
+    response.set_cookie("m24_erpmande24_role", selected, httponly=False, samesite="lax")
     return response
 
 
@@ -651,7 +662,7 @@ def backend_dashboard(db: Session = Depends(get_db), msg: str = "", kind: str = 
         ["Guia", "Cliente", "Destino", "Monto", "Fecha"],
         [
             [
-                f'<a href="/backend/guides">{escape(item.guide_code)}</a>',
+                f'<a href="/ERPMande24/guides">{escape(item.guide_code)}</a>',
                 escape(item.customer_name),
                 escape(item.destination_name),
                 f"{item.sale_amount:.2f} {escape(item.currency)}",
@@ -696,15 +707,15 @@ def backend_new_guide_page(db: Session = Depends(get_db), msg: str = "", kind: s
 
     content = (
         "<section class=\"panel\"><h3>Captura de Guia</h3>"
-        "<form class=\"grid\" method=\"post\" action=\"/backend/guides/create\">"
+        "<form class=\"grid\" method=\"post\" action=\"/ERPMande24/guides/create\">"
         "<label>Nombre cliente<input name=\"customer_name\" minlength=\"2\" maxlength=\"150\" value=\"Cliente Backend\" required /></label>"
         "<label>Nombre destino<input name=\"destination_name\" minlength=\"2\" maxlength=\"150\" value=\"Destino Backend\" required /></label>"
         f"<label>Servicio<select name=\"service_id\" required><option value=\"\">Selecciona</option>{service_options}</select></label>"
         f"<label>Estacion<select name=\"station_id\" required><option value=\"\">Selecciona</option>{station_options}</select></label>"
         "<div class=\"full actions\"><button class=\"primary\" type=\"submit\">Generar Guia</button></div>"
         "</form>"
-        "<div class=\"actions\"><form method=\"post\" action=\"/backend/demo/seed/form\"><button type=\"submit\">Generar datos demo</button></form>"
-        "<a class=\"btn\" href=\"/backend/guides\">Ver listado de guias</a></div>"
+        "<div class=\"actions\"><form method=\"post\" action=\"/ERPMande24/demo/seed/form\"><button type=\"submit\">Generar datos demo</button></form>"
+        "<a class=\"btn\" href=\"/ERPMande24/guides\">Ver listado de guias</a></div>"
         f"{catalog_hint}</section>"
     )
 
@@ -720,16 +731,16 @@ def backend_create_guide(
     request: Request = None,
     db: Session = Depends(get_db),
 ) -> RedirectResponse:
-    forbidden = _require_ops(request, "/backend/guides/new", "crear guia")
+    forbidden = _require_ops(request, "/ERPMande24/guides/new", "crear guia")
     if forbidden:
         return forbidden
     service = db.query(Service).filter(Service.id == service_id, Service.active.is_(True)).first()
     if not service:
-        return _redirect("/backend/guides/new", "Servicio no encontrado o inactivo.", "error")
+        return _redirect("/ERPMande24/guides/new", "Servicio no encontrado o inactivo.", "error")
 
     station = db.query(Station).filter(Station.id == station_id, Station.active.is_(True)).first()
     if not station:
-        return _redirect("/backend/guides/new", "Estacion no encontrada o inactiva.", "error")
+        return _redirect("/ERPMande24/guides/new", "Estacion no encontrada o inactiva.", "error")
 
     pricing_rule = (
         db.query(PricingRule)
@@ -741,7 +752,7 @@ def backend_create_guide(
         .first()
     )
     if not pricing_rule:
-        return _redirect("/backend/guides/new", "No existe tarifa activa para servicio + estacion.", "error")
+        return _redirect("/ERPMande24/guides/new", "No existe tarifa activa para servicio + estacion.", "error")
 
     guide_code = f"M24-{datetime.now(timezone.utc).strftime('%Y%m%d')}-{uuid4().hex[:6].upper()}"
     guide = Guide(
@@ -762,7 +773,7 @@ def backend_create_guide(
     db.commit()
 
     return _redirect(
-        "/backend/guides/new",
+        "/ERPMande24/guides/new",
         f"Guia {guide.guide_code} creada con delivery {delivery.id} ({guide.sale_amount:.2f} {guide.currency}).",
         "ok",
     )
@@ -796,7 +807,7 @@ def backend_guides(
     for item in guides:
         rows.append(
             [
-                f'<a href="/backend/guides/{escape(item.guide_code)}">{escape(item.guide_code)}</a>',
+                f'<a href="/ERPMande24/guides/{escape(item.guide_code)}">{escape(item.guide_code)}</a>',
                 escape(item.customer_name),
                 escape(item.destination_name),
                 escape(item.service_type),
@@ -806,7 +817,7 @@ def backend_guides(
         )
 
     pager = _pagination(
-        "/backend/guides",
+        "/ERPMande24/guides",
         safe_page,
         safe_page_size,
         total,
@@ -815,9 +826,9 @@ def backend_guides(
 
     content = (
         "<section class=\"panel\"><h3>Listado de Guias</h3>"
-        f"{_querybox('/backend/guides', 'Buscar por guia, cliente o destino', q)}"
+        f"{_querybox('/ERPMande24/guides', 'Buscar por guia, cliente o destino', q)}"
         f"{pager}"
-        "<div class=\"actions\"><a class=\"btn\" href=\"/backend/export/guides.csv\">Exportar CSV</a></div>"
+        "<div class=\"actions\"><a class=\"btn\" href=\"/ERPMande24/export/guides.csv\">Exportar CSV</a></div>"
         f"{_table(['Guia', 'Cliente', 'Destino', 'Tipo Servicio', 'Monto', 'Creada'], rows)}"
         f"{pager}</section>"
     )
@@ -833,7 +844,7 @@ def backend_guide_detail(guide_code: str, request: Request, db: Session = Depend
     deliveries = db.query(Delivery).filter(Delivery.guide_id == guide.id).order_by(Delivery.created_at.asc()).all()
     delivery_rows = [
         [
-            f'<a href="/backend/deliveries/{escape(item.id)}">{escape(item.id)}</a>',
+            f'<a href="/ERPMande24/deliveries/{escape(item.id)}">{escape(item.id)}</a>',
             escape(item.stage.value),
             "si" if item.has_evidence else "no",
             "si" if item.has_signature else "no",
@@ -858,7 +869,7 @@ def backend_guide_detail(guide_code: str, request: Request, db: Session = Depend
         f"<article class=\"kpi\"><small>Destino</small><strong>{escape(guide.destination_name)}</strong></article>"
         f"<article class=\"kpi\"><small>Monto</small><strong>{guide.sale_amount:.2f} {escape(guide.currency)}</strong></article>"
         "</div></section>"
-        "<section id=\"operacion\" class=\"panel\"><h3>Operacion</h3><div class=\"actions\"><a class=\"btn\" href=\"/backend/guides\">Volver a listado</a><a class=\"btn\" href=\"/backend/guides/new\">Nueva Guia</a></div></section>"
+        "<section id=\"operacion\" class=\"panel\"><h3>Operacion</h3><div class=\"actions\"><a class=\"btn\" href=\"/ERPMande24/guides\">Volver a listado</a><a class=\"btn\" href=\"/ERPMande24/guides/new\">Nueva Guia</a></div></section>"
     )
     content = (
         details
@@ -900,8 +911,8 @@ def backend_deliveries(
     for item in deliveries:
         rows.append(
             [
-                f'<a href="/backend/deliveries/{escape(item.id)}">{escape(item.id)}</a>',
-                f'<a href="/backend/guides/{escape(item.guide.guide_code if item.guide else "")}">{escape(item.guide.guide_code if item.guide else "-")}</a>',
+                f'<a href="/ERPMande24/deliveries/{escape(item.id)}">{escape(item.id)}</a>',
+                f'<a href="/ERPMande24/guides/{escape(item.guide.guide_code if item.guide else "")}">{escape(item.guide.guide_code if item.guide else "-")}</a>',
                 f"<span class=\"badge\">{escape(item.stage.value)}</span>",
                 "si" if item.has_evidence else "no",
                 "si" if item.has_signature else "no",
@@ -911,7 +922,7 @@ def backend_deliveries(
 
     form = (
         "<section class=\"panel\"><h3>Actualizar Etapa de Entrega</h3>"
-        "<form class=\"grid\" method=\"post\" action=\"/backend/deliveries/stage\">"
+        "<form class=\"grid\" method=\"post\" action=\"/ERPMande24/deliveries/stage\">"
         "<label>Delivery ID<input name=\"delivery_id\" required /></label>"
         "<label>Etapa<select name=\"stage\">"
         "<option value=\"assigned\">assigned</option><option value=\"picked_up\">picked_up</option>"
@@ -934,11 +945,11 @@ def backend_deliveries(
 
     filter_box = (
         "<section class=\"panel\"><h3>Filtros</h3>"
-        "<form class=\"actions\" method=\"get\" action=\"/backend/deliveries\">"
+        "<form class=\"actions\" method=\"get\" action=\"/ERPMande24/deliveries\">"
         f'<input name="q" value="{escape(q)}" placeholder="Buscar por delivery o guia" />'
         f'<select name="stage"><option value="">Todas las etapas</option>{stage_options}</select>'
         "<button type=\"submit\">Aplicar</button>"
-        "<a class=\"btn\" href=\"/backend/deliveries\">Limpiar</a>"
+        "<a class=\"btn\" href=\"/ERPMande24/deliveries\">Limpiar</a>"
         "</form></section>"
     )
 
@@ -947,14 +958,14 @@ def backend_deliveries(
         pager_params["q"] = q.strip()
     if stage.strip():
         pager_params["stage"] = stage.strip()
-    pager = _pagination("/backend/deliveries", safe_page, safe_page_size, total, query_params=pager_params or None)
+    pager = _pagination("/ERPMande24/deliveries", safe_page, safe_page_size, total, query_params=pager_params or None)
 
     content = (
         filter_box
         + form
         + "<section class=\"panel\"><h3>Listado de Entregas</h3>"
         + pager
-        + "<div class=\"actions\"><a class=\"btn\" href=\"/backend/export/deliveries.csv\">Exportar CSV</a></div>"
+        + "<div class=\"actions\"><a class=\"btn\" href=\"/ERPMande24/export/deliveries.csv\">Exportar CSV</a></div>"
         + _table(['Delivery ID', 'Guia', 'Etapa', 'Evidencia', 'Firma', 'Actualizada'], rows)
         + pager
         + "</section>"
@@ -980,12 +991,12 @@ def backend_delivery_detail(delivery_id: str, request: Request, db: Session = De
         "<section id=\"resumen\" class=\"panel\"><h3>Ficha de Entrega</h3>"
         "<div class=\"kpi-grid\">"
         f"<article class=\"kpi\"><small>Delivery ID</small><strong>{escape(item.id)}</strong></article>"
-        f"<article class=\"kpi\"><small>Guia</small><strong><a href=\"/backend/guides/{escape(item.guide.guide_code if item.guide else '')}\">{escape(item.guide.guide_code if item.guide else '-')}</a></strong></article>"
+        f"<article class=\"kpi\"><small>Guia</small><strong><a href=\"/ERPMande24/guides/{escape(item.guide.guide_code if item.guide else '')}\">{escape(item.guide.guide_code if item.guide else '-')}</a></strong></article>"
         f"<article class=\"kpi\"><small>Etapa</small><strong>{escape(item.stage.value)}</strong></article>"
         f"<article class=\"kpi\"><small>Evidencia/Firma</small><strong>{'si' if item.has_evidence else 'no'} / {'si' if item.has_signature else 'no'}</strong></article>"
         "</div></section>"
         f"<section id=\"timeline\" class=\"panel\"><h3>Timeline</h3>{_timeline(timeline_events)}</section>"
-        "<section id=\"operacion\" class=\"panel\"><h3>Operacion</h3><div class=\"actions\"><a class=\"btn\" href=\"/backend/deliveries\">Volver a entregas</a></div></section>"
+        "<section id=\"operacion\" class=\"panel\"><h3>Operacion</h3><div class=\"actions\"><a class=\"btn\" href=\"/ERPMande24/deliveries\">Volver a entregas</a></div></section>"
     )
     return _render_layout("deliveries", f"Entrega {item.id}", "Vista detalle tipo formulario.", details, msg, kind, request=request)
 
@@ -1000,22 +1011,22 @@ def backend_update_delivery_stage(
     request: Request = None,
     db: Session = Depends(get_db),
 ) -> RedirectResponse:
-    forbidden = _require_ops(request, "/backend/deliveries", "actualizar entrega")
+    forbidden = _require_ops(request, "/ERPMande24/deliveries", "actualizar entrega")
     if forbidden:
         return forbidden
     delivery = db.query(Delivery).filter(Delivery.id == delivery_id.strip()).first()
     if not delivery:
-        return _redirect("/backend/deliveries", "Delivery no encontrado.", "error")
+        return _redirect("/ERPMande24/deliveries", "Delivery no encontrado.", "error")
 
     try:
         new_stage = WorkflowStage(stage)
     except ValueError:
-        return _redirect("/backend/deliveries", "Etapa no valida.", "error")
+        return _redirect("/ERPMande24/deliveries", "Etapa no valida.", "error")
 
     ev = has_evidence == "on"
     sg = has_signature == "on"
     if new_stage == WorkflowStage.delivered and not (ev and sg):
-        return _redirect("/backend/deliveries", "Para delivered se requiere evidencia y firma.", "error")
+        return _redirect("/ERPMande24/deliveries", "Para delivered se requiere evidencia y firma.", "error")
 
     delivery.stage = new_stage
     delivery.note = note.strip() if note else None
@@ -1026,7 +1037,7 @@ def backend_update_delivery_stage(
     delivery.updated_at = datetime.now(timezone.utc)
     db.commit()
 
-    return _redirect("/backend/deliveries", f"Delivery {delivery.id} actualizado a {delivery.stage.value}.")
+    return _redirect("/ERPMande24/deliveries", f"Delivery {delivery.id} actualizado a {delivery.stage.value}.")
 
 
 @router.get("/catalogs/services", response_class=HTMLResponse)
@@ -1039,11 +1050,11 @@ def backend_services(db: Session = Depends(get_db), q: str = "", msg: str = "", 
         [
             f'<input type="checkbox" name="ids" value="{escape(item.id)}" form="bulk-services" />',
             escape(item.id),
-            f'<a href="/backend/catalogs/services/{escape(item.id)}">{escape(item.name)}</a>',
+            f'<a href="/ERPMande24/catalogs/services/{escape(item.id)}">{escape(item.name)}</a>',
             escape(item.service_type.value),
             "activo" if item.active else "inactivo",
             (
-                f'<form class="inline-form" method="post" action="/backend/catalogs/services/{escape(item.id)}/toggle">'
+                f'<form class="inline-form" method="post" action="/ERPMande24/catalogs/services/{escape(item.id)}/toggle">'
                 f'<input type="hidden" name="active" value="{"false" if item.active else "true"}" />'
                 f'<button type="submit">{"Desactivar" if item.active else "Activar"}</button></form>'
             ),
@@ -1053,7 +1064,7 @@ def backend_services(db: Session = Depends(get_db), q: str = "", msg: str = "", 
 
     form = (
         "<section class=\"panel\"><h3>Nuevo Servicio</h3>"
-        "<form class=\"grid\" method=\"post\" action=\"/backend/catalogs/services/create\">"
+        "<form class=\"grid\" method=\"post\" action=\"/ERPMande24/catalogs/services/create\">"
         "<label>Nombre<input name=\"name\" required minlength=\"2\" maxlength=\"120\" /></label>"
         "<label>Tipo<select name=\"service_type\"><option value=\"messaging\">messaging</option><option value=\"package\">package</option><option value=\"errand\">errand</option></select></label>"
         "<label class=\"full\">Descripcion<textarea name=\"description\"></textarea></label>"
@@ -1061,7 +1072,7 @@ def backend_services(db: Session = Depends(get_db), q: str = "", msg: str = "", 
         "</form></section>"
     )
 
-    content = form + f"<section class=\"panel\"><h3>Lista de Servicios</h3>{_querybox('/backend/catalogs/services', 'Buscar servicio por nombre', q)}<div class=\"actions\"><a class=\"btn\" href=\"/backend/export/services.csv\">Exportar CSV</a></div>{_bulk_form('bulk-services', '/backend/catalogs/services/bulk-toggle', 'Aplicar cambios')}{_table(['Sel', 'ID', 'Nombre', 'Tipo', 'Estado', 'Accion'], rows)}</section>"
+    content = form + f"<section class=\"panel\"><h3>Lista de Servicios</h3>{_querybox('/ERPMande24/catalogs/services', 'Buscar servicio por nombre', q)}<div class=\"actions\"><a class=\"btn\" href=\"/ERPMande24/export/services.csv\">Exportar CSV</a></div>{_bulk_form('bulk-services', '/ERPMande24/catalogs/services/bulk-toggle', 'Aplicar cambios')}{_table(['Sel', 'ID', 'Nombre', 'Tipo', 'Estado', 'Accion'], rows)}</section>"
     return _render_layout("services", "Catalogo de Servicios", "Mantenimiento de servicios operativos.", content, msg, kind)
 
 
@@ -1079,7 +1090,7 @@ def backend_service_detail(service_id: str, db: Session = Depends(get_db), msg: 
         f"<article class=\"kpi\"><small>Tipo</small><strong>{escape(service.service_type.value)}</strong></article>"
         f"<article class=\"kpi\"><small>Estado</small><strong>{'activo' if service.active else 'inactivo'}</strong></article>"
         "</div></section>"
-        "<section id=\"operacion\" class=\"panel\"><h3>Operacion</h3><div class=\"actions\"><a class=\"btn\" href=\"/backend/catalogs/services\">Volver a servicios</a></div></section>"
+        "<section id=\"operacion\" class=\"panel\"><h3>Operacion</h3><div class=\"actions\"><a class=\"btn\" href=\"/ERPMande24/catalogs/services\">Volver a servicios</a></div></section>"
     )
     return _render_layout("services", f"Servicio {service.name}", "Vista detalle tipo formulario.", content, msg, kind)
 
@@ -1091,15 +1102,15 @@ def backend_toggle_service(
     request: Request = None,
     db: Session = Depends(get_db),
 ) -> RedirectResponse:
-    forbidden = _require_manage(request, "/backend/catalogs/services", "editar servicio")
+    forbidden = _require_manage(request, "/ERPMande24/catalogs/services", "editar servicio")
     if forbidden:
         return forbidden
     service = db.query(Service).filter(Service.id == service_id).first()
     if not service:
-        return _redirect("/backend/catalogs/services", "Servicio no encontrado.", "error")
+        return _redirect("/ERPMande24/catalogs/services", "Servicio no encontrado.", "error")
     service.active = active == "true"
     db.commit()
-    return _redirect("/backend/catalogs/services", f"Servicio {service.name} actualizado a {'activo' if service.active else 'inactivo'}.")
+    return _redirect("/ERPMande24/catalogs/services", f"Servicio {service.name} actualizado a {'activo' if service.active else 'inactivo'}.")
 
 
 @router.post("/catalogs/services/bulk-toggle")
@@ -1109,15 +1120,15 @@ def backend_bulk_toggle_services(
     request: Request = None,
     db: Session = Depends(get_db),
 ) -> RedirectResponse:
-    forbidden = _require_manage(request, "/backend/catalogs/services", "editar servicios")
+    forbidden = _require_manage(request, "/ERPMande24/catalogs/services", "editar servicios")
     if forbidden:
         return forbidden
     if not ids:
-        return _redirect("/backend/catalogs/services", "Selecciona al menos un servicio.", "error")
+        return _redirect("/ERPMande24/catalogs/services", "Selecciona al menos un servicio.", "error")
     value = active == "true"
     updated = db.query(Service).filter(Service.id.in_(ids)).update({Service.active: value}, synchronize_session=False)
     db.commit()
-    return _redirect("/backend/catalogs/services", f"Servicios actualizados: {updated}.")
+    return _redirect("/ERPMande24/catalogs/services", f"Servicios actualizados: {updated}.")
 
 
 @router.post("/catalogs/services/create")
@@ -1128,21 +1139,21 @@ def backend_create_service(
     request: Request = None,
     db: Session = Depends(get_db),
 ) -> RedirectResponse:
-    forbidden = _require_manage(request, "/backend/catalogs/services", "crear servicio")
+    forbidden = _require_manage(request, "/ERPMande24/catalogs/services", "crear servicio")
     if forbidden:
         return forbidden
     if db.query(Service).filter(Service.name == name.strip()).first():
-        return _redirect("/backend/catalogs/services", "Ya existe un servicio con ese nombre.", "error")
+        return _redirect("/ERPMande24/catalogs/services", "Ya existe un servicio con ese nombre.", "error")
 
     try:
         stype = ServiceType(service_type)
     except ValueError:
-        return _redirect("/backend/catalogs/services", "Tipo de servicio no valido.", "error")
+        return _redirect("/ERPMande24/catalogs/services", "Tipo de servicio no valido.", "error")
 
     service = Service(name=name.strip(), description=(description.strip() or None), service_type=stype, active=True)
     db.add(service)
     db.commit()
-    return _redirect("/backend/catalogs/services", f"Servicio {service.name} creado.")
+    return _redirect("/ERPMande24/catalogs/services", f"Servicio {service.name} creado.")
 
 
 @router.get("/catalogs/zones", response_class=HTMLResponse)
@@ -1156,11 +1167,11 @@ def backend_zones(db: Session = Depends(get_db), q: str = "", msg: str = "", kin
         [
             f'<input type="checkbox" name="ids" value="{escape(item.id)}" form="bulk-zones" />',
             escape(item.id),
-            f'<a href="/backend/catalogs/zones/{escape(item.id)}">{escape(item.name)}</a>',
+            f'<a href="/ERPMande24/catalogs/zones/{escape(item.id)}">{escape(item.name)}</a>',
             escape(item.code),
             "activo" if item.active else "inactivo",
             (
-                f'<form class="inline-form" method="post" action="/backend/catalogs/zones/{escape(item.id)}/toggle">'
+                f'<form class="inline-form" method="post" action="/ERPMande24/catalogs/zones/{escape(item.id)}/toggle">'
                 f'<input type="hidden" name="active" value="{"false" if item.active else "true"}" />'
                 f'<button type="submit">{"Desactivar" if item.active else "Activar"}</button></form>'
             ),
@@ -1170,28 +1181,28 @@ def backend_zones(db: Session = Depends(get_db), q: str = "", msg: str = "", kin
 
     form = (
         "<section class=\"panel\"><h3>Nueva Zona</h3>"
-        "<form class=\"grid\" method=\"post\" action=\"/backend/catalogs/zones/create\">"
+        "<form class=\"grid\" method=\"post\" action=\"/ERPMande24/catalogs/zones/create\">"
         "<label>Nombre<input name=\"name\" required minlength=\"2\" maxlength=\"120\" /></label>"
         "<label>Codigo<input name=\"code\" required minlength=\"2\" maxlength=\"30\" /></label>"
         "<div class=\"full actions\"><button class=\"primary\" type=\"submit\">Crear Zona</button></div>"
         "</form></section>"
     )
 
-    content = form + f"<section class=\"panel\"><h3>Lista de Zonas</h3>{_querybox('/backend/catalogs/zones', 'Buscar por nombre o codigo', q)}<div class=\"actions\"><a class=\"btn\" href=\"/backend/export/zones.csv\">Exportar CSV</a></div>{_bulk_form('bulk-zones', '/backend/catalogs/zones/bulk-toggle', 'Aplicar cambios')}{_table(['Sel', 'ID', 'Nombre', 'Codigo', 'Estado', 'Accion'], rows)}</section>"
+    content = form + f"<section class=\"panel\"><h3>Lista de Zonas</h3>{_querybox('/ERPMande24/catalogs/zones', 'Buscar por nombre o codigo', q)}<div class=\"actions\"><a class=\"btn\" href=\"/ERPMande24/export/zones.csv\">Exportar CSV</a></div>{_bulk_form('bulk-zones', '/ERPMande24/catalogs/zones/bulk-toggle', 'Aplicar cambios')}{_table(['Sel', 'ID', 'Nombre', 'Codigo', 'Estado', 'Accion'], rows)}</section>"
     return _render_layout("zones", "Catalogo de Zonas", "Mantenimiento de zonas logisticas.", content, msg, kind)
 
 
 @router.post("/catalogs/zones/{zone_id}/toggle")
 def backend_toggle_zone(zone_id: str, active: str = Form(...), request: Request = None, db: Session = Depends(get_db)) -> RedirectResponse:
-    forbidden = _require_manage(request, "/backend/catalogs/zones", "editar zona")
+    forbidden = _require_manage(request, "/ERPMande24/catalogs/zones", "editar zona")
     if forbidden:
         return forbidden
     zone = db.query(Zone).filter(Zone.id == zone_id).first()
     if not zone:
-        return _redirect("/backend/catalogs/zones", "Zona no encontrada.", "error")
+        return _redirect("/ERPMande24/catalogs/zones", "Zona no encontrada.", "error")
     zone.active = active == "true"
     db.commit()
-    return _redirect("/backend/catalogs/zones", f"Zona {zone.name} actualizada a {'activa' if zone.active else 'inactiva'}.")
+    return _redirect("/ERPMande24/catalogs/zones", f"Zona {zone.name} actualizada a {'activa' if zone.active else 'inactiva'}.")
 
 
 @router.post("/catalogs/zones/bulk-toggle")
@@ -1201,15 +1212,15 @@ def backend_bulk_toggle_zones(
     request: Request = None,
     db: Session = Depends(get_db),
 ) -> RedirectResponse:
-    forbidden = _require_manage(request, "/backend/catalogs/zones", "editar zonas")
+    forbidden = _require_manage(request, "/ERPMande24/catalogs/zones", "editar zonas")
     if forbidden:
         return forbidden
     if not ids:
-        return _redirect("/backend/catalogs/zones", "Selecciona al menos una zona.", "error")
+        return _redirect("/ERPMande24/catalogs/zones", "Selecciona al menos una zona.", "error")
     value = active == "true"
     updated = db.query(Zone).filter(Zone.id.in_(ids)).update({Zone.active: value}, synchronize_session=False)
     db.commit()
-    return _redirect("/backend/catalogs/zones", f"Zonas actualizadas: {updated}.")
+    return _redirect("/ERPMande24/catalogs/zones", f"Zonas actualizadas: {updated}.")
 
 
 @router.get("/catalogs/zones/{zone_id}", response_class=HTMLResponse)
@@ -1218,7 +1229,7 @@ def backend_zone_detail(zone_id: str, db: Session = Depends(get_db), msg: str = 
     if not zone:
         return _render_layout("zones", "Zona", "Detalle", '<section class="panel"><div class="empty">Zona no encontrada.</div></section>', msg, "error")
     stations = db.query(Station).filter(Station.zone_id == zone.id).order_by(Station.name.asc()).all()
-    station_rows = [[escape(item.id), f'<a href="/backend/catalogs/stations/{escape(item.id)}">{escape(item.name)}</a>', "activa" if item.active else "inactiva"] for item in stations]
+    station_rows = [[escape(item.id), f'<a href="/ERPMande24/catalogs/stations/{escape(item.id)}">{escape(item.name)}</a>', "activa" if item.active else "inactiva"] for item in stations]
     content = (
         f"{_tabs([('resumen', 'Resumen'), ('relacionados', 'Relacionados')])}"
         "<section id=\"resumen\" class=\"panel\"><h3>Ficha de Zona</h3>"
@@ -1235,17 +1246,17 @@ def backend_zone_detail(zone_id: str, db: Session = Depends(get_db), msg: str = 
 
 @router.post("/catalogs/zones/create")
 def backend_create_zone(name: str = Form(...), code: str = Form(...), request: Request = None, db: Session = Depends(get_db)) -> RedirectResponse:
-    forbidden = _require_manage(request, "/backend/catalogs/zones", "crear zona")
+    forbidden = _require_manage(request, "/ERPMande24/catalogs/zones", "crear zona")
     if forbidden:
         return forbidden
     code_value = code.strip().upper()
     if db.query(Zone).filter(Zone.code == code_value).first():
-        return _redirect("/backend/catalogs/zones", "Ya existe una zona con ese codigo.", "error")
+        return _redirect("/ERPMande24/catalogs/zones", "Ya existe una zona con ese codigo.", "error")
 
     zone = Zone(name=name.strip(), code=code_value, active=True)
     db.add(zone)
     db.commit()
-    return _redirect("/backend/catalogs/zones", f"Zona {zone.name} creada.")
+    return _redirect("/ERPMande24/catalogs/zones", f"Zona {zone.name} creada.")
 
 
 @router.get("/catalogs/stations", response_class=HTMLResponse)
@@ -1266,11 +1277,11 @@ def backend_stations(db: Session = Depends(get_db), q: str = "", msg: str = "", 
             [
                 f'<input type="checkbox" name="ids" value="{escape(item.id)}" form="bulk-stations" />',
                 escape(item.id),
-                f'<a href="/backend/catalogs/stations/{escape(item.id)}">{escape(item.name)}</a>',
+                f'<a href="/ERPMande24/catalogs/stations/{escape(item.id)}">{escape(item.name)}</a>',
                 escape(zone_label),
                 "activo" if item.active else "inactivo",
                 (
-                    f'<form class="inline-form" method="post" action="/backend/catalogs/stations/{escape(item.id)}/toggle">'
+                    f'<form class="inline-form" method="post" action="/ERPMande24/catalogs/stations/{escape(item.id)}/toggle">'
                     f'<input type="hidden" name="active" value="{"false" if item.active else "true"}" />'
                     f'<button type="submit">{"Desactivar" if item.active else "Activar"}</button></form>'
                 ),
@@ -1279,28 +1290,28 @@ def backend_stations(db: Session = Depends(get_db), q: str = "", msg: str = "", 
 
     form = (
         "<section class=\"panel\"><h3>Nueva Estacion</h3>"
-        "<form class=\"grid\" method=\"post\" action=\"/backend/catalogs/stations/create\">"
+        "<form class=\"grid\" method=\"post\" action=\"/ERPMande24/catalogs/stations/create\">"
         "<label>Nombre<input name=\"name\" required minlength=\"2\" maxlength=\"120\" /></label>"
         f"<label>Zona<select name=\"zone_id\" required><option value=\"\">Selecciona</option>{zone_options}</select></label>"
         "<div class=\"full actions\"><button class=\"primary\" type=\"submit\">Crear Estacion</button></div>"
         "</form></section>"
     )
 
-    content = form + f"<section class=\"panel\"><h3>Lista de Estaciones</h3>{_querybox('/backend/catalogs/stations', 'Buscar estacion por nombre', q)}<div class=\"actions\"><a class=\"btn\" href=\"/backend/export/stations.csv\">Exportar CSV</a></div>{_bulk_form('bulk-stations', '/backend/catalogs/stations/bulk-toggle', 'Aplicar cambios')}{_table(['Sel', 'ID', 'Nombre', 'Zona', 'Estado', 'Accion'], rows)}</section>"
+    content = form + f"<section class=\"panel\"><h3>Lista de Estaciones</h3>{_querybox('/ERPMande24/catalogs/stations', 'Buscar estacion por nombre', q)}<div class=\"actions\"><a class=\"btn\" href=\"/ERPMande24/export/stations.csv\">Exportar CSV</a></div>{_bulk_form('bulk-stations', '/ERPMande24/catalogs/stations/bulk-toggle', 'Aplicar cambios')}{_table(['Sel', 'ID', 'Nombre', 'Zona', 'Estado', 'Accion'], rows)}</section>"
     return _render_layout("stations", "Catalogo de Estaciones", "Mantenimiento de estaciones por zona.", content, msg, kind)
 
 
 @router.post("/catalogs/stations/{station_id}/toggle")
 def backend_toggle_station(station_id: str, active: str = Form(...), request: Request = None, db: Session = Depends(get_db)) -> RedirectResponse:
-    forbidden = _require_manage(request, "/backend/catalogs/stations", "editar estacion")
+    forbidden = _require_manage(request, "/ERPMande24/catalogs/stations", "editar estacion")
     if forbidden:
         return forbidden
     station = db.query(Station).filter(Station.id == station_id).first()
     if not station:
-        return _redirect("/backend/catalogs/stations", "Estacion no encontrada.", "error")
+        return _redirect("/ERPMande24/catalogs/stations", "Estacion no encontrada.", "error")
     station.active = active == "true"
     db.commit()
-    return _redirect("/backend/catalogs/stations", f"Estacion {station.name} actualizada a {'activa' if station.active else 'inactiva'}.")
+    return _redirect("/ERPMande24/catalogs/stations", f"Estacion {station.name} actualizada a {'activa' if station.active else 'inactiva'}.")
 
 
 @router.post("/catalogs/stations/bulk-toggle")
@@ -1310,15 +1321,15 @@ def backend_bulk_toggle_stations(
     request: Request = None,
     db: Session = Depends(get_db),
 ) -> RedirectResponse:
-    forbidden = _require_manage(request, "/backend/catalogs/stations", "editar estaciones")
+    forbidden = _require_manage(request, "/ERPMande24/catalogs/stations", "editar estaciones")
     if forbidden:
         return forbidden
     if not ids:
-        return _redirect("/backend/catalogs/stations", "Selecciona al menos una estacion.", "error")
+        return _redirect("/ERPMande24/catalogs/stations", "Selecciona al menos una estacion.", "error")
     value = active == "true"
     updated = db.query(Station).filter(Station.id.in_(ids)).update({Station.active: value}, synchronize_session=False)
     db.commit()
-    return _redirect("/backend/catalogs/stations", f"Estaciones actualizadas: {updated}.")
+    return _redirect("/ERPMande24/catalogs/stations", f"Estaciones actualizadas: {updated}.")
 
 
 @router.get("/catalogs/stations/{station_id}", response_class=HTMLResponse)
@@ -1328,7 +1339,7 @@ def backend_station_detail(station_id: str, db: Session = Depends(get_db), msg: 
         return _render_layout("stations", "Estacion", "Detalle", '<section class="panel"><div class="empty">Estacion no encontrada.</div></section>', msg, "error")
     zone = db.query(Zone).filter(Zone.id == station.zone_id).first()
     guides = db.query(Guide).filter(Guide.station_id == station.id).order_by(Guide.created_at.desc()).limit(20).all()
-    guide_rows = [[f'<a href="/backend/guides/{escape(item.guide_code)}">{escape(item.guide_code)}</a>', escape(item.customer_name), f"{item.sale_amount:.2f} {escape(item.currency)}", item.created_at.strftime("%Y-%m-%d %H:%M")] for item in guides]
+    guide_rows = [[f'<a href="/ERPMande24/guides/{escape(item.guide_code)}">{escape(item.guide_code)}</a>', escape(item.customer_name), f"{item.sale_amount:.2f} {escape(item.currency)}", item.created_at.strftime("%Y-%m-%d %H:%M")] for item in guides]
     content = (
         f"{_tabs([('resumen', 'Resumen'), ('guias', 'Guias')])}"
         "<section id=\"resumen\" class=\"panel\"><h3>Ficha de Estacion</h3>"
@@ -1345,19 +1356,19 @@ def backend_station_detail(station_id: str, db: Session = Depends(get_db), msg: 
 
 @router.post("/catalogs/stations/create")
 def backend_create_station(name: str = Form(...), zone_id: str = Form(...), request: Request = None, db: Session = Depends(get_db)) -> RedirectResponse:
-    forbidden = _require_manage(request, "/backend/catalogs/stations", "crear estacion")
+    forbidden = _require_manage(request, "/ERPMande24/catalogs/stations", "crear estacion")
     if forbidden:
         return forbidden
     if not db.query(Zone).filter(Zone.id == zone_id).first():
-        return _redirect("/backend/catalogs/stations", "Zona no encontrada.", "error")
+        return _redirect("/ERPMande24/catalogs/stations", "Zona no encontrada.", "error")
 
     if db.query(Station).filter(Station.name == name.strip()).first():
-        return _redirect("/backend/catalogs/stations", "Ya existe una estacion con ese nombre.", "error")
+        return _redirect("/ERPMande24/catalogs/stations", "Ya existe una estacion con ese nombre.", "error")
 
     station = Station(name=name.strip(), zone_id=zone_id, active=True)
     db.add(station)
     db.commit()
-    return _redirect("/backend/catalogs/stations", f"Estacion {station.name} creada.")
+    return _redirect("/ERPMande24/catalogs/stations", f"Estacion {station.name} creada.")
 
 
 @router.get("/catalogs/riders", response_class=HTMLResponse)
@@ -1380,7 +1391,7 @@ def backend_riders(db: Session = Depends(get_db), q: str = "", msg: str = "", ki
         rows.append(
             [
                 f'<input type="checkbox" name="ids" value="{escape(item.id)}" form="bulk-riders" />',
-                f'<a href="/backend/catalogs/riders/{escape(item.id)}">{escape(item.id)}</a>',
+                f'<a href="/ERPMande24/catalogs/riders/{escape(item.id)}">{escape(item.id)}</a>',
                 escape(user.full_name if user else "-"),
                 escape(user.email if user else "-"),
                 escape(zone.name if zone else "-"),
@@ -1388,7 +1399,7 @@ def backend_riders(db: Session = Depends(get_db), q: str = "", msg: str = "", ki
                 escape(item.state.value),
                 "activo" if item.active else "inactivo",
                 (
-                    f'<form class="inline-form" method="post" action="/backend/catalogs/riders/{escape(item.id)}/toggle">'
+                    f'<form class="inline-form" method="post" action="/ERPMande24/catalogs/riders/{escape(item.id)}/toggle">'
                     f'<input type="hidden" name="active" value="{"false" if item.active else "true"}" />'
                     f'<button type="submit">{"Desactivar" if item.active else "Activar"}</button></form>'
                 ),
@@ -1397,7 +1408,7 @@ def backend_riders(db: Session = Depends(get_db), q: str = "", msg: str = "", ki
 
     create_form = (
         "<section class=\"panel\"><h3>Alta de Rider</h3>"
-        "<form class=\"grid\" method=\"post\" action=\"/backend/catalogs/riders/create\">"
+        "<form class=\"grid\" method=\"post\" action=\"/ERPMande24/catalogs/riders/create\">"
         "<label>Nombre completo<input name=\"full_name\" required minlength=\"2\" maxlength=\"150\" /></label>"
         "<label>Email<input name=\"email\" type=\"email\" required /></label>"
         "<label>Password<input name=\"password\" type=\"password\" required minlength=\"8\" /></label>"
@@ -1406,7 +1417,7 @@ def backend_riders(db: Session = Depends(get_db), q: str = "", msg: str = "", ki
         "<div class=\"full actions\"><button class=\"primary\" type=\"submit\">Crear Rider</button></div>"
         "</form></section>"
     )
-    content = create_form + f"<section class=\"panel\"><h3>Lista de Riders</h3>{_querybox('/backend/catalogs/riders', 'Buscar rider por ID, nombre o email', q)}<div class=\"actions\"><a class=\"btn\" href=\"/backend/export/riders.csv\">Exportar CSV</a></div>{_bulk_form('bulk-riders', '/backend/catalogs/riders/bulk-toggle', 'Aplicar cambios')}{_table(['Sel', 'ID', 'Nombre', 'Email', 'Zona', 'Vehiculo', 'Estado', 'Activo', 'Accion'], rows)}</section>"
+    content = create_form + f"<section class=\"panel\"><h3>Lista de Riders</h3>{_querybox('/ERPMande24/catalogs/riders', 'Buscar rider por ID, nombre o email', q)}<div class=\"actions\"><a class=\"btn\" href=\"/ERPMande24/export/riders.csv\">Exportar CSV</a></div>{_bulk_form('bulk-riders', '/ERPMande24/catalogs/riders/bulk-toggle', 'Aplicar cambios')}{_table(['Sel', 'ID', 'Nombre', 'Email', 'Zona', 'Vehiculo', 'Estado', 'Activo', 'Accion'], rows)}</section>"
     return _render_layout("riders", "Catalogo de Riders", "Vista de riders y su estado operativo.", content, msg, kind)
 
 
@@ -1420,15 +1431,15 @@ def backend_create_rider(
     request: Request = None,
     db: Session = Depends(get_db),
 ) -> RedirectResponse:
-    forbidden = _require_manage(request, "/backend/catalogs/riders", "crear rider")
+    forbidden = _require_manage(request, "/ERPMande24/catalogs/riders", "crear rider")
     if forbidden:
         return forbidden
     clean_email = email.strip().lower()
     if db.query(User).filter(User.email == clean_email).first():
-        return _redirect("/backend/catalogs/riders", "Ese email ya existe.", "error")
+        return _redirect("/ERPMande24/catalogs/riders", "Ese email ya existe.", "error")
 
     if zone_id.strip() and not db.query(Zone).filter(Zone.id == zone_id.strip()).first():
-        return _redirect("/backend/catalogs/riders", "Zona no encontrada.", "error")
+        return _redirect("/ERPMande24/catalogs/riders", "Zona no encontrada.", "error")
 
     user = User(
         email=clean_email,
@@ -1448,20 +1459,20 @@ def backend_create_rider(
     )
     db.add(rider)
     db.commit()
-    return _redirect("/backend/catalogs/riders", f"Rider creado: {rider.id} ({user.email}).")
+    return _redirect("/ERPMande24/catalogs/riders", f"Rider creado: {rider.id} ({user.email}).")
 
 
 @router.post("/catalogs/riders/{rider_id}/toggle")
 def backend_toggle_rider(rider_id: str, active: str = Form(...), request: Request = None, db: Session = Depends(get_db)) -> RedirectResponse:
-    forbidden = _require_manage(request, "/backend/catalogs/riders", "editar rider")
+    forbidden = _require_manage(request, "/ERPMande24/catalogs/riders", "editar rider")
     if forbidden:
         return forbidden
     rider = db.query(Rider).filter(Rider.id == rider_id).first()
     if not rider:
-        return _redirect("/backend/catalogs/riders", "Rider no encontrado.", "error")
+        return _redirect("/ERPMande24/catalogs/riders", "Rider no encontrado.", "error")
     rider.active = active == "true"
     db.commit()
-    return _redirect("/backend/catalogs/riders", f"Rider {rider.id} actualizado a {'activo' if rider.active else 'inactivo'}.")
+    return _redirect("/ERPMande24/catalogs/riders", f"Rider {rider.id} actualizado a {'activo' if rider.active else 'inactivo'}.")
 
 
 @router.post("/catalogs/riders/bulk-toggle")
@@ -1471,15 +1482,15 @@ def backend_bulk_toggle_riders(
     request: Request = None,
     db: Session = Depends(get_db),
 ) -> RedirectResponse:
-    forbidden = _require_manage(request, "/backend/catalogs/riders", "editar riders")
+    forbidden = _require_manage(request, "/ERPMande24/catalogs/riders", "editar riders")
     if forbidden:
         return forbidden
     if not ids:
-        return _redirect("/backend/catalogs/riders", "Selecciona al menos un rider.", "error")
+        return _redirect("/ERPMande24/catalogs/riders", "Selecciona al menos un rider.", "error")
     value = active == "true"
     updated = db.query(Rider).filter(Rider.id.in_(ids)).update({Rider.active: value}, synchronize_session=False)
     db.commit()
-    return _redirect("/backend/catalogs/riders", f"Riders actualizados: {updated}.")
+    return _redirect("/ERPMande24/catalogs/riders", f"Riders actualizados: {updated}.")
 
 
 @router.get("/catalogs/riders/{rider_id}", response_class=HTMLResponse)
@@ -1490,7 +1501,7 @@ def backend_rider_detail(rider_id: str, db: Session = Depends(get_db), msg: str 
     user = db.query(User).filter(User.id == rider.user_id).first()
     zone = db.query(Zone).filter(Zone.id == rider.zone_id).first() if rider.zone_id else None
     deliveries = db.query(Delivery).filter(Delivery.rider_id == rider.id).order_by(Delivery.updated_at.desc()).limit(20).all()
-    delivery_rows = [[f'<a href="/backend/deliveries/{escape(item.id)}">{escape(item.id)}</a>', escape(item.guide.guide_code if item.guide else '-'), escape(item.stage.value), item.updated_at.strftime('%Y-%m-%d %H:%M')] for item in deliveries]
+    delivery_rows = [[f'<a href="/ERPMande24/deliveries/{escape(item.id)}">{escape(item.id)}</a>', escape(item.guide.guide_code if item.guide else '-'), escape(item.stage.value), item.updated_at.strftime('%Y-%m-%d %H:%M')] for item in deliveries]
     content = (
         f"{_tabs([('resumen', 'Resumen'), ('entregas', 'Entregas')])}"
         "<section id=\"resumen\" class=\"panel\"><h3>Ficha de Rider</h3>"
@@ -1531,7 +1542,7 @@ def backend_pricing_rules(db: Session = Depends(get_db), msg: str = "", kind: st
                 f"{item.price:.2f} {escape(item.currency)}",
                 "activa" if item.active else "inactiva",
                 (
-                    f'<form class="inline-form" method="post" action="/backend/catalogs/pricing-rules/{escape(item.id)}/toggle">'
+                    f'<form class="inline-form" method="post" action="/ERPMande24/catalogs/pricing-rules/{escape(item.id)}/toggle">'
                     f'<input type="hidden" name="active" value="{"false" if item.active else "true"}" />'
                     f'<button type="submit">{"Desactivar" if item.active else "Activar"}</button></form>'
                 ),
@@ -1540,7 +1551,7 @@ def backend_pricing_rules(db: Session = Depends(get_db), msg: str = "", kind: st
 
     form = (
         "<section class=\"panel\"><h3>Nueva Regla de Precio</h3>"
-        "<form class=\"grid\" method=\"post\" action=\"/backend/catalogs/pricing-rules/create\">"
+        "<form class=\"grid\" method=\"post\" action=\"/ERPMande24/catalogs/pricing-rules/create\">"
         f"<label>Servicio<select name=\"service_id\" required><option value=\"\">Selecciona</option>{service_options}</select></label>"
         f"<label>Estacion<select name=\"station_id\" required><option value=\"\">Selecciona</option>{station_options}</select></label>"
         "<label>Precio<input name=\"price\" type=\"number\" step=\"0.01\" min=\"0.01\" required /></label>"
@@ -1549,7 +1560,7 @@ def backend_pricing_rules(db: Session = Depends(get_db), msg: str = "", kind: st
         "</form></section>"
     )
 
-    content = form + f"<section class=\"panel\"><h3>Lista de Tarifas</h3><div class=\"actions\"><a class=\"btn\" href=\"/backend/export/pricing-rules.csv\">Exportar CSV</a></div>{_bulk_form('bulk-pricing', '/backend/catalogs/pricing-rules/bulk-toggle', 'Aplicar cambios')}{_table(['Sel', 'ID', 'Servicio', 'Estacion', 'Precio', 'Estado', 'Accion'], rows)}</section>"
+    content = form + f"<section class=\"panel\"><h3>Lista de Tarifas</h3><div class=\"actions\"><a class=\"btn\" href=\"/ERPMande24/export/pricing-rules.csv\">Exportar CSV</a></div>{_bulk_form('bulk-pricing', '/ERPMande24/catalogs/pricing-rules/bulk-toggle', 'Aplicar cambios')}{_table(['Sel', 'ID', 'Servicio', 'Estacion', 'Precio', 'Estado', 'Accion'], rows)}</section>"
     return _render_layout("pricing", "Catalogo de Tarifas", "Reglas de precio por servicio y estacion.", content, msg, kind)
 
 
@@ -1562,38 +1573,38 @@ def backend_create_pricing_rule(
     request: Request = None,
     db: Session = Depends(get_db),
 ) -> RedirectResponse:
-    forbidden = _require_manage(request, "/backend/catalogs/pricing-rules", "crear tarifa")
+    forbidden = _require_manage(request, "/ERPMande24/catalogs/pricing-rules", "crear tarifa")
     if forbidden:
         return forbidden
     if price <= 0:
-        return _redirect("/backend/catalogs/pricing-rules", "El precio debe ser mayor a cero.", "error")
+        return _redirect("/ERPMande24/catalogs/pricing-rules", "El precio debe ser mayor a cero.", "error")
 
     if not db.query(Service).filter(Service.id == service_id).first():
-        return _redirect("/backend/catalogs/pricing-rules", "Servicio no encontrado.", "error")
+        return _redirect("/ERPMande24/catalogs/pricing-rules", "Servicio no encontrado.", "error")
 
     if not db.query(Station).filter(Station.id == station_id).first():
-        return _redirect("/backend/catalogs/pricing-rules", "Estacion no encontrada.", "error")
+        return _redirect("/ERPMande24/catalogs/pricing-rules", "Estacion no encontrada.", "error")
 
     if db.query(PricingRule).filter(PricingRule.service_id == service_id, PricingRule.station_id == station_id).first():
-        return _redirect("/backend/catalogs/pricing-rules", "Ya existe una tarifa para ese servicio y estacion.", "error")
+        return _redirect("/ERPMande24/catalogs/pricing-rules", "Ya existe una tarifa para ese servicio y estacion.", "error")
 
     rule = PricingRule(service_id=service_id, station_id=station_id, price=price, currency=currency.strip().upper(), active=True)
     db.add(rule)
     db.commit()
-    return _redirect("/backend/catalogs/pricing-rules", "Tarifa creada correctamente.")
+    return _redirect("/ERPMande24/catalogs/pricing-rules", "Tarifa creada correctamente.")
 
 
 @router.post("/catalogs/pricing-rules/{rule_id}/toggle")
 def backend_toggle_pricing_rule(rule_id: str, active: str = Form(...), request: Request = None, db: Session = Depends(get_db)) -> RedirectResponse:
-    forbidden = _require_manage(request, "/backend/catalogs/pricing-rules", "editar tarifa")
+    forbidden = _require_manage(request, "/ERPMande24/catalogs/pricing-rules", "editar tarifa")
     if forbidden:
         return forbidden
     rule = db.query(PricingRule).filter(PricingRule.id == rule_id).first()
     if not rule:
-        return _redirect("/backend/catalogs/pricing-rules", "Regla no encontrada.", "error")
+        return _redirect("/ERPMande24/catalogs/pricing-rules", "Regla no encontrada.", "error")
     rule.active = active == "true"
     db.commit()
-    return _redirect("/backend/catalogs/pricing-rules", f"Regla {rule.id} actualizada a {'activa' if rule.active else 'inactiva'}.")
+    return _redirect("/ERPMande24/catalogs/pricing-rules", f"Regla {rule.id} actualizada a {'activa' if rule.active else 'inactiva'}.")
 
 
 @router.post("/catalogs/pricing-rules/bulk-toggle")
@@ -1603,15 +1614,15 @@ def backend_bulk_toggle_pricing_rules(
     request: Request = None,
     db: Session = Depends(get_db),
 ) -> RedirectResponse:
-    forbidden = _require_manage(request, "/backend/catalogs/pricing-rules", "editar tarifas")
+    forbidden = _require_manage(request, "/ERPMande24/catalogs/pricing-rules", "editar tarifas")
     if forbidden:
         return forbidden
     if not ids:
-        return _redirect("/backend/catalogs/pricing-rules", "Selecciona al menos una tarifa.", "error")
+        return _redirect("/ERPMande24/catalogs/pricing-rules", "Selecciona al menos una tarifa.", "error")
     value = active == "true"
     updated = db.query(PricingRule).filter(PricingRule.id.in_(ids)).update({PricingRule.active: value}, synchronize_session=False)
     db.commit()
-    return _redirect("/backend/catalogs/pricing-rules", f"Tarifas actualizadas: {updated}.")
+    return _redirect("/ERPMande24/catalogs/pricing-rules", f"Tarifas actualizadas: {updated}.")
 
 
 @router.get("/users", response_class=HTMLResponse)
@@ -1640,13 +1651,13 @@ def backend_users(
             [
                 f'<input type="checkbox" name="ids" value="{escape(item.id)}" form="bulk-users" />',
                 escape(item.id),
-                f'<a href="/backend/users/{escape(item.id)}">{escape(item.full_name)}</a>',
+                f'<a href="/ERPMande24/users/{escape(item.id)}">{escape(item.full_name)}</a>',
                 escape(item.email),
                 escape(item.role.value),
                 "activo" if item.is_active else "inactivo",
                 item.created_at.strftime("%Y-%m-%d %H:%M"),
                 (
-                    f'<form class="inline-form" method="post" action="/backend/users/{escape(item.id)}/toggle">'
+                    f'<form class="inline-form" method="post" action="/ERPMande24/users/{escape(item.id)}/toggle">'
                     f'<input type="hidden" name="active" value="{"false" if item.is_active else "true"}" />'
                     f'<button type="submit">{"Desactivar" if item.is_active else "Activar"}</button></form>'
                 ),
@@ -1654,17 +1665,17 @@ def backend_users(
         )
 
     pager = _pagination(
-        "/backend/users",
+        "/ERPMande24/users",
         safe_page,
         safe_page_size,
         total,
         query_params={"q": q.strip()} if q.strip() else None,
     )
     content = (
-        f"<section class=\"panel\"><h3>Lista de Usuarios</h3>{_querybox('/backend/users', 'Buscar por nombre o email', q)}"
+        f"<section class=\"panel\"><h3>Lista de Usuarios</h3>{_querybox('/ERPMande24/users', 'Buscar por nombre o email', q)}"
         f"{pager}"
-        "<div class=\"actions\"><a class=\"btn\" href=\"/backend/export/users.csv\">Exportar CSV</a></div>"
-        f"{_bulk_form('bulk-users', '/backend/users/bulk-toggle', 'Aplicar cambios')}"
+        "<div class=\"actions\"><a class=\"btn\" href=\"/ERPMande24/export/users.csv\">Exportar CSV</a></div>"
+        f"{_bulk_form('bulk-users', '/ERPMande24/users/bulk-toggle', 'Aplicar cambios')}"
         f"{_table(['Sel', 'ID', 'Nombre', 'Email', 'Rol', 'Estado', 'Creado', 'Accion'], rows)}"
         f"{pager}</section>"
     )
@@ -1673,15 +1684,15 @@ def backend_users(
 
 @router.post("/users/{user_id}/toggle")
 def backend_toggle_user(user_id: str, active: str = Form(...), request: Request = None, db: Session = Depends(get_db)) -> RedirectResponse:
-    forbidden = _require_manage(request, "/backend/users", "editar usuario")
+    forbidden = _require_manage(request, "/ERPMande24/users", "editar usuario")
     if forbidden:
         return forbidden
     user = db.query(User).filter(User.id == user_id).first()
     if not user:
-        return _redirect("/backend/users", "Usuario no encontrado.", "error")
+        return _redirect("/ERPMande24/users", "Usuario no encontrado.", "error")
     user.is_active = active == "true"
     db.commit()
-    return _redirect("/backend/users", f"Usuario {user.email} actualizado a {'activo' if user.is_active else 'inactivo'}.")
+    return _redirect("/ERPMande24/users", f"Usuario {user.email} actualizado a {'activo' if user.is_active else 'inactivo'}.")
 
 
 @router.post("/users/bulk-toggle")
@@ -1691,15 +1702,15 @@ def backend_bulk_toggle_users(
     request: Request = None,
     db: Session = Depends(get_db),
 ) -> RedirectResponse:
-    forbidden = _require_manage(request, "/backend/users", "editar usuarios")
+    forbidden = _require_manage(request, "/ERPMande24/users", "editar usuarios")
     if forbidden:
         return forbidden
     if not ids:
-        return _redirect("/backend/users", "Selecciona al menos un usuario.", "error")
+        return _redirect("/ERPMande24/users", "Selecciona al menos un usuario.", "error")
     value = active == "true"
     updated = db.query(User).filter(User.id.in_(ids)).update({User.is_active: value}, synchronize_session=False)
     db.commit()
-    return _redirect("/backend/users", f"Usuarios actualizados: {updated}.")
+    return _redirect("/ERPMande24/users", f"Usuarios actualizados: {updated}.")
 
 
 @router.get("/users/{user_id}", response_class=HTMLResponse)
@@ -1726,7 +1737,7 @@ def backend_user_detail(user_id: str, request: Request, db: Session = Depends(ge
         f"<article class=\"kpi\"><small>Rider Relacionado</small><strong>{escape(rider.id if rider else 'N/A')}</strong></article>"
         "</div></section>"
         f"<section id=\"timeline\" class=\"panel\"><h3>Timeline</h3>{_timeline(timeline_events)}</section>"
-        "<section id=\"operacion\" class=\"panel\"><h3>Operacion</h3><div class=\"actions\"><a class=\"btn\" href=\"/backend/users\">Volver a usuarios</a></div></section>"
+        "<section id=\"operacion\" class=\"panel\"><h3>Operacion</h3><div class=\"actions\"><a class=\"btn\" href=\"/ERPMande24/users\">Volver a usuarios</a></div></section>"
     )
     return _render_layout("users", f"Usuario {user.email}", "Vista detalle tipo formulario.", content, msg, kind, request=request)
 
@@ -1747,12 +1758,12 @@ def backend_rider_commissions(db: Session = Depends(get_db), msg: str = "", kind
     ]
     close_form = (
         "<section class=\"panel\"><h3>Cierre Semanal Riders</h3>"
-        "<form class=\"actions\" method=\"post\" action=\"/backend/commissions/riders/close\" data-confirm=\"Se ejecutara el cierre semanal de comisiones rider. Continuar?\">"
+        "<form class=\"actions\" method=\"post\" action=\"/ERPMande24/commissions/riders/close\" data-confirm=\"Se ejecutara el cierre semanal de comisiones rider. Continuar?\">"
         "<input name=\"week_start\" placeholder=\"YYYY-MM-DD (opcional)\" />"
         "<button class=\"primary\" type=\"submit\">Cerrar Semana Riders</button>"
         "</form></section>"
     )
-    content = close_form + f"<section class=\"panel\"><h3>Historico Comisiones Rider</h3><div class=\"actions\"><a class=\"btn\" href=\"/backend/export/commissions-riders.csv\">Exportar CSV</a></div>{_table(['ID', 'Rider ID', 'Week Start', 'Entregas', 'Total', 'Estado'], rows)}</section>"
+    content = close_form + f"<section class=\"panel\"><h3>Historico Comisiones Rider</h3><div class=\"actions\"><a class=\"btn\" href=\"/ERPMande24/export/commissions-riders.csv\">Exportar CSV</a></div>{_table(['ID', 'Rider ID', 'Week Start', 'Entregas', 'Total', 'Estado'], rows)}</section>"
     return _render_layout("comm_rider", "Comisiones Rider", "Snapshots semanales de comision por rider.", content, msg, kind)
 
 
@@ -1773,39 +1784,39 @@ def backend_station_commissions(db: Session = Depends(get_db), msg: str = "", ki
     ]
     close_form = (
         "<section class=\"panel\"><h3>Cierre Semanal Estaciones</h3>"
-        "<form class=\"actions\" method=\"post\" action=\"/backend/commissions/stations/close\" data-confirm=\"Se ejecutara el cierre semanal de comisiones estacion. Continuar?\">"
+        "<form class=\"actions\" method=\"post\" action=\"/ERPMande24/commissions/stations/close\" data-confirm=\"Se ejecutara el cierre semanal de comisiones estacion. Continuar?\">"
         "<input name=\"week_start\" placeholder=\"YYYY-MM-DD (opcional)\" />"
         "<button class=\"primary\" type=\"submit\">Cerrar Semana Estaciones</button>"
         "</form></section>"
     )
-    content = close_form + f"<section class=\"panel\"><h3>Historico Comisiones Estacion</h3><div class=\"actions\"><a class=\"btn\" href=\"/backend/export/commissions-stations.csv\">Exportar CSV</a></div>{_table(['ID', 'Station ID', 'Week Start', 'Guias', 'Venta', 'Total', 'Estado'], rows)}</section>"
+    content = close_form + f"<section class=\"panel\"><h3>Historico Comisiones Estacion</h3><div class=\"actions\"><a class=\"btn\" href=\"/ERPMande24/export/commissions-stations.csv\">Exportar CSV</a></div>{_table(['ID', 'Station ID', 'Week Start', 'Guias', 'Venta', 'Total', 'Estado'], rows)}</section>"
     return _render_layout("comm_station", "Comisiones Estacion", "Snapshots semanales de comision por estacion.", content, msg, kind)
 
 
 @router.post("/commissions/riders/close")
 def backend_close_rider_commissions(week_start: str = Form(""), request: Request = None, db: Session = Depends(get_db)) -> RedirectResponse:
-    forbidden = _require_ops(request, "/backend/commissions/riders", "cerrar comisiones rider")
+    forbidden = _require_ops(request, "/ERPMande24/commissions/riders", "cerrar comisiones rider")
     if forbidden:
         return forbidden
     try:
         start_dt, end_dt, monday = resolve_week_window(week_start.strip() or None)
         rows = close_rider_week(db, monday, start_dt, end_dt)
-        return _redirect("/backend/commissions/riders", f"Cierre rider ejecutado: {len(rows)} registros.")
+        return _redirect("/ERPMande24/commissions/riders", f"Cierre rider ejecutado: {len(rows)} registros.")
     except Exception as exc:
-        return _redirect("/backend/commissions/riders", f"Error en cierre rider: {exc}", "error")
+        return _redirect("/ERPMande24/commissions/riders", f"Error en cierre rider: {exc}", "error")
 
 
 @router.post("/commissions/stations/close")
 def backend_close_station_commissions(week_start: str = Form(""), request: Request = None, db: Session = Depends(get_db)) -> RedirectResponse:
-    forbidden = _require_ops(request, "/backend/commissions/stations", "cerrar comisiones estacion")
+    forbidden = _require_ops(request, "/ERPMande24/commissions/stations", "cerrar comisiones estacion")
     if forbidden:
         return forbidden
     try:
         start_dt, end_dt, monday = resolve_week_window(week_start.strip() or None)
         rows = close_station_week(db, monday, start_dt, end_dt)
-        return _redirect("/backend/commissions/stations", f"Cierre estacion ejecutado: {len(rows)} registros.")
+        return _redirect("/ERPMande24/commissions/stations", f"Cierre estacion ejecutado: {len(rows)} registros.")
     except Exception as exc:
-        return _redirect("/backend/commissions/stations", f"Error en cierre estacion: {exc}", "error")
+        return _redirect("/ERPMande24/commissions/stations", f"Error en cierre estacion: {exc}", "error")
 
 
 @router.post("/demo/seed")
@@ -1817,7 +1828,7 @@ def backend_seed_demo_data(db: Session = Depends(get_db)) -> JSONResponse:
 @router.post("/demo/seed/form")
 def backend_seed_demo_data_form(db: Session = Depends(get_db)) -> RedirectResponse:
     _seed_demo_data(db)
-    return _redirect("/backend/guides/new", "Datos demo creados correctamente.")
+    return _redirect("/ERPMande24/guides/new", "Datos demo creados correctamente.")
 
 
 @router.get("/export/guides.csv")
