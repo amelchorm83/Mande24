@@ -716,11 +716,20 @@ def backend_dashboard(db: Session = Depends(get_db), msg: str = "", kind: str = 
     services_total = db.query(func.count(Service.id)).scalar() or 0
     stations_total = db.query(func.count(Station.id)).scalar() or 0
     riders_total = db.query(func.count(Rider.id)).scalar() or 0
+    leads_total = db.query(func.count(ContactLead.id)).scalar() or 0
+    leads_new = db.query(func.count(ContactLead.id)).filter(ContactLead.status == "new").scalar() or 0
+    leads_contacted = db.query(func.count(ContactLead.id)).filter(ContactLead.status == "contacted").scalar() or 0
+    leads_closed = db.query(func.count(ContactLead.id)).filter(ContactLead.status == "closed").scalar() or 0
     sepomex_sync = db.query(GeoCatalogSync).filter(GeoCatalogSync.key == "sepomex_last_sync").first()
     sepomex_catalog_date = db.query(GeoCatalogSync).filter(GeoCatalogSync.key == "sepomex_catalog_date").first()
 
     guides_today = db.query(func.count(Guide.id)).filter(func.date(Guide.created_at) == today).scalar() or 0
     deliveries_today = db.query(func.count(Delivery.id)).filter(func.date(Delivery.created_at) == today).scalar() or 0
+    leads_today = db.query(func.count(ContactLead.id)).filter(func.date(ContactLead.created_at) == today).scalar() or 0
+
+    conversion_pct = 0.0
+    if leads_total:
+        conversion_pct = ((leads_contacted + leads_closed) / leads_total) * 100
 
     stage_rows = (
         db.query(Delivery.stage, func.count(Delivery.id))
@@ -743,6 +752,14 @@ def backend_dashboard(db: Session = Depends(get_db), msg: str = "", kind: str = 
     )
     stage_chart = _bar_chart("Entregas Por Etapa", [(item[0].value, int(item[1])) for item in stage_rows])
     guides_7d_chart = _bar_chart("Guias Ultimos 7 Dias", seven_days)
+    leads_chart = _bar_chart(
+        "Embudo de Leads",
+        [
+            ("new", int(leads_new)),
+            ("contacted", int(leads_contacted)),
+            ("closed", int(leads_closed)),
+        ],
+    )
 
     guide_table = _table(
         ["Guia", "Cliente", "Destino", "Monto", "Fecha"],
@@ -770,6 +787,17 @@ def backend_dashboard(db: Session = Depends(get_db), msg: str = "", kind: str = 
         f"<article class=\"kpi\"><small>Estaciones</small><strong>{stations_total}</strong></article>"
         f"<article class=\"kpi\"><small>Riders</small><strong>{riders_total}</strong></article>"
         "</div></section>"
+        "<section class=\"panel\"><h3>Leads Comerciales</h3>"
+        "<div class=\"kpi-grid\">"
+        f"<article class=\"kpi\"><small>Total Leads</small><strong>{leads_total}</strong></article>"
+        f"<article class=\"kpi\"><small>Leads Hoy</small><strong>{leads_today}</strong></article>"
+        f"<article class=\"kpi\"><small>new</small><strong>{leads_new}</strong></article>"
+        f"<article class=\"kpi\"><small>contacted</small><strong>{leads_contacted}</strong></article>"
+        f"<article class=\"kpi\"><small>closed</small><strong>{leads_closed}</strong></article>"
+        f"<article class=\"kpi\"><small>Conversion</small><strong>{conversion_pct:.1f}%</strong></article>"
+        "</div>"
+        "<div class=\"actions\"><a class=\"btn\" href=\"/ERPMande24/leads\">Abrir Leads</a><a class=\"btn\" href=\"/ERPMande24/export/leads.csv\">Exportar Leads CSV</a></div>"
+        "</section>"
         "<section class=\"panel\"><h3>SEPOMEX</h3>"
         "<div class=\"kpi-grid\">"
         f"<article class=\"kpi\"><small>Ultima Sync</small><strong>{escape(sepomex_sync.value if sepomex_sync else 'Sin registro')}</strong></article>"
@@ -782,6 +810,7 @@ def backend_dashboard(db: Session = Depends(get_db), msg: str = "", kind: str = 
         f"<section class=\"panel\"><h3>Distribucion por Etapa</h3>{stage_table}</section>"
         f"{stage_chart}"
         f"{guides_7d_chart}"
+        f"{leads_chart}"
         f"<section class=\"panel\"><h3>Ultimas Guias</h3>{guide_table}</section>"
     )
 
