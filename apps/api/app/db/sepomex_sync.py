@@ -57,6 +57,10 @@ def _norm(value: str) -> str:
     return text
 
 
+def _norm_col_name(value: str) -> str:
+    return (value or "").strip().lstrip("\ufeff").lower()
+
+
 def _hidden_value(page_html: str, name: str) -> str:
     pattern = rf'name="{re.escape(name)}"\s+id="{re.escape(name)}"\s+value="([^"]*)"'
     match = re.search(pattern, page_html, flags=re.IGNORECASE)
@@ -79,6 +83,8 @@ def _download_sepomex_zip() -> tuple[bytes, str]:
     event_validation = _hidden_value(page_html, "__EVENTVALIDATION")
     view_state_generator = _hidden_value(page_html, "__VIEWSTATEGENERATOR")
     date_match = re.search(r"Ultima\s+Actualizacion[:\s]+(\d{2}/\d{2}/\d{4})", page_html, flags=re.IGNORECASE)
+    if not date_match:
+        date_match = re.search(r"Última\s+Actualización[:\s]+(\d{2}/\d{2}/\d{4})", page_html, flags=re.IGNORECASE)
     catalog_date = date_match.group(1) if date_match else ""
 
     payload = {
@@ -137,13 +143,26 @@ def sync_sepomex_catalog(db: Session, force: bool = False) -> bool:
 
         with archive.open(txt_name) as raw_file:
             stream = io.TextIOWrapper(raw_file, encoding="latin-1", errors="ignore")
-            header_line = stream.readline().strip()
-            columns = header_line.split("|")
-            idx = {name: i for i, name in enumerate(columns)}
+            idx = {}
+            scanned_lines: list[str] = []
+            for _ in range(60):
+                line = stream.readline()
+                if not line:
+                    break
+                clean = line.strip()
+                if not clean:
+                    continue
+                scanned_lines.append(clean)
+                columns = clean.split("|")
+                maybe_idx = {_norm_col_name(name): i for i, name in enumerate(columns)}
+                if "d_codigo" in maybe_idx and "d_asenta" in maybe_idx:
+                    idx = maybe_idx
+                    break
 
-            required = ["d_codigo", "d_asenta", "d_tipo_asenta", "D_mnpio", "d_estado", "id_asenta_cpcons", "c_mnpio"]
+            required = ["d_codigo", "d_asenta", "d_tipo_asenta", "d_mnpio", "d_estado", "id_asenta_cpcons", "c_mnpio"]
             if any(key not in idx for key in required):
-                raise RuntimeError("SEPOMEX TXT format changed: required columns not found")
+                preview = " | ".join(scanned_lines[:3]) if scanned_lines else "<empty>"
+                raise RuntimeError(f"SEPOMEX TXT format changed: required columns not found. Preview: {preview}")
 
             for line in stream:
                 raw = line.strip()
@@ -155,10 +174,20 @@ def sync_sepomex_catalog(db: Session, force: bool = False) -> bool:
 
                 state_name = parts[idx["d_estado"]].strip()
                 state_key = _norm(state_name)
-                state_code = STATE_NAME_TO_CODE.get(state_key) or parts[idx.get("c_estado", 0)].strip().zfill(2)
+                state_code = STATE_NAME_TO_CODE.get(state_key)
+                if not state_code:
+                    # Match SEPOMEX verbose names like "coahuila de zaragoza" to existing canonical state names.
+                    for existing_code, existing_state in states_by_code.items():
+                        existing_key = _norm(existing_state.name)
+                        if existing_key and (existing_key in state_key or state_key in existing_key):
+                            state_code = existing_code
+                            break
+                if not state_code:
+                    raw_state_num = parts[idx["c_estado"]].strip() if "c_estado" in idx else ""
+                    state_code = raw_state_num.zfill(2) if raw_state_num else state_name[:3].upper()
 
                 municipality_num = parts[idx["c_mnpio"]].strip().zfill(3)
-                municipality_name = parts[idx["D_mnpio"]].strip()
+                municipality_name = parts[idx["d_mnpio"]].strip()
                 municipality_code = f"{state_code}-{municipality_num}"
 
                 postal_code = parts[idx["d_codigo"]].strip().zfill(5)
@@ -206,10 +235,14 @@ def sync_sepomex_catalog(db: Session, force: bool = False) -> bool:
     if new_postals:
         db.add_all(new_postals)
 
+    # Ensure FK parent rows exist before colony inserts.
+    db.flush()
+
     if new_colonies:
         chunk = 5000
         for start in range(0, len(new_colonies), chunk):
-            db.bulk_save_objects(new_colonies[start : start + chunk])
+            db.add_all(new_colonies[start : start + chunk])
+            db.flush()
 
     if not sync_row:
         sync_row = GeoCatalogSync(key=SYNC_META_KEY, value=today, updated_at=datetime.now(timezone.utc))

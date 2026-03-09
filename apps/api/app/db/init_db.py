@@ -29,6 +29,7 @@ def init_db() -> None:
         try:
             sync_sepomex_catalog(db)
         except Exception:
+            db.rollback()
             # Fallback to built-in catalog to keep bootstrap resilient without network.
             seed_geo_catalogs(db)
     finally:
