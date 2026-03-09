@@ -98,6 +98,13 @@ MODULE_GROUP = {
     "swagger": "Integracion",
 }
 
+ROLE_MODULES = {
+    "admin": {key for key, _label, _href in MENU},
+    "station": {"guides_new", "guides", "deliveries", "comm_rider", "comm_station"},
+    "rider": {"guides", "deliveries"},
+    "client": {"guides", "deliveries"},
+}
+
 ERP_ICON_SVG = """<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" role="img" aria-label="Icono ERPMande24">
     <defs>
         <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
@@ -581,15 +588,21 @@ def _module_icon_svg(key: str, css_class: str = "mod-ico") -> str:
     )
 
 
-def _menu_html(active: str) -> str:
+def _modules_for_role(role: str) -> list[tuple[str, str, str]]:
+    allowed = ROLE_MODULES.get(role, set())
+    return [item for item in MENU if item[0] in allowed]
+
+
+def _menu_html(active: str, role: str) -> str:
     rows: list[str] = []
-    for key, label, href in MENU:
+    for key, label, href in _modules_for_role(role):
         cls = "active" if key == active else ""
         group = MODULE_GROUP.get(key, "Modulo")
         rows.append(
             f'<a href="{href}" class="{cls}">{_module_icon_svg(key)}<span class="mod-label">{label}<small>{group}</small></span></a>'
         )
-    rows.append(f'<a href="/docs">{_module_icon_svg("swagger")}<span class="mod-label">Swagger API<small>Integracion</small></span></a>')
+    if role == "admin":
+        rows.append(f'<a href="/docs">{_module_icon_svg("swagger")}<span class="mod-label">Swagger API<small>Integracion</small></span></a>')
     return "".join(rows)
 
 
@@ -742,7 +755,7 @@ def _render_layout(
         "<aside class=\"sidebar\">"
         "<div class=\"brand-row\"><img class=\"brand-logo\" src=\"/ERPMande24/icon.svg?v=2\" alt=\"Icono ERPMande24\" /><div class=\"brand-copy\"><h2>ERPMande24</h2><small>Entrega segura. Ruta inteligente.</small></div></div>"
         "<span class=\"tag\">ERPMande24 Admin</span>"
-        f"<nav class=\"menu\">{_menu_html(active)}</nav>{_role_switcher(role_value, path_value)}</aside>"
+        f"<nav class=\"menu\">{_menu_html(active, role_value)}</nav>{_role_switcher(role_value, path_value)}</aside>"
         "<main class=\"content\">"
         f"<header class=\"header\"><div><h1>{escape(title)}</h1><p class=\"subtitle\">{escape(subtitle)}</p></div>"
         "<div class=\"top-actions\"><a class=\"btn\" href=\"/ERPMande24\">Dashboard</a><a class=\"btn primary\" href=\"/ERPMande24/guides/new\">Nueva Guia</a></div></header>"
@@ -1033,7 +1046,7 @@ def backend_dashboard(
     )
 
     module_cards = []
-    for key, label, href in MENU:
+    for key, label, href in _modules_for_role(role_value):
         group = MODULE_GROUP.get(key, "Modulo")
         module_cards.append(
             f'<a class="module-card" href="{href}"><div class="module-head">{_module_icon_svg(key)}<strong>{label}</strong></div><small class="module-meta">Grupo: {group}</small></a>'
@@ -1082,7 +1095,7 @@ def backend_dashboard(
         f"<section class=\"panel\"><h3>Ultimas Guias</h3>{guide_table}</section>"
     )
 
-    return _render_layout("dashboard", "Dashboard Operativo", "Panel administrativo general con estadisticas y monitoreo por modelo.", content, msg, kind, request=request)
+    return _render_layout("dashboard", "Dashboard Operativo", "Panel administrativo general con estadisticas y monitoreo por modelo.", content, msg, kind, request=request, current_role=role_value)
 
 
 @router.post("/geo/sync-sepomex")
