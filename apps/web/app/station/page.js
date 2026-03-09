@@ -205,8 +205,8 @@ export default function StationPortalPage() {
       </header>
 
       <span className="badge">Portal Estacion</span>
-      <h1>Comisiones Semanales</h1>
-      <p className="hero-note">Consulta resultados en vivo de riders y estaciones. Solo rol admin puede ejecutar cierre semanal.</p>
+      <h1>Control Semanal de Comisiones</h1>
+      <p className="hero-note">Consulta resultados de riders y estaciones en tiempo real. El cierre semanal requiere rol `admin`.</p>
 
       <nav className="section-nav">
         <button className={section === "clientes" ? "section-link active" : "section-link"} onClick={() => setSection("clientes")}>Alta de Clientes</button>
@@ -215,7 +215,7 @@ export default function StationPortalPage() {
       </nav>
 
       {section === "clientes" && <section className="panel">
-        <h2>Alta de clientes (origen/destino)</h2>
+        <h2>Registro de Clientes (Origen/Destino)</h2>
         <form className="form-grid" onSubmit={createClientProfile}>
           <label>
             Nombre cliente
@@ -289,7 +289,7 @@ export default function StationPortalPage() {
       </section>}
 
       {section === "comisiones" && <section className="panel">
-        <h2>Acciones</h2>
+        <h2>Acciones de Comision</h2>
         <label>
           Token Bearer
           <textarea value={token} onChange={(e) => setToken(e.target.value)} rows={4} className="mono-box" />
@@ -306,7 +306,7 @@ export default function StationPortalPage() {
       </section>}
 
       {section === "resultados" && <section className="panel">
-        <h2>Rider Weekly</h2>
+        <h2>Resumen Semanal Rider</h2>
         <div className="table-wrap">
           <table>
             <thead>
@@ -322,7 +322,7 @@ export default function StationPortalPage() {
       </section>}
 
       {section === "resultados" && <section className="panel">
-        <h2>Station Weekly</h2>
+        <h2>Resumen Semanal Estacion</h2>
         <div className="table-wrap">
           <table>
             <thead>
@@ -338,7 +338,7 @@ export default function StationPortalPage() {
       </section>}
 
       {section === "resultados" && <section className="panel">
-        <h2>Clientes registrados</h2>
+        <h2>Clientes Registrados</h2>
         <div className="table-wrap">
           <table>
             <thead>

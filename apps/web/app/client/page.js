@@ -356,8 +356,8 @@ export default function ClientPortalPage() {
       </header>
 
       <span className="badge">Portal Cliente</span>
-      <h1>Clientes Origen/Destino y Guias</h1>
-      <p className="hero-note">Da de alta clientes con direccion (estado, municipio, CP), define facturacion del cliente origen y crea guias con trazabilidad de envios enviados/recibidos.</p>
+      <h1>Gestion de Clientes y Guias</h1>
+      <p className="hero-note">Registra clientes de origen y destino con direccion validada, define facturacion y opera guias con trazabilidad de envios enviados y recibidos.</p>
 
       <nav className="section-nav">
         <button className={section === "acceso" ? "section-link active" : "section-link"} onClick={() => setSection("acceso")}>Acceso</button>
@@ -368,13 +368,13 @@ export default function ClientPortalPage() {
       </nav>
 
       {section === "acceso" && <section className="panel">
-        <h2>No tienes cuenta?</h2>
-        <p className="field-hint">Registrate aqui para entrar al Portal Cliente sin pasar por otra pantalla.</p>
+        <h2>Acceso para nuevos clientes</h2>
+        <p className="field-hint">Crea tu cuenta desde esta seccion para ingresar al portal sin pasos adicionales.</p>
       </section>}
 
       {section === "acceso" && <section className="panel">
-        <h2>Registro rapido de cuenta cliente</h2>
-        <p className="field-hint">Si aun no tienes usuario, puedes crearlo aqui mismo y entrar automaticamente.</p>
+        <h2>Registro rapido de cuenta</h2>
+        <p className="field-hint">Completa estos datos para activar tu acceso y autenticarte automaticamente.</p>
         <form className="form-grid" onSubmit={registerAndLoginClient}>
           <label>
             Nombre completo
@@ -394,12 +394,12 @@ export default function ClientPortalPage() {
       </section>}
 
       {section === "catalogos" && <section className="panel">
-        <h2>Paso 1: Token y catalogos</h2>
+        <h2>Paso 1: Token y Catalogos</h2>
         <label>
           Token Bearer
           <textarea value={token} onChange={(e) => setToken(e.target.value)} rows={4} className="mono-box" />
         </label>
-        <p className="field-hint">Si no tienes token, ve a `Auth` y entra con tu usuario.</p>
+        <p className="field-hint">Si no cuentas con token, ingresa primero al portal `Auth` para autenticarte.</p>
         <div className="inline-actions">
           <button className="btn btn-ghost" onClick={() => localStorage.setItem("m24_token", token)}>Guardar token</button>
           <button className="btn btn-primary" onClick={loadCatalogs}>Cargar catalogos</button>
@@ -407,7 +407,7 @@ export default function ClientPortalPage() {
       </section>}
 
       {section === "clientes" && <section className="panel">
-        <h2>Paso 2: Alta cliente</h2>
+        <h2>Paso 2: Alta de Cliente</h2>
         <form className="form-grid" onSubmit={createClientProfile}>
           <label>
             Nombre cliente
@@ -484,7 +484,7 @@ export default function ClientPortalPage() {
       </section>}
 
       {section === "guias" && <section className="panel">
-        <h2>Paso 3: Crear guia</h2>
+        <h2>Paso 3: Crear Guia</h2>
         <form className="form-grid" onSubmit={createGuide}>
           <label>
             Cliente origen
@@ -533,14 +533,14 @@ export default function ClientPortalPage() {
             <p><strong>Guia:</strong> {guideResult.guide_code}</p>
             <p><strong>Venta:</strong> {guideResult.sale_amount} {guideResult.currency}</p>
             {deliveryId && <p><strong>Delivery ID:</strong> {deliveryId}</p>}
-            {deliveryId && <p className="field-hint">Siguiente paso: abre `Rider` y pega este Delivery ID para cambiar etapas.</p>}
+            {deliveryId && <p className="field-hint">Siguiente paso: abre `Rider` y utiliza este Delivery ID para actualizar etapas.</p>}
           </div>
         )}
         <p className={`status-line ${msg.includes("Error") ? "warn" : "ok"}`}>{msg}</p>
       </section>}
 
       {section === "envios" && <section className="panel">
-        <h2>Envios enviados y recibidos</h2>
+        <h2>Historial de Envios</h2>
         <div className="inline-actions">
           <button className="btn btn-ghost" onClick={loadShipments}>Actualizar envios</button>
         </div>

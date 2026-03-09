@@ -61,8 +61,8 @@ export default function RiderPortalPage() {
       </header>
 
       <span className="badge">Portal Rider</span>
-      <h1>Seguimiento de Entrega</h1>
-      <p className="hero-note">Pega el <code>delivery_id</code> generado en Cliente y avanza la entrega por etapas. Para <code>delivered</code> debes marcar evidencia y firma.</p>
+      <h1>Control de Entrega en Ruta</h1>
+      <p className="hero-note">Captura el <code>delivery_id</code> generado en Cliente y actualiza la entrega por etapas. Para <code>delivered</code> se requiere evidencia y firma.</p>
 
       <nav className="section-nav">
         <button className={section === "actualizar" ? "section-link active" : "section-link"} onClick={() => setSection("actualizar")}>Actualizar Etapa</button>
@@ -70,7 +70,7 @@ export default function RiderPortalPage() {
       </nav>
 
       {section === "actualizar" && <section className="panel">
-        <h2>Actualizar etapa</h2>
+        <h2>Actualizacion de Etapa</h2>
         <form className="form-grid" onSubmit={updateStage}>
           <label>
             Token Bearer
@@ -106,11 +106,11 @@ export default function RiderPortalPage() {
       </section>}
 
       {section === "guia" && <section className="panel">
-        <h2>Guia rapida de etapas</h2>
+        <h2>Guia Operativa de Etapas</h2>
         <ol className="flow-list">
-          <li><code>assigned</code> -&gt; pedido asignado.</li>
-          <li><code>picked_up</code> y <code>in_transit</code> -&gt; en movimiento.</li>
-          <li><code>delivered</code> -&gt; marcar <code>Evidencia</code> y <code>Firma</code> para validar cierre.</li>
+          <li><code>assigned</code>: pedido asignado al rider.</li>
+          <li><code>picked_up</code> y <code>in_transit</code>: envio en traslado.</li>
+          <li><code>delivered</code>: registrar <code>Evidencia</code> y <code>Firma</code> para validar cierre.</li>
         </ol>
       </section>}
     </main>

@@ -74,8 +74,8 @@ export default function AuthPage() {
       </header>
 
       <span className="badge">Portal Auth</span>
-      <h1>Acceso y Token</h1>
-      <p className="hero-note">Haz login o crea usuario. El token se guarda en el navegador y lo usaran los demas portales automaticamente.</p>
+      <h1>Acceso Seguro y Gestion de Token</h1>
+      <p className="hero-note">Inicia sesion o registra usuarios operativos. El token se almacena en el navegador para habilitar los demas portales automaticamente.</p>
 
       <nav className="section-nav">
         <button className={section === "acceso" ? "section-link active" : "section-link"} onClick={() => setSection("acceso")}>Acceso</button>
@@ -87,7 +87,7 @@ export default function AuthPage() {
           <button className={mode === "login" ? "btn btn-primary" : "btn"} onClick={() => setMode("login")}>Login</button>
           <button className={mode === "register" ? "btn btn-primary" : "btn"} onClick={() => setMode("register")}>Register + Login</button>
         </div>
-        <p className="field-hint">Roles permitidos: `admin`, `station`, `rider`, `client`.</p>
+        <p className="field-hint">Roles habilitados: `admin`, `station`, `rider`, `client`.</p>
 
         <form className="form-grid" onSubmit={onSubmit}>
           <label>
@@ -127,11 +127,11 @@ export default function AuthPage() {
       </section>}
 
       {section === "flujo" && <section className="panel">
-        <h2>Flujo sugerido</h2>
+        <h2>Flujo recomendado</h2>
         <ol className="flow-list">
-          <li>Autentica con usuario `admin` para configurar catalogos y pruebas.</li>
-          <li>Despues abre `Cliente` para crear una guia.</li>
-          <li>Continua en `Rider` para actualizar etapas de entrega.</li>
+          <li>Autentica con usuario `admin` para configurar catalogos y parametros iniciales.</li>
+          <li>Continua en `Cliente` para registrar perfiles y crear guias.</li>
+          <li>Da seguimiento en `Rider` para actualizar etapas de entrega.</li>
         </ol>
       </section>}
     </main>
