@@ -582,21 +582,18 @@ def _render_layout(
         '</section>'
     )
 
-    brand_icon_data_uri = (
-        "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 128 128'%3E"
-        "%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E"
-        "%3Cstop offset='0%25' stop-color='%23ff8a1f'/%3E%3Cstop offset='100%25' stop-color='%23c2410c'/%3E"
-        "%3C/linearGradient%3E%3ClinearGradient id='s' x1='0' y1='0' x2='0' y2='1'%3E"
-        "%3Cstop offset='0%25' stop-color='%23fff1df'/%3E%3Cstop offset='100%25' stop-color='%23ffd3ad'/%3E"
-        "%3C/linearGradient%3E%3C/defs%3E%3Crect x='8' y='8' width='112' height='112' rx='30' fill='url(%23g)'/%3E"
-        "%3Crect x='22' y='22' width='84' height='84' rx='22' fill='%23ffffff1f'/%3E"
-        "%3Cpath d='M30 80c8-10 20-20 35-30 8 8 18 15 30 20' fill='none' stroke='%23fff5eb' stroke-width='7' stroke-linecap='round'/%3E"
-        "%3Crect x='40' y='47' width='48' height='34' rx='9' fill='url(%23s)' stroke='%238a2f08' stroke-width='2.2'/%3E"
-        "%3Cpath d='M40 59h48' stroke='%238a2f08' stroke-width='2.2'/%3E%3Cpath d='M64 47v34' stroke='%238a2f08' stroke-width='2.2'/%3E"
-        "%3Ccircle cx='44' cy='88' r='7' fill='%23ffe6d1'/%3E%3Ccircle cx='84' cy='88' r='7' fill='%23ffe6d1'/%3E"
-        "%3Ccircle cx='92' cy='36' r='14' fill='%237c2d12'/%3E"
-        "%3Ctext x='92' y='40' text-anchor='middle' font-family='Trebuchet MS, sans-serif' font-size='11' font-weight='800' fill='%23fff7ed'%3E24%3C/text%3E"
-        "%3C/svg%3E"
+    brand_icon_svg = (
+        "<svg class='brand-logo' viewBox='0 0 128 128' xmlns='http://www.w3.org/2000/svg' role='img' aria-label='Icono ERPMande24'>"
+        "<defs><linearGradient id='g' x1='0' y1='0' x2='1' y2='1'><stop offset='0%' stop-color='#ff8a1f'/><stop offset='100%' stop-color='#c2410c'/></linearGradient>"
+        "<linearGradient id='s' x1='0' y1='0' x2='0' y2='1'><stop offset='0%' stop-color='#fff1df'/><stop offset='100%' stop-color='#ffd3ad'/></linearGradient></defs>"
+        "<rect x='8' y='8' width='112' height='112' rx='30' fill='url(#g)'/>"
+        "<rect x='22' y='22' width='84' height='84' rx='22' fill='#ffffff1f'/>"
+        "<path d='M30 80c8-10 20-20 35-30 8 8 18 15 30 20' fill='none' stroke='#fff5eb' stroke-width='7' stroke-linecap='round'/>"
+        "<rect x='40' y='47' width='48' height='34' rx='9' fill='url(#s)' stroke='#8a2f08' stroke-width='2.2'/>"
+        "<path d='M40 59h48' stroke='#8a2f08' stroke-width='2.2'/><path d='M64 47v34' stroke='#8a2f08' stroke-width='2.2'/>"
+        "<circle cx='44' cy='88' r='7' fill='#ffe6d1'/><circle cx='84' cy='88' r='7' fill='#ffe6d1'/>"
+        "<circle cx='92' cy='36' r='14' fill='#7c2d12'/><text x='92' y='40' text-anchor='middle' font-family='Trebuchet MS, sans-serif' font-size='11' font-weight='800' fill='#fff7ed'>24</text>"
+        "</svg>"
     )
 
     return (
@@ -606,7 +603,7 @@ def _render_layout(
         f"<style>{_base_css()}</style></head><body>"
         "<div class=\"layout\">"
         "<aside class=\"sidebar\">"
-        f"<div class=\"brand-row\"><img class=\"brand-logo\" src=\"{brand_icon_data_uri}\" alt=\"Icono ERPMande24\" /><div class=\"brand-copy\"><h2>ERPMande24</h2><small>Entrega segura. Ruta inteligente.</small></div></div>"
+        f"<div class=\"brand-row\">{brand_icon_svg}<div class=\"brand-copy\"><h2>ERPMande24</h2><small>Entrega segura. Ruta inteligente.</small></div></div>"
         "<span class=\"tag\">ERPMande24 Admin</span>"
         f"<nav class=\"menu\">{_menu_html(active)}</nav>{_role_switcher(role_value, path_value)}</aside>"
         "<main class=\"content\">"
