@@ -21,10 +21,26 @@ export default function StationPortalPage() {
   const [postalCode, setPostalCode] = useState("");
   const [colonyId, setColonyId] = useState("");
   const [addressLine, setAddressLine] = useState("");
+  const [landlinePhone, setLandlinePhone] = useState("");
+  const [whatsappPhone, setWhatsappPhone] = useState("");
   const [wantsInvoice, setWantsInvoice] = useState(false);
   const [createPortalAccess, setCreatePortalAccess] = useState(true);
   const [portalEmail, setPortalEmail] = useState("");
   const [portalPassword, setPortalPassword] = useState("");
+  const [zones, setZones] = useState([]);
+  const [newRiderName, setNewRiderName] = useState("");
+  const [newRiderEmail, setNewRiderEmail] = useState("");
+  const [newRiderPassword, setNewRiderPassword] = useState("");
+  const [newRiderZoneId, setNewRiderZoneId] = useState("");
+  const [newRiderVehicle, setNewRiderVehicle] = useState("motorcycle");
+  const [newRiderLandline, setNewRiderLandline] = useState("");
+  const [newRiderWhatsapp, setNewRiderWhatsapp] = useState("");
+  const [newStationName, setNewStationName] = useState("");
+  const [newStationZoneId, setNewStationZoneId] = useState("");
+  const [newStationLandline, setNewStationLandline] = useState("");
+  const [newStationWhatsapp, setNewStationWhatsapp] = useState("");
+  const [riderCatalogRows, setRiderCatalogRows] = useState([]);
+  const [stationCatalogRows, setStationCatalogRows] = useState([]);
   const [msg, setMsg] = useState("");
 
   useEffect(() => {
@@ -35,6 +51,8 @@ export default function StationPortalPage() {
     if (!token) return;
     loadGeoStates();
     loadProfiles();
+    loadZones();
+    loadCatalogRows();
   }, [token]);
 
   useEffect(() => {
@@ -122,6 +140,8 @@ export default function StationPortalPage() {
       postal_code: postalCode,
       colony_id: colonyId,
       address_line: addressLine,
+      landline_phone: landlinePhone,
+      whatsapp_phone: whatsappPhone,
       wants_invoice: wantsInvoice,
       create_portal_access: createPortalAccess,
       email: createPortalAccess ? portalEmail : null,
@@ -140,10 +160,120 @@ export default function StationPortalPage() {
     setMsg("Cliente registrado desde estacion.");
     setNewClientName("");
     setAddressLine("");
+    setLandlinePhone("");
+    setWhatsappPhone("");
     setColonyId("");
     setPortalEmail("");
     setPortalPassword("");
     await loadProfiles();
+  }
+
+  async function loadZones() {
+    const headers = { Authorization: `Bearer ${token}` };
+    const res = await fetch(`${API_BASE}/api/v1/catalogs/zones`, { headers });
+    if (!res.ok) return;
+    const rows = await res.json();
+    setZones(rows);
+    if (!newRiderZoneId && rows.length) setNewRiderZoneId(rows[0].id);
+    if (!newStationZoneId && rows.length) setNewStationZoneId(rows[0].id);
+  }
+
+  async function loadCatalogRows() {
+    const headers = { Authorization: `Bearer ${token}` };
+    const [ridersRes, stationsRes] = await Promise.all([
+      fetch(`${API_BASE}/api/v1/catalogs/riders`, { headers }),
+      fetch(`${API_BASE}/api/v1/catalogs/stations`, { headers }),
+    ]);
+    if (ridersRes.ok) setRiderCatalogRows(await ridersRes.json());
+    if (stationsRes.ok) setStationCatalogRows(await stationsRes.json());
+  }
+
+  async function createRider(e) {
+    e.preventDefault();
+    if (!newRiderName || !newRiderEmail || !newRiderPassword) {
+      setMsg("Completa nombre, email y password del repartidor.");
+      return;
+    }
+    const authHeaders = { "Content-Type": "application/json" };
+    const catalogHeaders = { Authorization: `Bearer ${token}`, "Content-Type": "application/json" };
+
+    const registerRes = await fetch(`${API_BASE}/api/v1/auth/register`, {
+      method: "POST",
+      headers: authHeaders,
+      body: JSON.stringify({
+        email: newRiderEmail,
+        full_name: newRiderName,
+        password: newRiderPassword,
+        role: "rider",
+      }),
+    });
+    if (!registerRes.ok && registerRes.status !== 409) {
+      const err = await registerRes.text();
+      setMsg(`Error registro de repartidor: ${err}`);
+      return;
+    }
+
+    const usersRes = await fetch(`${API_BASE}/ERPMande24/users?q=${encodeURIComponent(newRiderEmail)}`);
+    const usersHtml = await usersRes.text();
+    const match = usersHtml.match(/\/ERPMande24\/users\/([a-f0-9]{32})/);
+    if (!match) {
+      setMsg("No se encontro usuario rider recien creado para vincular catalogo.");
+      return;
+    }
+
+    const riderRes = await fetch(`${API_BASE}/api/v1/catalogs/riders`, {
+      method: "POST",
+      headers: catalogHeaders,
+      body: JSON.stringify({
+        user_id: match[1],
+        zone_id: newRiderZoneId || null,
+        vehicle_type: newRiderVehicle,
+        landline_phone: newRiderLandline,
+        whatsapp_phone: newRiderWhatsapp,
+      }),
+    });
+    const riderData = await riderRes.json();
+    if (!riderRes.ok && !String(JSON.stringify(riderData)).includes("already exists")) {
+      setMsg(`Error alta rider catalogo: ${JSON.stringify(riderData)}`);
+      return;
+    }
+
+    setMsg("Repartidor registrado con telefono fijo y WhatsApp.");
+    setNewRiderName("");
+    setNewRiderEmail("");
+    setNewRiderPassword("");
+    setNewRiderLandline("");
+    setNewRiderWhatsapp("");
+    await loadCatalogRows();
+  }
+
+  async function createStation(e) {
+    e.preventDefault();
+    if (!newStationName || !newStationZoneId) {
+      setMsg("Completa nombre y zona de estacion.");
+      return;
+    }
+    const headers = { Authorization: `Bearer ${token}`, "Content-Type": "application/json" };
+    const res = await fetch(`${API_BASE}/api/v1/catalogs/stations`, {
+      method: "POST",
+      headers,
+      body: JSON.stringify({
+        name: newStationName,
+        zone_id: newStationZoneId,
+        landline_phone: newStationLandline,
+        whatsapp_phone: newStationWhatsapp,
+      }),
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      setMsg(`Error alta estacion: ${JSON.stringify(data)}`);
+      return;
+    }
+    setMsg("Estacion registrada con telefono fijo y WhatsApp.");
+    setNewStationName("");
+    setNewStationLandline("");
+    setNewStationWhatsapp("");
+    await loadCatalogRows();
   }
 
   async function fetchCommissions() {
@@ -231,6 +361,8 @@ export default function StationPortalPage() {
 
       <nav className="section-nav">
         <button className={section === "clientes" ? "section-link active" : "section-link"} onClick={() => setSection("clientes")}>Alta de Clientes</button>
+        <button className={section === "riders" ? "section-link active" : "section-link"} onClick={() => setSection("riders")}>Alta de Repartidores</button>
+        <button className={section === "estaciones" ? "section-link active" : "section-link"} onClick={() => setSection("estaciones")}>Alta de Estaciones</button>
         <button className={section === "comisiones" ? "section-link active" : "section-link"} onClick={() => setSection("comisiones")}>Comisiones</button>
         <button className={section === "resultados" ? "section-link active" : "section-link"} onClick={() => setSection("resultados")}>Resultados</button>
       </nav>
@@ -280,6 +412,14 @@ export default function StationPortalPage() {
             <input value={addressLine} onChange={(e) => setAddressLine(e.target.value)} />
           </label>
           <label>
+            Telefono fijo
+            <input value={landlinePhone} onChange={(e) => setLandlinePhone(e.target.value)} />
+          </label>
+          <label>
+            WhatsApp
+            <input value={whatsappPhone} onChange={(e) => setWhatsappPhone(e.target.value)} />
+          </label>
+          <label>
             Facturar servicios origen
             <select value={wantsInvoice ? "true" : "false"} onChange={(e) => setWantsInvoice(e.target.value === "true")}>
               <option value="true">Si</option>
@@ -306,6 +446,70 @@ export default function StationPortalPage() {
             </>
           )}
           <button className="btn btn-primary" type="submit">Registrar cliente</button>
+        </form>
+      </section>}
+
+      {section === "riders" && <section className="panel">
+        <h2>Alta de Repartidores</h2>
+        <form className="form-grid" onSubmit={createRider}>
+          <label>
+            Nombre completo
+            <input value={newRiderName} onChange={(e) => setNewRiderName(e.target.value)} required />
+          </label>
+          <label>
+            Email
+            <input type="email" value={newRiderEmail} onChange={(e) => setNewRiderEmail(e.target.value)} required />
+          </label>
+          <label>
+            Password
+            <input type="password" value={newRiderPassword} onChange={(e) => setNewRiderPassword(e.target.value)} required minLength={8} />
+          </label>
+          <label>
+            Zona
+            <select value={newRiderZoneId} onChange={(e) => setNewRiderZoneId(e.target.value)}>
+              <option value="">Sin zona</option>
+              {zones.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
+            </select>
+          </label>
+          <label>
+            Vehiculo
+            <input value={newRiderVehicle} onChange={(e) => setNewRiderVehicle(e.target.value)} />
+          </label>
+          <label>
+            Telefono fijo
+            <input value={newRiderLandline} onChange={(e) => setNewRiderLandline(e.target.value)} />
+          </label>
+          <label>
+            WhatsApp
+            <input value={newRiderWhatsapp} onChange={(e) => setNewRiderWhatsapp(e.target.value)} />
+          </label>
+          <button className="btn btn-primary" type="submit">Registrar repartidor</button>
+        </form>
+      </section>}
+
+      {section === "estaciones" && <section className="panel">
+        <h2>Alta de Estaciones</h2>
+        <form className="form-grid" onSubmit={createStation}>
+          <label>
+            Nombre estacion
+            <input value={newStationName} onChange={(e) => setNewStationName(e.target.value)} required />
+          </label>
+          <label>
+            Zona
+            <select value={newStationZoneId} onChange={(e) => setNewStationZoneId(e.target.value)} required>
+              <option value="">Selecciona zona</option>
+              {zones.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
+            </select>
+          </label>
+          <label>
+            Telefono fijo
+            <input value={newStationLandline} onChange={(e) => setNewStationLandline(e.target.value)} />
+          </label>
+          <label>
+            WhatsApp
+            <input value={newStationWhatsapp} onChange={(e) => setNewStationWhatsapp(e.target.value)} />
+          </label>
+          <button className="btn btn-primary" type="submit">Registrar estacion</button>
         </form>
       </section>}
 
@@ -363,13 +567,45 @@ export default function StationPortalPage() {
         <div className="table-wrap">
           <table>
             <thead>
-              <tr><th>Nombre</th><th>Tipo</th><th>Estado</th><th>Municipio</th><th>CP</th><th>Colonia</th><th>Factura</th></tr>
+              <tr><th>Nombre</th><th>Tipo</th><th>Estado</th><th>Municipio</th><th>CP</th><th>Colonia</th><th>Telefono fijo</th><th>WhatsApp</th><th>Factura</th></tr>
             </thead>
             <tbody>
               {profiles.map((row) => (
                 <tr key={row.id}>
-                  <td>{row.display_name}</td><td>{row.client_kind}</td><td>{row.state_code}</td><td>{row.municipality_code}</td><td>{row.postal_code}</td><td>{row.colony_name || "-"}</td><td>{row.wants_invoice ? "Si" : "No"}</td>
+                  <td>{row.display_name}</td><td>{row.client_kind}</td><td>{row.state_code}</td><td>{row.municipality_code}</td><td>{row.postal_code}</td><td>{row.colony_name || "-"}</td><td>{row.landline_phone || "-"}</td><td>{row.whatsapp_phone || "-"}</td><td>{row.wants_invoice ? "Si" : "No"}</td>
                 </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </section>}
+
+      {section === "resultados" && <section className="panel">
+        <h2>Catalogo de Repartidores</h2>
+        <div className="table-wrap">
+          <table>
+            <thead>
+              <tr><th>ID</th><th>User ID</th><th>Zona</th><th>Telefono fijo</th><th>WhatsApp</th><th>Vehiculo</th><th>Activo</th></tr>
+            </thead>
+            <tbody>
+              {riderCatalogRows.map((row) => (
+                <tr key={row.id}><td>{row.id}</td><td>{row.user_id}</td><td>{row.zone_id || "-"}</td><td>{row.landline_phone || "-"}</td><td>{row.whatsapp_phone || "-"}</td><td>{row.vehicle_type}</td><td>{row.active ? "Si" : "No"}</td></tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </section>}
+
+      {section === "resultados" && <section className="panel">
+        <h2>Catalogo de Estaciones</h2>
+        <div className="table-wrap">
+          <table>
+            <thead>
+              <tr><th>ID</th><th>Nombre</th><th>Zona</th><th>Telefono fijo</th><th>WhatsApp</th><th>Activo</th></tr>
+            </thead>
+            <tbody>
+              {stationCatalogRows.map((row) => (
+                <tr key={row.id}><td>{row.id}</td><td>{row.name}</td><td>{row.zone_id}</td><td>{row.landline_phone || "-"}</td><td>{row.whatsapp_phone || "-"}</td><td>{row.active ? "Si" : "No"}</td></tr>
               ))}
             </tbody>
           </table>

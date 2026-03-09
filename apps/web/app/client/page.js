@@ -33,6 +33,8 @@ export default function ClientPortalPage() {
   const [postalCode, setPostalCode] = useState("");
   const [colonyId, setColonyId] = useState("");
   const [addressLine, setAddressLine] = useState("");
+  const [landlinePhone, setLandlinePhone] = useState("");
+  const [whatsappPhone, setWhatsappPhone] = useState("");
   const [createPortalAccess, setCreatePortalAccess] = useState(true);
   const [portalEmail, setPortalEmail] = useState("");
   const [portalPassword, setPortalPassword] = useState("");
@@ -255,6 +257,8 @@ export default function ClientPortalPage() {
       postal_code: postalCode,
       colony_id: colonyId,
       address_line: addressLine,
+      landline_phone: landlinePhone,
+      whatsapp_phone: whatsappPhone,
       wants_invoice: originWantsInvoice,
       create_portal_access: createPortalAccess,
       email: createPortalAccess ? portalEmail : null,
@@ -273,6 +277,8 @@ export default function ClientPortalPage() {
     setMsg("Cliente registrado correctamente.");
     setNewClientName("");
     setAddressLine("");
+    setLandlinePhone("");
+    setWhatsappPhone("");
     setColonyId("");
     setPortalEmail("");
     setPortalPassword("");
@@ -334,6 +340,14 @@ export default function ClientPortalPage() {
     setDestinationClientId(profileId);
     const profile = destinationProfiles.find((item) => item.id === profileId);
     if (profile) setDestinationName(profile.display_name);
+  }
+
+  function profileLabel(item) {
+    return `${item.display_name} | Fijo: ${item.landline_phone || "-"} | WhatsApp: ${item.whatsapp_phone || "-"}`;
+  }
+
+  function stationLabel(item) {
+    return `${item.name} | Fijo: ${item.landline_phone || "-"} | WhatsApp: ${item.whatsapp_phone || "-"}`;
   }
 
   return (
@@ -482,6 +496,14 @@ export default function ClientPortalPage() {
             <input value={addressLine} onChange={(e) => setAddressLine(e.target.value)} />
           </label>
           <label>
+            Telefono fijo
+            <input value={landlinePhone} onChange={(e) => setLandlinePhone(e.target.value)} />
+          </label>
+          <label>
+            WhatsApp
+            <input value={whatsappPhone} onChange={(e) => setWhatsappPhone(e.target.value)} />
+          </label>
+          <label>
             Facturar servicios (solo origen)
             <select value={originWantsInvoice ? "true" : "false"} onChange={(e) => setOriginWantsInvoice(e.target.value === "true")}>
               <option value="true">Si</option>
@@ -518,14 +540,14 @@ export default function ClientPortalPage() {
             Cliente origen
             <select value={originClientId} onChange={(e) => onSelectOriginProfile(e.target.value)}>
               <option value="">Selecciona</option>
-              {originProfiles.map((item) => <option key={item.id} value={item.id}>{item.display_name}</option>)}
+              {originProfiles.map((item) => <option key={item.id} value={item.id}>{profileLabel(item)}</option>)}
             </select>
           </label>
           <label>
             Cliente destino
             <select value={destinationClientId} onChange={(e) => onSelectDestinationProfile(e.target.value)}>
               <option value="">Selecciona</option>
-              {destinationProfiles.map((item) => <option key={item.id} value={item.id}>{item.display_name}</option>)}
+              {destinationProfiles.map((item) => <option key={item.id} value={item.id}>{profileLabel(item)}</option>)}
             </select>
           </label>
           <label>
@@ -549,7 +571,7 @@ export default function ClientPortalPage() {
             <select value={stationId} onChange={(e) => setStationId(e.target.value)}>
               <option value="">Selecciona</option>
               {stations.map((item) => (
-                <option key={item.id} value={item.id}>{item.name}</option>
+                <option key={item.id} value={item.id}>{stationLabel(item)}</option>
               ))}
             </select>
           </label>
