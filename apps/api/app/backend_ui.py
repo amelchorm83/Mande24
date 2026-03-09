@@ -62,6 +62,42 @@ MENU = [
 
 ROLE_OPTIONS = ["admin", "station", "rider", "client"]
 
+MODULE_ICONS = {
+    "dashboard": "DB",
+    "guides_new": "NG",
+    "guides": "GU",
+    "deliveries": "EN",
+    "services": "SV",
+    "zones": "ZN",
+    "stations": "ES",
+    "riders": "RD",
+    "clients": "CL",
+    "leads": "LD",
+    "pricing": "TR",
+    "users": "US",
+    "comm_rider": "CR",
+    "comm_station": "CE",
+    "swagger": "API",
+}
+
+MODULE_GROUP = {
+    "dashboard": "Monitoreo",
+    "guides_new": "Operacion",
+    "guides": "Operacion",
+    "deliveries": "Operacion",
+    "services": "Catalogos",
+    "zones": "Catalogos",
+    "stations": "Catalogos",
+    "riders": "Catalogos",
+    "clients": "Clientes",
+    "leads": "Clientes",
+    "pricing": "Comercial",
+    "users": "Seguridad",
+    "comm_rider": "Finanzas",
+    "comm_station": "Finanzas",
+    "swagger": "Integracion",
+}
+
 ERP_ICON_SVG = """<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" role="img" aria-label="Icono ERPMande24">
     <defs>
         <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
@@ -191,15 +227,94 @@ body {
   text-decoration: none;
   border: 1px solid #3b4959;
   border-radius: 8px;
-  padding: 0.38rem 0.55rem;
+    padding: 0.36rem 0.5rem;
   font-size: 0.9rem;
   background: rgba(17, 24, 39, 0.35);
+    display: grid;
+    grid-template-columns: 34px 1fr;
+    align-items: center;
+    gap: 0.45rem;
+}
+
+.menu a .mod-ico {
+    width: 30px;
+    height: 30px;
+    border-radius: 8px;
+    border: 1px solid #6a7584;
+    background: rgba(251, 146, 60, 0.16);
+    color: #fff7ed;
+    font-size: 0.66rem;
+    font-weight: 700;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.menu a .mod-label {
+    display: grid;
+    gap: 0.08rem;
+}
+
+.menu a .mod-label small {
+    color: #b9c8dc;
+    font-size: 0.68rem;
 }
 
 .menu a.active {
         background: linear-gradient(120deg, var(--brand), #fb923c);
   border-color: transparent;
   color: #fff;
+}
+
+.menu a.active .mod-ico {
+    border-color: #fff3e0;
+    background: rgba(255, 255, 255, 0.2);
+}
+
+.module-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+    gap: 0.65rem;
+}
+
+.module-card {
+    text-decoration: none;
+    color: var(--ink);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    background: linear-gradient(140deg, #fff, #fff7ed);
+    padding: 0.72rem;
+    display: grid;
+    gap: 0.4rem;
+}
+
+.module-card:hover {
+    border-color: #ea580c;
+}
+
+.module-head {
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+}
+
+.module-head .mod-ico {
+    width: 34px;
+    height: 34px;
+    border-radius: 9px;
+    border: 1px solid #f2b183;
+    background: linear-gradient(130deg, #fb923c, #c2410c);
+    color: #fff;
+    font-size: 0.7rem;
+    font-weight: 700;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.module-meta {
+    color: #6b7280;
+    font-size: 0.74rem;
 }
 
 .content {
@@ -466,8 +581,12 @@ def _menu_html(active: str) -> str:
     rows: list[str] = []
     for key, label, href in MENU:
         cls = "active" if key == active else ""
-        rows.append(f'<a href="{href}" class="{cls}">{label}</a>')
-    rows.append('<a href="/docs">Swagger API</a>')
+        icon = MODULE_ICONS.get(key, "MD")
+        group = MODULE_GROUP.get(key, "Modulo")
+        rows.append(
+            f'<a href="{href}" class="{cls}"><span class="mod-ico">{icon}</span><span class="mod-label">{label}<small>{group}</small></span></a>'
+        )
+    rows.append('<a href="/docs"><span class="mod-ico">API</span><span class="mod-label">Swagger API<small>Integracion</small></span></a>')
     return "".join(rows)
 
 
@@ -910,7 +1029,16 @@ def backend_dashboard(
         ],
     )
 
+    module_cards = []
+    for key, label, href in MENU:
+        icon = MODULE_ICONS.get(key, "MD")
+        group = MODULE_GROUP.get(key, "Modulo")
+        module_cards.append(
+            f'<a class="module-card" href="{href}"><div class="module-head"><span class="mod-ico">{icon}</span><strong>{label}</strong></div><small class="module-meta">Grupo: {group}</small></a>'
+        )
+
     content = (
+        f"<section class=\"panel\"><h3>Modulos ERPMande24</h3><div class=\"module-grid\">{''.join(module_cards)}</div></section>"
         "<section class=\"panel\"><h3>Indicadores Principales</h3>"
         "<div class=\"kpi-grid\">"
         f"<article class=\"kpi\"><small>Guias Totales</small><strong>{guides_total}</strong></article>"
