@@ -69,6 +69,8 @@ export default function AuthPage() {
           <a className="nav-link" href="/servicios">Servicios</a>
           <a className="nav-link" href="/cobertura">Cobertura</a>
           <a className="nav-link" href="/noticias">Noticias</a>
+          <a className="nav-link" href="/nosotros">Nosotros</a>
+          <a className="nav-link" href="/contacto">Contacto</a>
           <a className="nav-link active" href="/auth">Portal Auth</a>
           <a className="nav-link" href="/client">Portal Cliente</a>
           <a className="nav-link" href="/rider">Portal Rider</a>

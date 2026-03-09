@@ -73,16 +73,16 @@ def backend_legacy_redirect(request: Request, full_path: str = "") -> RedirectRe
 def _base_css() -> str:
     return """
 :root {
-  --bg: #f3efe5;
+    --bg: #edf3fb;
   --surface: #ffffff;
-  --surface-2: #f6f7f9;
-  --sidebar: #1f2937;
-  --sidebar-line: #3f4f63;
-  --ink: #1f2937;
-  --ink-soft: #6b7280;
-  --line: #d2d6db;
-  --brand: #0f766e;
-  --brand-2: #0b4f53;
+    --surface-2: #f4f8ff;
+    --sidebar: #0f2f57;
+    --sidebar-line: #2b4d79;
+    --ink: #17293f;
+    --ink-soft: #58708e;
+    --line: #ccd9ea;
+    --brand: #0b5cab;
+    --brand-2: #0f3f74;
   --ok: #166534;
   --warn: #9a3412;
 }
@@ -94,8 +94,8 @@ body {
   color: var(--ink);
   font-family: "Avenir Next", "Trebuchet MS", sans-serif;
   background:
-    radial-gradient(circle at 0% 0%, #fff8e7 0%, transparent 30%),
-    radial-gradient(circle at 100% 0%, #dceef4 0%, transparent 28%),
+        radial-gradient(circle at 0% 0%, #f9fbff 0%, transparent 30%),
+        radial-gradient(circle at 100% 0%, #dce8ff 0%, transparent 28%),
     var(--bg);
 }
 
@@ -106,7 +106,7 @@ body {
 }
 
 .sidebar {
-  background: linear-gradient(170deg, #111827 0%, var(--sidebar) 70%, #2b3b4f 100%);
+    background: linear-gradient(170deg, #0b2443 0%, var(--sidebar) 70%, #1d4775 100%);
   color: #dbe7ff;
   padding: 1rem;
   border-right: 1px solid var(--sidebar-line);
@@ -146,8 +146,8 @@ body {
   font-size: 0.76rem;
   border-radius: 999px;
   padding: 0.16rem 0.52rem;
-  background: #134e4a;
-  color: #cffafe;
+    background: #113f74;
+    color: #dbeafe;
 }
 
 .menu {
@@ -167,7 +167,7 @@ body {
 }
 
 .menu a.active {
-  background: linear-gradient(120deg, var(--brand), #0d9488);
+    background: linear-gradient(120deg, var(--brand), #2563eb);
   border-color: transparent;
   color: #fff;
 }
@@ -258,7 +258,7 @@ h1 {
 .kpi {
   border: 1px solid #cdd8de;
   border-radius: 10px;
-  background: linear-gradient(180deg, #f1f8f9, #ffffff);
+    background: linear-gradient(180deg, #eef5ff, #ffffff);
   padding: 0.55rem;
 }
 

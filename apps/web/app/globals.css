@@ -1,15 +1,15 @@
 :root {
-  --bg: #f4efe6;
-  --surface: #fffdfa;
-  --surface-soft: #f7f2e9;
-  --ink: #1f2a2e;
-  --ink-soft: #44555b;
-  --accent: #0f766e;
-  --accent-2: #c2410c;
-  --accent-3: #164e63;
-  --line: #d7d0c1;
-  --ok: #0b7a49;
-  --warn: #995d00;
+  --bg: #eef3f9;
+  --surface: #ffffff;
+  --surface-soft: #f5f8fc;
+  --ink: #182433;
+  --ink-soft: #4f647a;
+  --accent: #0b5cab;
+  --accent-2: #ea580c;
+  --accent-3: #0f3f74;
+  --line: #cfd9e6;
+  --ok: #0a7d4f;
+  --warn: #9a3c12;
 }
 
 * {
@@ -22,9 +22,9 @@ body {
   padding: 0;
   font-family: "Avenir Next", "Trebuchet MS", "Gill Sans", sans-serif;
   background:
-    radial-gradient(circle at 15% 10%, #fff7e8 0%, transparent 30%),
-    radial-gradient(circle at 90% 0%, #dff2ee 0%, transparent 35%),
-    linear-gradient(165deg, #efe8db 0%, var(--bg) 100%);
+    radial-gradient(circle at 15% 10%, #f8fbff 0%, transparent 30%),
+    radial-gradient(circle at 90% 0%, #dfeaff 0%, transparent 35%),
+    linear-gradient(165deg, #edf3fb 0%, var(--bg) 100%);
   color: var(--ink);
 }
 
@@ -89,7 +89,7 @@ body {
 }
 
 .nav-link.active {
-  background: linear-gradient(130deg, var(--accent), #159a90);
+  background: linear-gradient(130deg, var(--accent), #3b82f6);
   color: #fff;
   border-color: transparent;
 }
@@ -129,7 +129,7 @@ h3 {
 
 .badge {
   display: inline-block;
-  background: linear-gradient(130deg, var(--accent), #169489);
+  background: linear-gradient(130deg, var(--accent), #2563eb);
   color: #fff;
   border-radius: 999px;
   padding: 0.25rem 0.75rem;
@@ -165,7 +165,7 @@ small {
 }
 
 .btn-primary {
-  background: linear-gradient(135deg, var(--accent), #0f9d92);
+  background: linear-gradient(135deg, var(--accent), #2563eb);
   color: #fff;
   border-color: transparent;
 }
@@ -210,10 +210,10 @@ textarea {
 
 .result-box {
   margin-top: 0.8rem;
-  border: 1px dashed #da8e54;
+  border: 1px dashed #7aa4d6;
   border-radius: 10px;
   padding: 0.6rem;
-  background: #fff6ea;
+  background: #f3f8ff;
 }
 
 .status-line {
@@ -256,7 +256,7 @@ td {
 }
 
 th {
-  background: #eef4f4;
+  background: #edf4ff;
 }
 
 .flow-list {
@@ -280,7 +280,7 @@ th {
   align-items: center;
   gap: 1rem;
   flex-wrap: wrap;
-  background: linear-gradient(130deg, #f7efe0, #e7f4f2);
+  background: linear-gradient(130deg, #eef5ff, #eaf2ff);
 }
 
 .hero-banner {
@@ -335,18 +335,30 @@ th {
 .section-link.active {
   color: #fff;
   border-color: transparent;
-  background: linear-gradient(130deg, var(--accent-2), #d97706);
+  background: linear-gradient(130deg, var(--accent), #2563eb);
 }
 
 .kpi {
   display: inline-flex;
   align-items: baseline;
   gap: 0.35rem;
-  background: #e9f5f2;
-  border: 1px solid #c7e4de;
+  background: #edf4ff;
+  border: 1px solid #bdd4f2;
   border-radius: 10px;
   padding: 0.35rem 0.6rem;
   font-size: 0.92rem;
+}
+
+.contact-grid {
+  display: grid;
+  grid-template-columns: 1.2fr 1fr;
+  gap: 0.9rem;
+}
+
+.whatsapp-btn {
+  background: linear-gradient(130deg, #22c55e, #16a34a);
+  color: #fff;
+  border-color: transparent;
 }
 
 @media (max-width: 700px) {
@@ -360,5 +372,9 @@ th {
 
   .topbar {
     align-items: flex-start;
+  }
+
+  .contact-grid {
+    grid-template-columns: 1fr;
   }
 }
