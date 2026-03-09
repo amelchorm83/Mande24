@@ -260,6 +260,42 @@ th {
   max-width: 65ch;
 }
 
+.public-shell {
+  max-width: 1120px;
+}
+
+.hero-strip {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+  background: linear-gradient(130deg, #f7efe0, #e7f4f2);
+}
+
+.section-nav {
+  display: flex;
+  gap: 0.55rem;
+  flex-wrap: wrap;
+  margin-top: 0.75rem;
+}
+
+.section-link {
+  border: 1px solid var(--line);
+  background: #fff;
+  border-radius: 999px;
+  padding: 0.42rem 0.8rem;
+  color: var(--ink);
+  text-decoration: none;
+  font-size: 0.88rem;
+}
+
+.section-link.active {
+  color: #fff;
+  border-color: transparent;
+  background: linear-gradient(130deg, var(--accent-2), #d97706);
+}
+
 .kpi {
   display: inline-flex;
   align-items: baseline;

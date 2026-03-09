@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState } from "react";
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
 export default function ClientPortalPage() {
+  const [section, setSection] = useState("acceso");
   const [token, setToken] = useState("");
   const [registerName, setRegisterName] = useState("Nuevo Cliente");
   const [registerEmail, setRegisterEmail] = useState("");
@@ -343,6 +344,10 @@ export default function ClientPortalPage() {
           <h2>ERPMande24</h2>
         </div>
         <nav className="nav-pills">
+          <a className="nav-link" href="/">Inicio</a>
+          <a className="nav-link" href="/servicios">Servicios</a>
+          <a className="nav-link" href="/cobertura">Cobertura</a>
+          <a className="nav-link" href="/noticias">Noticias</a>
           <a className="nav-link" href="/auth">Auth</a>
           <a className="nav-link active" href="/client">Cliente</a>
           <a className="nav-link" href="/rider">Rider</a>
@@ -354,12 +359,20 @@ export default function ClientPortalPage() {
       <h1>Clientes Origen/Destino y Guias</h1>
       <p className="hero-note">Da de alta clientes con direccion (estado, municipio, CP), define facturacion del cliente origen y crea guias con trazabilidad de envios enviados/recibidos.</p>
 
-      <section className="panel">
+      <nav className="section-nav">
+        <button className={section === "acceso" ? "section-link active" : "section-link"} onClick={() => setSection("acceso")}>Acceso</button>
+        <button className={section === "catalogos" ? "section-link active" : "section-link"} onClick={() => setSection("catalogos")}>Token y Catalogos</button>
+        <button className={section === "clientes" ? "section-link active" : "section-link"} onClick={() => setSection("clientes")}>Alta Cliente</button>
+        <button className={section === "guias" ? "section-link active" : "section-link"} onClick={() => setSection("guias")}>Guias</button>
+        <button className={section === "envios" ? "section-link active" : "section-link"} onClick={() => setSection("envios")}>Envios</button>
+      </nav>
+
+      {section === "acceso" && <section className="panel">
         <h2>No tienes cuenta?</h2>
         <p className="field-hint">Registrate aqui para entrar al Portal Cliente sin pasar por otra pantalla.</p>
-      </section>
+      </section>}
 
-      <section className="panel">
+      {section === "acceso" && <section className="panel">
         <h2>Registro rapido de cuenta cliente</h2>
         <p className="field-hint">Si aun no tienes usuario, puedes crearlo aqui mismo y entrar automaticamente.</p>
         <form className="form-grid" onSubmit={registerAndLoginClient}>
@@ -378,9 +391,9 @@ export default function ClientPortalPage() {
           <button className="btn btn-primary" type="submit">Crear cuenta cliente</button>
         </form>
         <p className={`status-line ${registerMsg.includes("fallido") || registerMsg.includes("Error") ? "warn" : "ok"}`}>{registerMsg}</p>
-      </section>
+      </section>}
 
-      <section className="panel">
+      {section === "catalogos" && <section className="panel">
         <h2>Paso 1: Token y catalogos</h2>
         <label>
           Token Bearer
@@ -391,9 +404,9 @@ export default function ClientPortalPage() {
           <button className="btn btn-ghost" onClick={() => localStorage.setItem("m24_token", token)}>Guardar token</button>
           <button className="btn btn-primary" onClick={loadCatalogs}>Cargar catalogos</button>
         </div>
-      </section>
+      </section>}
 
-      <section className="panel">
+      {section === "clientes" && <section className="panel">
         <h2>Paso 2: Alta cliente</h2>
         <form className="form-grid" onSubmit={createClientProfile}>
           <label>
@@ -468,9 +481,9 @@ export default function ClientPortalPage() {
           )}
           <button className="btn btn-primary" type="submit">Registrar cliente</button>
         </form>
-      </section>
+      </section>}
 
-      <section className="panel">
+      {section === "guias" && <section className="panel">
         <h2>Paso 3: Crear guia</h2>
         <form className="form-grid" onSubmit={createGuide}>
           <label>
@@ -524,9 +537,9 @@ export default function ClientPortalPage() {
           </div>
         )}
         <p className={`status-line ${msg.includes("Error") ? "warn" : "ok"}`}>{msg}</p>
-      </section>
+      </section>}
 
-      <section className="panel">
+      {section === "envios" && <section className="panel">
         <h2>Envios enviados y recibidos</h2>
         <div className="inline-actions">
           <button className="btn btn-ghost" onClick={loadShipments}>Actualizar envios</button>
@@ -553,7 +566,7 @@ export default function ClientPortalPage() {
             </tbody>
           </table>
         </div>
-      </section>
+      </section>}
     </main>
   );
 }

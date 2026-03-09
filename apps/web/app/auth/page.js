@@ -5,6 +5,7 @@ import { useState } from "react";
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
 export default function AuthPage() {
+  const [section, setSection] = useState("acceso");
   const [mode, setMode] = useState("login");
   const [email, setEmail] = useState("admin.ops@mande24.local");
   const [fullName, setFullName] = useState("Admin Ops");
@@ -61,6 +62,10 @@ export default function AuthPage() {
           <h2>Mande24 Independent</h2>
         </div>
         <nav className="nav-pills">
+          <a className="nav-link" href="/">Inicio</a>
+          <a className="nav-link" href="/servicios">Servicios</a>
+          <a className="nav-link" href="/cobertura">Cobertura</a>
+          <a className="nav-link" href="/noticias">Noticias</a>
           <a className="nav-link active" href="/auth">Auth</a>
           <a className="nav-link" href="/client">Cliente</a>
           <a className="nav-link" href="/rider">Rider</a>
@@ -72,7 +77,12 @@ export default function AuthPage() {
       <h1>Acceso y Token</h1>
       <p className="hero-note">Haz login o crea usuario. El token se guarda en el navegador y lo usaran los demas portales automaticamente.</p>
 
-      <section className="panel">
+      <nav className="section-nav">
+        <button className={section === "acceso" ? "section-link active" : "section-link"} onClick={() => setSection("acceso")}>Acceso</button>
+        <button className={section === "flujo" ? "section-link active" : "section-link"} onClick={() => setSection("flujo")}>Flujo Operativo</button>
+      </nav>
+
+      {section === "acceso" && <section className="panel">
         <div className="inline-actions">
           <button className={mode === "login" ? "btn btn-primary" : "btn"} onClick={() => setMode("login")}>Login</button>
           <button className={mode === "register" ? "btn btn-primary" : "btn"} onClick={() => setMode("register")}>Register + Login</button>
@@ -114,16 +124,16 @@ export default function AuthPage() {
 
         <p className={`status-line ${msg.includes("fallido") || msg.includes("Error") ? "warn" : "ok"}`}>{msg}</p>
         {token && <textarea className="mono-box" value={token} readOnly rows={6} />}
-      </section>
+      </section>}
 
-      <section className="panel">
+      {section === "flujo" && <section className="panel">
         <h2>Flujo sugerido</h2>
         <ol className="flow-list">
           <li>Autentica con usuario `admin` para configurar catalogos y pruebas.</li>
           <li>Despues abre `Cliente` para crear una guia.</li>
           <li>Continua en `Rider` para actualizar etapas de entrega.</li>
         </ol>
-      </section>
+      </section>}
     </main>
   );
 }

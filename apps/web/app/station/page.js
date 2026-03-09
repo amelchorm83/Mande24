@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
 export default function StationPortalPage() {
+  const [section, setSection] = useState("clientes");
   const [token, setToken] = useState("");
   const [riderRows, setRiderRows] = useState([]);
   const [stationRows, setStationRows] = useState([]);
@@ -192,6 +193,10 @@ export default function StationPortalPage() {
           <h2>ERPMande24</h2>
         </div>
         <nav className="nav-pills">
+          <a className="nav-link" href="/">Inicio</a>
+          <a className="nav-link" href="/servicios">Servicios</a>
+          <a className="nav-link" href="/cobertura">Cobertura</a>
+          <a className="nav-link" href="/noticias">Noticias</a>
           <a className="nav-link" href="/auth">Auth</a>
           <a className="nav-link" href="/client">Cliente</a>
           <a className="nav-link" href="/rider">Rider</a>
@@ -203,7 +208,13 @@ export default function StationPortalPage() {
       <h1>Comisiones Semanales</h1>
       <p className="hero-note">Consulta resultados en vivo de riders y estaciones. Solo rol admin puede ejecutar cierre semanal.</p>
 
-      <section className="panel">
+      <nav className="section-nav">
+        <button className={section === "clientes" ? "section-link active" : "section-link"} onClick={() => setSection("clientes")}>Alta de Clientes</button>
+        <button className={section === "comisiones" ? "section-link active" : "section-link"} onClick={() => setSection("comisiones")}>Comisiones</button>
+        <button className={section === "resultados" ? "section-link active" : "section-link"} onClick={() => setSection("resultados")}>Resultados</button>
+      </nav>
+
+      {section === "clientes" && <section className="panel">
         <h2>Alta de clientes (origen/destino)</h2>
         <form className="form-grid" onSubmit={createClientProfile}>
           <label>
@@ -275,9 +286,9 @@ export default function StationPortalPage() {
           )}
           <button className="btn btn-primary" type="submit">Registrar cliente</button>
         </form>
-      </section>
+      </section>}
 
-      <section className="panel">
+      {section === "comisiones" && <section className="panel">
         <h2>Acciones</h2>
         <label>
           Token Bearer
@@ -292,9 +303,9 @@ export default function StationPortalPage() {
           <span className="kpi">Riders: <strong>{riderRows.length}</strong></span>
           <span className="kpi">Estaciones: <strong>{stationRows.length}</strong></span>
         </div>
-      </section>
+      </section>}
 
-      <section className="panel">
+      {section === "resultados" && <section className="panel">
         <h2>Rider Weekly</h2>
         <div className="table-wrap">
           <table>
@@ -308,9 +319,9 @@ export default function StationPortalPage() {
             </tbody>
           </table>
         </div>
-      </section>
+      </section>}
 
-      <section className="panel">
+      {section === "resultados" && <section className="panel">
         <h2>Station Weekly</h2>
         <div className="table-wrap">
           <table>
@@ -324,9 +335,9 @@ export default function StationPortalPage() {
             </tbody>
           </table>
         </div>
-      </section>
+      </section>}
 
-      <section className="panel">
+      {section === "resultados" && <section className="panel">
         <h2>Clientes registrados</h2>
         <div className="table-wrap">
           <table>
@@ -342,7 +353,7 @@ export default function StationPortalPage() {
             </tbody>
           </table>
         </div>
-      </section>
+      </section>}
     </main>
   );
 }

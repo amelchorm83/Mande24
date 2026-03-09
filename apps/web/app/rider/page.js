@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
 export default function RiderPortalPage() {
+  const [section, setSection] = useState("actualizar");
   const [token, setToken] = useState("");
   const [deliveryId, setDeliveryId] = useState("");
   const [stage, setStage] = useState("in_transit");
@@ -48,6 +49,10 @@ export default function RiderPortalPage() {
           <h2>Mande24 Independent</h2>
         </div>
         <nav className="nav-pills">
+          <a className="nav-link" href="/">Inicio</a>
+          <a className="nav-link" href="/servicios">Servicios</a>
+          <a className="nav-link" href="/cobertura">Cobertura</a>
+          <a className="nav-link" href="/noticias">Noticias</a>
           <a className="nav-link" href="/auth">Auth</a>
           <a className="nav-link" href="/client">Cliente</a>
           <a className="nav-link active" href="/rider">Rider</a>
@@ -59,7 +64,12 @@ export default function RiderPortalPage() {
       <h1>Seguimiento de Entrega</h1>
       <p className="hero-note">Pega el <code>delivery_id</code> generado en Cliente y avanza la entrega por etapas. Para <code>delivered</code> debes marcar evidencia y firma.</p>
 
-      <section className="panel">
+      <nav className="section-nav">
+        <button className={section === "actualizar" ? "section-link active" : "section-link"} onClick={() => setSection("actualizar")}>Actualizar Etapa</button>
+        <button className={section === "guia" ? "section-link active" : "section-link"} onClick={() => setSection("guia")}>Guia Rapida</button>
+      </nav>
+
+      {section === "actualizar" && <section className="panel">
         <h2>Actualizar etapa</h2>
         <form className="form-grid" onSubmit={updateStage}>
           <label>
@@ -93,16 +103,16 @@ export default function RiderPortalPage() {
           <button className="btn btn-primary" type="submit">Actualizar etapa</button>
         </form>
         <p className={`status-line ${msg.includes("Error") ? "warn" : "ok"}`}>{msg}</p>
-      </section>
+      </section>}
 
-      <section className="panel">
+      {section === "guia" && <section className="panel">
         <h2>Guia rapida de etapas</h2>
         <ol className="flow-list">
           <li><code>assigned</code> -&gt; pedido asignado.</li>
           <li><code>picked_up</code> y <code>in_transit</code> -&gt; en movimiento.</li>
           <li><code>delivered</code> -&gt; marcar <code>Evidencia</code> y <code>Firma</code> para validar cierre.</li>
         </ol>
-      </section>
+      </section>}
     </main>
   );
 }
