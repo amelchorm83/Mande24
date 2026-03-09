@@ -1,26 +1,42 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 140" role="img" aria-label="Logo Mande24 Mensajeria">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 860 170" role="img" aria-label="Logotipo Mande24">
   <defs>
-    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0%" stop-color="#fb923c"/>
+    <linearGradient id="m24-orange" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#ff8a1f"/>
       <stop offset="100%" stop-color="#c2410c"/>
     </linearGradient>
-    <linearGradient id="box" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0%" stop-color="#ffedd5"/>
-      <stop offset="100%" stop-color="#fdba74"/>
+    <linearGradient id="m24-sand" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#fff1df"/>
+      <stop offset="100%" stop-color="#ffd3ad"/>
     </linearGradient>
+    <filter id="m24-shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="8" stdDeviation="8" flood-color="#9a3412" flood-opacity="0.28"/>
+    </filter>
   </defs>
-  <rect x="4" y="14" width="112" height="112" rx="28" fill="url(#bg)"/>
-  <circle cx="60" cy="70" r="42" fill="#ffffff1f"/>
-  <path d="M24 85c12-2 24-10 34-24 6 8 14 13 23 16" fill="none" stroke="#fff7ed" stroke-width="8" stroke-linecap="round"/>
-  <rect x="40" y="51" width="40" height="30" rx="7" fill="url(#box)" stroke="#9a3412" stroke-width="2"/>
-  <path d="M40 63h40" stroke="#9a3412" stroke-width="2"/>
-  <path d="M60 51v30" stroke="#9a3412" stroke-width="2"/>
-  <circle cx="35" cy="92" r="7" fill="#ffedd5"/>
-  <circle cx="86" cy="92" r="7" fill="#ffedd5"/>
-  <circle cx="90" cy="40" r="16" fill="#7c2d12"/>
-  <text x="90" y="45" text-anchor="middle" font-family="Trebuchet MS, sans-serif" font-size="12" font-weight="700" fill="#fff7ed">24</text>
 
-  <text x="138" y="62" font-family="Trebuchet MS, sans-serif" font-size="44" font-weight="700" fill="#111827">Mande24</text>
-  <text x="138" y="91" font-family="Trebuchet MS, sans-serif" font-size="21" font-weight="700" fill="#c2410c">Mensajeria | Paqueteria | Mandaditos</text>
-  <text x="138" y="115" font-family="Trebuchet MS, sans-serif" font-size="16" fill="#475569">Entrega rapida local con seguimiento claro para clientes y negocios.</text>
+  <g transform="translate(12 16)" filter="url(#m24-shadow)">
+    <rect x="0" y="0" width="132" height="132" rx="34" fill="url(#m24-orange)"/>
+    <rect x="18" y="20" width="96" height="92" rx="24" fill="#ffffff1f"/>
+
+    <path d="M29 85c8-10 21-22 38-34 8 8 20 16 34 22" fill="none" stroke="#fff5eb" stroke-width="8" stroke-linecap="round"/>
+
+    <rect x="38" y="48" width="56" height="40" rx="10" fill="url(#m24-sand)" stroke="#8a2f08" stroke-width="2.4"/>
+    <path d="M38 62h56" stroke="#8a2f08" stroke-width="2.4"/>
+    <path d="M66 48v40" stroke="#8a2f08" stroke-width="2.4"/>
+
+    <circle cx="42" cy="95" r="8" fill="#ffe6d1"/>
+    <circle cx="90" cy="95" r="8" fill="#ffe6d1"/>
+
+    <circle cx="102" cy="36" r="18" fill="#7c2d12"/>
+    <text x="102" y="41" text-anchor="middle" font-family="Sora, Montserrat, Trebuchet MS, sans-serif" font-size="12" font-weight="800" fill="#fff7ed">24</text>
+  </g>
+
+  <g transform="translate(170 30)">
+    <text x="0" y="56" font-family="Sora, Montserrat, Trebuchet MS, sans-serif" font-size="68" font-weight="800" letter-spacing="0.5" fill="#1f2937">Mande</text>
+    <text x="232" y="56" font-family="Sora, Montserrat, Trebuchet MS, sans-serif" font-size="68" font-weight="900" letter-spacing="0.5" fill="#ea580c">24</text>
+
+    <rect x="0" y="70" width="476" height="3" rx="2" fill="#fdba74"/>
+
+    <text x="0" y="102" font-family="Montserrat, Trebuchet MS, sans-serif" font-size="24" font-weight="700" fill="#c2410c">Mensajeria | Paqueteria | Mandaditos</text>
+    <text x="0" y="128" font-family="Montserrat, Trebuchet MS, sans-serif" font-size="18" fill="#475569">Entregas locales rapidas con seguimiento claro y evidencia digital.</text>
+  </g>
 </svg>
