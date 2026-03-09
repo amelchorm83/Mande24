@@ -1,22 +1,27 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" role="img" aria-label="Icono Mande24 Mensajeria">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" role="img" aria-label="Icono Mande24">
   <defs>
-    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0%" stop-color="#fb923c"/>
+    <linearGradient id="m24-orange" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#ff8a1f"/>
       <stop offset="100%" stop-color="#c2410c"/>
     </linearGradient>
-    <linearGradient id="box" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0%" stop-color="#ffedd5"/>
-      <stop offset="100%" stop-color="#fdba74"/>
+    <linearGradient id="m24-sand" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#fff1df"/>
+      <stop offset="100%" stop-color="#ffd3ad"/>
     </linearGradient>
   </defs>
-  <rect x="8" y="8" width="112" height="112" rx="28" fill="url(#bg)"/>
-  <circle cx="64" cy="64" r="42" fill="#ffffff1f"/>
-  <path d="M24 79c12-2 24-10 34-24 6 8 14 13 23 16" fill="none" stroke="#fff7ed" stroke-width="8" stroke-linecap="round"/>
-  <rect x="44" y="45" width="40" height="30" rx="7" fill="url(#box)" stroke="#9a3412" stroke-width="2"/>
-  <path d="M44 57h40" stroke="#9a3412" stroke-width="2"/>
-  <path d="M64 45v30" stroke="#9a3412" stroke-width="2"/>
-  <circle cx="36" cy="86" r="7" fill="#ffedd5"/>
-  <circle cx="88" cy="86" r="7" fill="#ffedd5"/>
-  <circle cx="92" cy="34" r="16" fill="#7c2d12"/>
-  <text x="92" y="39" text-anchor="middle" font-family="Trebuchet MS, sans-serif" font-size="12" font-weight="700" fill="#fff7ed">24</text>
+
+  <rect x="8" y="8" width="112" height="112" rx="30" fill="url(#m24-orange)"/>
+  <rect x="22" y="22" width="84" height="84" rx="22" fill="#ffffff1f"/>
+
+  <path d="M30 80c8-10 20-20 35-30 8 8 18 15 30 20" fill="none" stroke="#fff5eb" stroke-width="7" stroke-linecap="round"/>
+
+  <rect x="40" y="47" width="48" height="34" rx="9" fill="url(#m24-sand)" stroke="#8a2f08" stroke-width="2.2"/>
+  <path d="M40 59h48" stroke="#8a2f08" stroke-width="2.2"/>
+  <path d="M64 47v34" stroke="#8a2f08" stroke-width="2.2"/>
+
+  <circle cx="44" cy="88" r="7" fill="#ffe6d1"/>
+  <circle cx="84" cy="88" r="7" fill="#ffe6d1"/>
+
+  <circle cx="92" cy="36" r="14" fill="#7c2d12"/>
+  <text x="92" y="40" text-anchor="middle" font-family="Sora, Montserrat, Trebuchet MS, sans-serif" font-size="11" font-weight="800" fill="#fff7ed">24</text>
 </svg>

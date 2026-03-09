@@ -1,32 +1,46 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 360" role="img" aria-label="Banner operativo Mande24">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 360" role="img" aria-label="Banner Mande24">
   <defs>
-    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0%" stop-color="#fb923c"/>
+    <linearGradient id="banner-bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#ff8a1f"/>
       <stop offset="100%" stop-color="#c2410c"/>
     </linearGradient>
-    <linearGradient id="box" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0%" stop-color="#ffedd5"/>
-      <stop offset="100%" stop-color="#fdba74"/>
+    <linearGradient id="banner-soft" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#ffffff2a"/>
+      <stop offset="100%" stop-color="#ffffff10"/>
+    </linearGradient>
+    <linearGradient id="isotipo-sand" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#fff1df"/>
+      <stop offset="100%" stop-color="#ffd3ad"/>
     </linearGradient>
   </defs>
-  <rect width="1200" height="360" fill="url(#bg)"/>
-  <circle cx="180" cy="80" r="110" fill="#ffffff18"/>
-  <circle cx="1060" cy="320" r="180" fill="#ffffff12"/>
-  <rect x="62" y="78" width="540" height="204" rx="20" fill="#ffffff14" stroke="#ffffff25"/>
-  <text x="94" y="138" font-family="Trebuchet MS, sans-serif" font-size="48" font-weight="700" fill="#fff7ed">Mande24</text>
-  <text x="94" y="176" font-family="Trebuchet MS, sans-serif" font-size="26" font-weight="700" fill="#ffedd5">Mensajeria | Paqueteria | Mandaditos</text>
-  <text x="94" y="208" font-family="Trebuchet MS, sans-serif" font-size="20" fill="#fff7ed">Cobertura local, entregas rapidas y trazabilidad por guia.</text>
-  <rect x="94" y="224" width="362" height="40" rx="20" fill="#ffedd5"/>
-  <text x="118" y="250" font-family="Trebuchet MS, sans-serif" font-size="20" font-weight="700" fill="#7c2d12">Entrega segura. Ruta inteligente. Cliente informado.</text>
 
-  <rect x="706" y="52" width="418" height="256" rx="24" fill="#ffffff16" stroke="#ffffff2d"/>
-  <circle cx="915" cy="180" r="92" fill="#ffffff1f"/>
-  <path d="M782 236c30-4 58-22 83-58 16 22 38 37 63 44" fill="none" stroke="#fff7ed" stroke-width="14" stroke-linecap="round"/>
-  <rect x="875" y="128" width="86" height="62" rx="12" fill="url(#box)" stroke="#9a3412" stroke-width="4"/>
-  <path d="M875 152h86" stroke="#9a3412" stroke-width="4"/>
-  <path d="M918 128v62" stroke="#9a3412" stroke-width="4"/>
-  <circle cx="812" cy="252" r="14" fill="#ffedd5"/>
-  <circle cx="980" cy="252" r="14" fill="#ffedd5"/>
-  <circle cx="1004" cy="106" r="30" fill="#7c2d12"/>
-  <text x="1004" y="116" text-anchor="middle" font-family="Trebuchet MS, sans-serif" font-size="24" font-weight="700" fill="#fff7ed">24</text>
+  <rect width="1200" height="360" fill="url(#banner-bg)"/>
+  <circle cx="88" cy="56" r="120" fill="#ffffff12"/>
+  <circle cx="1128" cy="338" r="184" fill="#ffffff10"/>
+
+  <rect x="54" y="62" width="660" height="238" rx="26" fill="url(#banner-soft)" stroke="#ffffff2e"/>
+  <text x="94" y="132" font-family="Sora, Montserrat, Trebuchet MS, sans-serif" font-size="62" font-weight="800" fill="#fffaf5">Mande</text>
+  <text x="332" y="132" font-family="Sora, Montserrat, Trebuchet MS, sans-serif" font-size="62" font-weight="900" fill="#ffe8d0">24</text>
+  <rect x="94" y="148" width="468" height="3" rx="2" fill="#ffd3ad"/>
+
+  <text x="94" y="186" font-family="Montserrat, Trebuchet MS, sans-serif" font-size="26" font-weight="700" fill="#fff3e6">Mensajeria | Paqueteria | Mandaditos</text>
+  <text x="94" y="218" font-family="Montserrat, Trebuchet MS, sans-serif" font-size="20" fill="#fffaf5">Cobertura local, entregas rapidas y trazabilidad por guia.</text>
+
+  <rect x="94" y="236" width="410" height="42" rx="21" fill="#fff1df"/>
+  <text x="116" y="264" font-family="Montserrat, Trebuchet MS, sans-serif" font-size="20" font-weight="700" fill="#8a2f08">Entrega segura. Ruta inteligente. Cliente informado.</text>
+
+  <rect x="760" y="48" width="390" height="264" rx="28" fill="#ffffff1a" stroke="#ffffff33"/>
+  <rect x="843" y="76" width="224" height="208" rx="44" fill="#ffffff1f"/>
+
+  <path d="M832 234c18-20 44-40 78-62 16 14 37 27 64 38" fill="none" stroke="#fff5eb" stroke-width="12" stroke-linecap="round"/>
+
+  <rect x="874" y="150" width="136" height="94" rx="20" fill="url(#isotipo-sand)" stroke="#8a2f08" stroke-width="4"/>
+  <path d="M874 184h136" stroke="#8a2f08" stroke-width="4"/>
+  <path d="M942 150v94" stroke="#8a2f08" stroke-width="4"/>
+
+  <circle cx="886" cy="256" r="12" fill="#ffe6d1"/>
+  <circle cx="998" cy="256" r="12" fill="#ffe6d1"/>
+
+  <circle cx="1038" cy="132" r="28" fill="#7c2d12"/>
+  <text x="1038" y="141" text-anchor="middle" font-family="Sora, Montserrat, Trebuchet MS, sans-serif" font-size="22" font-weight="800" fill="#fff7ed">24</text>
 </svg>
