@@ -11,8 +11,14 @@ from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from app.db.models import (
+    ClientKind,
+    ClientProfile,
     Delivery,
+    GeoMunicipality,
+    GeoPostalCode,
+    GeoState,
     Guide,
+    GuideParty,
     PricingRule,
     Rider,
     RiderCommission,
@@ -41,6 +47,7 @@ MENU = [
     ("zones", "Zonas", "/ERPMande24/catalogs/zones"),
     ("stations", "Estaciones", "/ERPMande24/catalogs/stations"),
     ("riders", "Riders", "/ERPMande24/catalogs/riders"),
+    ("clients", "Clientes", "/ERPMande24/catalogs/clients"),
     ("pricing", "Tarifas", "/ERPMande24/catalogs/pricing-rules"),
     ("users", "Usuarios", "/ERPMande24/users"),
     ("comm_rider", "Comisiones Rider", "/ERPMande24/commissions/riders"),
@@ -697,9 +704,23 @@ def backend_dashboard(db: Session = Depends(get_db), msg: str = "", kind: str = 
 def backend_new_guide_page(db: Session = Depends(get_db), msg: str = "", kind: str = "ok") -> str:
     services = db.query(Service).filter(Service.active.is_(True)).order_by(Service.name.asc()).all()
     stations = db.query(Station).filter(Station.active.is_(True)).order_by(Station.name.asc()).all()
+    origin_clients = (
+        db.query(ClientProfile)
+        .filter(ClientProfile.active.is_(True), ClientProfile.client_kind.in_([ClientKind.origin, ClientKind.both]))
+        .order_by(ClientProfile.display_name.asc())
+        .all()
+    )
+    destination_clients = (
+        db.query(ClientProfile)
+        .filter(ClientProfile.active.is_(True), ClientProfile.client_kind.in_([ClientKind.destination, ClientKind.both]))
+        .order_by(ClientProfile.display_name.asc())
+        .all()
+    )
 
     service_options = "".join([f'<option value="{item.id}">{escape(item.name)} ({item.service_type.value})</option>' for item in services])
     station_options = "".join([f'<option value="{item.id}">{escape(item.name)}</option>' for item in stations])
+    origin_client_options = "".join([f'<option value="{item.id}">{escape(item.display_name)}</option>' for item in origin_clients])
+    destination_client_options = "".join([f'<option value="{item.id}">{escape(item.display_name)}</option>' for item in destination_clients])
 
     catalog_hint = ""
     if not services or not stations:
@@ -710,6 +731,9 @@ def backend_new_guide_page(db: Session = Depends(get_db), msg: str = "", kind: s
         "<form class=\"grid\" method=\"post\" action=\"/ERPMande24/guides/create\">"
         "<label>Nombre cliente<input name=\"customer_name\" minlength=\"2\" maxlength=\"150\" value=\"Cliente Backend\" required /></label>"
         "<label>Nombre destino<input name=\"destination_name\" minlength=\"2\" maxlength=\"150\" value=\"Destino Backend\" required /></label>"
+        f"<label>Cliente origen<select name=\"origin_client_id\"><option value=\"\">Selecciona (opcional)</option>{origin_client_options}</select></label>"
+        f"<label>Cliente destino<select name=\"destination_client_id\"><option value=\"\">Selecciona (opcional)</option>{destination_client_options}</select></label>"
+        "<label>Facturar servicio origen<select name=\"origin_wants_invoice\"><option value=\"\">Tomar perfil</option><option value=\"true\">Si</option><option value=\"false\">No</option></select></label>"
         f"<label>Servicio<select name=\"service_id\" required><option value=\"\">Selecciona</option>{service_options}</select></label>"
         f"<label>Estacion<select name=\"station_id\" required><option value=\"\">Selecciona</option>{station_options}</select></label>"
         "<div class=\"full actions\"><button class=\"primary\" type=\"submit\">Generar Guia</button></div>"
@@ -726,6 +750,9 @@ def backend_new_guide_page(db: Session = Depends(get_db), msg: str = "", kind: s
 def backend_create_guide(
     customer_name: str = Form(...),
     destination_name: str = Form(...),
+    origin_client_id: str = Form(""),
+    destination_client_id: str = Form(""),
+    origin_wants_invoice: str = Form(""),
     service_id: str = Form(...),
     station_id: str = Form(...),
     request: Request = None,
@@ -754,11 +781,26 @@ def backend_create_guide(
     if not pricing_rule:
         return _redirect("/ERPMande24/guides/new", "No existe tarifa activa para servicio + estacion.", "error")
 
+    origin_client = None
+    destination_client = None
+    if origin_client_id.strip():
+        origin_client = db.query(ClientProfile).filter(ClientProfile.id == origin_client_id.strip(), ClientProfile.active.is_(True)).first()
+        if not origin_client:
+            return _redirect("/ERPMande24/guides/new", "Cliente origen no encontrado o inactivo.", "error")
+    if destination_client_id.strip():
+        destination_client = db.query(ClientProfile).filter(ClientProfile.id == destination_client_id.strip(), ClientProfile.active.is_(True)).first()
+        if not destination_client:
+            return _redirect("/ERPMande24/guides/new", "Cliente destino no encontrado o inactivo.", "error")
+
+    wants_invoice = origin_client.wants_invoice if origin_client else False
+    if origin_wants_invoice in {"true", "false"}:
+        wants_invoice = origin_wants_invoice == "true"
+
     guide_code = f"M24-{datetime.now(timezone.utc).strftime('%Y%m%d')}-{uuid4().hex[:6].upper()}"
     guide = Guide(
         guide_code=guide_code,
-        customer_name=customer_name.strip(),
-        destination_name=destination_name.strip(),
+        customer_name=(origin_client.display_name if origin_client else customer_name.strip()),
+        destination_name=(destination_client.display_name if destination_client else destination_name.strip()),
         service_type=service.service_type.value,
         service_id=service.id,
         station_id=station.id,
@@ -770,6 +812,14 @@ def backend_create_guide(
 
     delivery = Delivery(guide_id=guide.id, stage=WorkflowStage.assigned)
     db.add(delivery)
+    db.add(
+        GuideParty(
+            guide_id=guide.id,
+            origin_client_id=(origin_client.id if origin_client else None),
+            destination_client_id=(destination_client.id if destination_client else None),
+            origin_wants_invoice=wants_invoice,
+        )
+    )
     db.commit()
 
     return _redirect(
@@ -1518,6 +1568,341 @@ def backend_rider_detail(rider_id: str, db: Session = Depends(get_db), msg: str 
     return _render_layout("riders", f"Rider {rider.id}", "Vista detalle tipo formulario.", content, msg, kind)
 
 
+@router.get("/catalogs/clients", response_class=HTMLResponse)
+def backend_clients(
+    db: Session = Depends(get_db),
+    q: str = "",
+    client_kind: str = "",
+    state_code: str = "",
+    msg: str = "",
+    kind: str = "ok",
+) -> str:
+    clients_query = db.query(ClientProfile)
+    if client_kind in {"origin", "destination", "both"}:
+        if client_kind == "origin":
+            clients_query = clients_query.filter(ClientProfile.client_kind.in_([ClientKind.origin, ClientKind.both]))
+        elif client_kind == "destination":
+            clients_query = clients_query.filter(ClientProfile.client_kind.in_([ClientKind.destination, ClientKind.both]))
+        else:
+            clients_query = clients_query.filter(ClientProfile.client_kind == ClientKind.both)
+
+    if state_code.strip():
+        clients_query = clients_query.filter(ClientProfile.state_code == state_code.strip().upper())
+
+    if q.strip():
+        term = f"%{q.strip()}%"
+        clients_query = clients_query.filter(
+            ClientProfile.display_name.ilike(term)
+            | ClientProfile.state_code.ilike(term)
+            | ClientProfile.municipality_code.ilike(term)
+            | ClientProfile.postal_code.ilike(term)
+        )
+
+    clients = clients_query.order_by(ClientProfile.created_at.desc()).limit(300).all()
+    users = {item.id: item for item in db.query(User).all()}
+    states = {item.code: item for item in db.query(GeoState).all()}
+    municipalities = {item.code: item for item in db.query(GeoMunicipality).all()}
+    postal_codes = {item.code: item for item in db.query(GeoPostalCode).all()}
+    state_options = "".join(
+        [
+            f'<option value="{escape(item.code)}" {"selected" if item.code == state_code else ""}>{escape(item.name)}</option>'
+            for item in sorted(states.values(), key=lambda row: row.name.lower())
+        ]
+    )
+    kind_options = "".join(
+        [
+            f'<option value="{value}" {"selected" if client_kind == value else ""}>{label}</option>'
+            for value, label in [("", "Todos"), ("origin", "Origen"), ("destination", "Destino"), ("both", "Ambos")]
+        ]
+    )
+
+    export_params = {}
+    if q.strip():
+        export_params["q"] = q.strip()
+    if client_kind in {"origin", "destination", "both"}:
+        export_params["client_kind"] = client_kind
+    if state_code.strip():
+        export_params["state_code"] = state_code.strip().upper()
+    export_url = "/ERPMande24/export/clients.csv"
+    if export_params:
+        export_url = f"{export_url}?{urlencode(export_params)}"
+
+    rows = []
+    for item in clients:
+        state = states.get(item.state_code)
+        municipality = municipalities.get(item.municipality_code)
+        postal_code = postal_codes.get(item.postal_code)
+        linked_user = users.get(item.user_id) if item.user_id else None
+        rows.append(
+            [
+                escape(item.id),
+                escape(item.display_name),
+                escape(item.client_kind.value),
+                escape(state.name if state else item.state_code),
+                escape(municipality.name if municipality else item.municipality_code),
+                escape(postal_code.code if postal_code else item.postal_code),
+                escape(item.address_line or "-"),
+                "si" if item.wants_invoice else "no",
+                escape(linked_user.email if linked_user else "sin acceso portal"),
+                "activo" if item.active else "inactivo",
+                f'<a class="btn" href="/ERPMande24/catalogs/clients/{escape(item.id)}">Editar</a>',
+            ]
+        )
+
+    state_create_options = "".join(
+        [f'<option value="{escape(item.code)}">{escape(item.name)}</option>' for item in sorted(states.values(), key=lambda row: row.name.lower())]
+    )
+    municipality_create_options = "".join(
+        [f'<option value="{escape(item.code)}">{escape(item.name)}</option>' for item in sorted(municipalities.values(), key=lambda row: row.name.lower())]
+    )
+    postal_create_options = "".join(
+        [f'<option value="{escape(item.code)}">{escape(item.code)}</option>' for item in sorted(postal_codes.values(), key=lambda row: row.code)]
+    )
+
+    create_form = (
+        "<section id=\"nuevo-cliente\" class=\"panel\"><h3>Nuevo Cliente</h3>"
+        "<form class=\"grid\" method=\"post\" action=\"/ERPMande24/catalogs/clients/create\">"
+        "<label>Nombre cliente<input name=\"display_name\" required minlength=\"2\" maxlength=\"150\" /></label>"
+        "<label>Tipo cliente<select name=\"client_kind\"><option value=\"origin\">Origen</option><option value=\"destination\">Destino</option><option value=\"both\">Ambos</option></select></label>"
+        f"<label>Estado<select name=\"state_code\" required><option value=\"\">Selecciona</option>{state_create_options}</select></label>"
+        f"<label>Municipio<select name=\"municipality_code\" required><option value=\"\">Selecciona</option>{municipality_create_options}</select></label>"
+        f"<label>Codigo postal<select name=\"postal_code\" required><option value=\"\">Selecciona</option>{postal_create_options}</select></label>"
+        "<label>Direccion<input name=\"address_line\" maxlength=\"255\" /></label>"
+        "<label>Facturar servicios origen<select name=\"wants_invoice\"><option value=\"false\">No</option><option value=\"true\">Si</option></select></label>"
+        "<label>Crear acceso portal<select name=\"create_portal_access\"><option value=\"false\">No</option><option value=\"true\">Si</option></select></label>"
+        "<label>Email portal (si aplica)<input type=\"email\" name=\"portal_email\" /></label>"
+        "<label>Password portal (si aplica)<input type=\"password\" name=\"portal_password\" minlength=\"8\" /></label>"
+        "<div class=\"full actions\"><button class=\"primary\" type=\"submit\">Crear Cliente</button></div>"
+        "</form></section>"
+    )
+
+    content = (
+        "<section class=\"panel\"><h3>Catalogo de Clientes</h3>"
+        "<form class=\"actions\" method=\"get\" action=\"/ERPMande24/catalogs/clients\">"
+        f"<input name=\"q\" value=\"{escape(q)}\" placeholder=\"Buscar por nombre, estado, municipio o CP\" />"
+        f"<select name=\"client_kind\">{kind_options}</select>"
+        f"<select name=\"state_code\"><option value=\"\">Todos los estados</option>{state_options}</select>"
+        "<button type=\"submit\">Aplicar filtros</button>"
+        "<a class=\"btn\" href=\"/ERPMande24/catalogs/clients\">Limpiar</a>"
+        "</form>"
+        f"<div class=\"actions\"><a class=\"btn primary\" href=\"/ERPMande24/catalogs/clients#nuevo-cliente\">Crear cliente nuevo</a><a class=\"btn\" href=\"{escape(export_url)}\">Exportar CSV</a><a class=\"btn\" href=\"/client\">Abrir Portal Cliente</a><a class=\"btn\" href=\"/station\">Abrir Portal Estacion</a></div>"
+        f"{_table(['ID', 'Nombre', 'Tipo', 'Estado', 'Municipio', 'CP', 'Direccion', 'Factura Origen', 'Usuario Portal', 'Estado Registro', 'Accion'], rows)}"
+        "</section>"
+    )
+    return _render_layout("clients", "Catalogo de Clientes", "Clientes origen y destino con direccion y facturacion.", create_form + content, msg, kind)
+
+
+@router.post("/catalogs/clients/create")
+def backend_create_client(
+    display_name: str = Form(...),
+    client_kind: str = Form("origin"),
+    state_code: str = Form(...),
+    municipality_code: str = Form(...),
+    postal_code: str = Form(...),
+    address_line: str = Form(""),
+    wants_invoice: str = Form("false"),
+    create_portal_access: str = Form("false"),
+    portal_email: str = Form(""),
+    portal_password: str = Form(""),
+    request: Request = None,
+    db: Session = Depends(get_db),
+) -> RedirectResponse:
+    forbidden = _require_ops(request, "/ERPMande24/catalogs/clients", "crear cliente")
+    if forbidden:
+        return forbidden
+
+    state = db.query(GeoState).filter(GeoState.code == state_code.strip().upper()).first()
+    if not state:
+        return _redirect("/ERPMande24/catalogs/clients", "Estado no encontrado.", "error")
+
+    municipality = (
+        db.query(GeoMunicipality)
+        .filter(GeoMunicipality.code == municipality_code.strip().upper(), GeoMunicipality.state_code == state.code)
+        .first()
+    )
+    if not municipality:
+        return _redirect("/ERPMande24/catalogs/clients", "Municipio no encontrado para ese estado.", "error")
+
+    postal = (
+        db.query(GeoPostalCode)
+        .filter(GeoPostalCode.code == postal_code.strip(), GeoPostalCode.municipality_code == municipality.code)
+        .first()
+    )
+    if not postal:
+        return _redirect("/ERPMande24/catalogs/clients", "Codigo postal no encontrado para ese municipio.", "error")
+
+    try:
+        kind_value = ClientKind(client_kind)
+    except ValueError:
+        return _redirect("/ERPMande24/catalogs/clients", "Tipo de cliente no valido.", "error")
+
+    user_id = None
+    if create_portal_access == "true":
+        clean_email = portal_email.strip().lower()
+        if not clean_email or len(portal_password.strip()) < 8:
+            return _redirect("/ERPMande24/catalogs/clients", "Para acceso portal captura email y password minimo 8 caracteres.", "error")
+        existing = db.query(User).filter(User.email == clean_email).first()
+        if existing:
+            user_id = existing.id
+        else:
+            user = User(
+                email=clean_email,
+                full_name=display_name.strip(),
+                password_hash=hash_password(portal_password.strip()),
+                role=UserRole.client,
+                is_active=True,
+            )
+            db.add(user)
+            db.flush()
+            user_id = user.id
+
+    client = ClientProfile(
+        user_id=user_id,
+        display_name=display_name.strip(),
+        client_kind=kind_value,
+        state_code=state.code,
+        municipality_code=municipality.code,
+        postal_code=postal.code,
+        address_line=address_line.strip(),
+        wants_invoice=(wants_invoice == "true"),
+        active=True,
+    )
+    db.add(client)
+    db.commit()
+    return _redirect("/ERPMande24/catalogs/clients", f"Cliente {client.display_name} creado.")
+
+
+@router.get("/catalogs/clients/{client_id}", response_class=HTMLResponse)
+def backend_client_detail(client_id: str, db: Session = Depends(get_db), msg: str = "", kind: str = "ok") -> str:
+    client = db.query(ClientProfile).filter(ClientProfile.id == client_id).first()
+    if not client:
+        return _render_layout("clients", "Cliente", "Detalle", '<section class="panel"><div class="empty">Cliente no encontrado.</div></section>', msg, "error")
+
+    states = db.query(GeoState).order_by(GeoState.name.asc()).all()
+    municipalities = db.query(GeoMunicipality).order_by(GeoMunicipality.name.asc()).all()
+    postals = db.query(GeoPostalCode).order_by(GeoPostalCode.code.asc()).all()
+    linked_user = db.query(User).filter(User.id == client.user_id).first() if client.user_id else None
+
+    state_options = "".join([f'<option value="{escape(item.code)}" {"selected" if item.code == client.state_code else ""}>{escape(item.name)}</option>' for item in states])
+    municipality_options = "".join([f'<option value="{escape(item.code)}" {"selected" if item.code == client.municipality_code else ""}>{escape(item.name)}</option>' for item in municipalities])
+    postal_options = "".join([f'<option value="{escape(item.code)}" {"selected" if item.code == client.postal_code else ""}>{escape(item.code)}</option>' for item in postals])
+
+    content = (
+        f"{_tabs([('resumen', 'Resumen'), ('editar', 'Editar')])}"
+        "<section id=\"resumen\" class=\"panel\"><h3>Ficha de Cliente</h3>"
+        "<div class=\"kpi-grid\">"
+        f"<article class=\"kpi\"><small>ID</small><strong>{escape(client.id)}</strong></article>"
+        f"<article class=\"kpi\"><small>Nombre</small><strong>{escape(client.display_name)}</strong></article>"
+        f"<article class=\"kpi\"><small>Tipo</small><strong>{escape(client.client_kind.value)}</strong></article>"
+        f"<article class=\"kpi\"><small>Portal</small><strong>{escape(linked_user.email if linked_user else 'Sin acceso')}</strong></article>"
+        "</div></section>"
+        "<section id=\"editar\" class=\"panel\"><h3>Editar Cliente</h3>"
+        f"<form class=\"grid\" method=\"post\" action=\"/ERPMande24/catalogs/clients/{escape(client.id)}/update\">"
+        f"<label>Nombre<input name=\"display_name\" value=\"{escape(client.display_name)}\" required minlength=\"2\" maxlength=\"150\" /></label>"
+        "<label>Tipo cliente<select name=\"client_kind\">"
+        f"<option value=\"origin\" {'selected' if client.client_kind.value == 'origin' else ''}>Origen</option>"
+        f"<option value=\"destination\" {'selected' if client.client_kind.value == 'destination' else ''}>Destino</option>"
+        f"<option value=\"both\" {'selected' if client.client_kind.value == 'both' else ''}>Ambos</option>"
+        "</select></label>"
+        f"<label>Estado<select name=\"state_code\" required>{state_options}</select></label>"
+        f"<label>Municipio<select name=\"municipality_code\" required>{municipality_options}</select></label>"
+        f"<label>Codigo postal<select name=\"postal_code\" required>{postal_options}</select></label>"
+        f"<label>Direccion<input name=\"address_line\" value=\"{escape(client.address_line or '')}\" maxlength=\"255\" /></label>"
+        f"<label>Facturar origen<select name=\"wants_invoice\"><option value=\"true\" {'selected' if client.wants_invoice else ''}>Si</option><option value=\"false\" {'selected' if not client.wants_invoice else ''}>No</option></select></label>"
+        f"<label>Estado registro<select name=\"active\"><option value=\"true\" {'selected' if client.active else ''}>Activo</option><option value=\"false\" {'selected' if not client.active else ''}>Inactivo</option></select></label>"
+        f"<label>Email portal<input type=\"email\" name=\"portal_email\" value=\"{escape(linked_user.email if linked_user else '')}\" /></label>"
+        "<label>Password portal (opcional)<input type=\"password\" name=\"portal_password\" minlength=\"8\" /></label>"
+        "<div class=\"full actions\"><button class=\"primary\" type=\"submit\">Guardar cambios</button><a class=\"btn\" href=\"/ERPMande24/catalogs/clients\">Volver</a></div>"
+        "</form></section>"
+    )
+    return _render_layout("clients", f"Cliente {client.display_name}", "Edicion de catalogo de clientes.", content, msg, kind)
+
+
+@router.post("/catalogs/clients/{client_id}/update")
+def backend_update_client(
+    client_id: str,
+    display_name: str = Form(...),
+    client_kind: str = Form("origin"),
+    state_code: str = Form(...),
+    municipality_code: str = Form(...),
+    postal_code: str = Form(...),
+    address_line: str = Form(""),
+    wants_invoice: str = Form("false"),
+    active: str = Form("true"),
+    portal_email: str = Form(""),
+    portal_password: str = Form(""),
+    request: Request = None,
+    db: Session = Depends(get_db),
+) -> RedirectResponse:
+    forbidden = _require_ops(request, "/ERPMande24/catalogs/clients", "editar cliente")
+    if forbidden:
+        return forbidden
+
+    client = db.query(ClientProfile).filter(ClientProfile.id == client_id).first()
+    if not client:
+        return _redirect("/ERPMande24/catalogs/clients", "Cliente no encontrado.", "error")
+
+    state = db.query(GeoState).filter(GeoState.code == state_code.strip().upper()).first()
+    municipality = (
+        db.query(GeoMunicipality)
+        .filter(GeoMunicipality.code == municipality_code.strip().upper(), GeoMunicipality.state_code == state_code.strip().upper())
+        .first()
+    )
+    postal = (
+        db.query(GeoPostalCode)
+        .filter(GeoPostalCode.code == postal_code.strip(), GeoPostalCode.municipality_code == municipality_code.strip().upper())
+        .first()
+    )
+    if not state or not municipality or not postal:
+        return _redirect(f"/ERPMande24/catalogs/clients/{client_id}", "Direccion no valida (estado/municipio/CP).", "error")
+
+    try:
+        kind_value = ClientKind(client_kind)
+    except ValueError:
+        return _redirect(f"/ERPMande24/catalogs/clients/{client_id}", "Tipo de cliente no valido.", "error")
+
+    client.display_name = display_name.strip()
+    client.client_kind = kind_value
+    client.state_code = state.code
+    client.municipality_code = municipality.code
+    client.postal_code = postal.code
+    client.address_line = address_line.strip()
+    client.wants_invoice = wants_invoice == "true"
+    client.active = active == "true"
+
+    email_value = portal_email.strip().lower()
+    if email_value:
+        linked_user = db.query(User).filter(User.id == client.user_id).first() if client.user_id else None
+        if linked_user:
+            if linked_user.email != email_value and db.query(User).filter(User.email == email_value).first():
+                return _redirect(f"/ERPMande24/catalogs/clients/{client_id}", "El email portal ya existe.", "error")
+            linked_user.email = email_value
+            linked_user.full_name = client.display_name
+            if portal_password.strip():
+                if len(portal_password.strip()) < 8:
+                    return _redirect(f"/ERPMande24/catalogs/clients/{client_id}", "Password portal minimo 8 caracteres.", "error")
+                linked_user.password_hash = hash_password(portal_password.strip())
+        else:
+            if db.query(User).filter(User.email == email_value).first():
+                return _redirect(f"/ERPMande24/catalogs/clients/{client_id}", "El email portal ya existe.", "error")
+            password_value = portal_password.strip()
+            if len(password_value) < 8:
+                return _redirect(f"/ERPMande24/catalogs/clients/{client_id}", "Para crear acceso portal captura password minimo 8 caracteres.", "error")
+            user = User(
+                email=email_value,
+                full_name=client.display_name,
+                password_hash=hash_password(password_value),
+                role=UserRole.client,
+                is_active=True,
+            )
+            db.add(user)
+            db.flush()
+            client.user_id = user.id
+
+    db.commit()
+    return _redirect(f"/ERPMande24/catalogs/clients/{client_id}", "Cliente actualizado correctamente.")
+
+
 @router.get("/catalogs/pricing-rules", response_class=HTMLResponse)
 def backend_pricing_rules(db: Session = Depends(get_db), msg: str = "", kind: str = "ok") -> str:
     services = db.query(Service).order_by(Service.name.asc()).all()
@@ -1906,6 +2291,75 @@ def backend_export_users_csv(db: Session = Depends(get_db)) -> Response:
     users = db.query(User).order_by(User.created_at.desc()).all()
     rows = [[item.id, item.full_name, item.email, item.role.value, str(item.is_active), item.created_at.isoformat()] for item in users]
     return _csv_response("users.csv", ["id", "full_name", "email", "role", "is_active", "created_at"], rows)
+
+
+@router.get("/export/clients.csv")
+def backend_export_clients_csv(
+    db: Session = Depends(get_db),
+    q: str = "",
+    client_kind: str = "",
+    state_code: str = "",
+) -> Response:
+    clients_query = db.query(ClientProfile)
+    if client_kind in {"origin", "destination", "both"}:
+        if client_kind == "origin":
+            clients_query = clients_query.filter(ClientProfile.client_kind.in_([ClientKind.origin, ClientKind.both]))
+        elif client_kind == "destination":
+            clients_query = clients_query.filter(ClientProfile.client_kind.in_([ClientKind.destination, ClientKind.both]))
+        else:
+            clients_query = clients_query.filter(ClientProfile.client_kind == ClientKind.both)
+
+    if state_code.strip():
+        clients_query = clients_query.filter(ClientProfile.state_code == state_code.strip().upper())
+
+    if q.strip():
+        term = f"%{q.strip()}%"
+        clients_query = clients_query.filter(
+            ClientProfile.display_name.ilike(term)
+            | ClientProfile.state_code.ilike(term)
+            | ClientProfile.municipality_code.ilike(term)
+            | ClientProfile.postal_code.ilike(term)
+        )
+
+    clients = clients_query.order_by(ClientProfile.created_at.desc()).all()
+    states = {item.code: item for item in db.query(GeoState).all()}
+    municipalities = {item.code: item for item in db.query(GeoMunicipality).all()}
+    rows = []
+    for item in clients:
+        state = states.get(item.state_code)
+        municipality = municipalities.get(item.municipality_code)
+        rows.append(
+            [
+                item.id,
+                item.display_name,
+                item.client_kind.value,
+                state.name if state else item.state_code,
+                municipality.name if municipality else item.municipality_code,
+                item.postal_code,
+                item.address_line or "",
+                str(item.wants_invoice),
+                item.user_id or "",
+                str(item.active),
+                item.created_at.isoformat(),
+            ]
+        )
+    return _csv_response(
+        "clients.csv",
+        [
+            "id",
+            "display_name",
+            "client_kind",
+            "state",
+            "municipality",
+            "postal_code",
+            "address_line",
+            "wants_invoice",
+            "user_id",
+            "active",
+            "created_at",
+        ],
+        rows,
+    )
 
 
 @router.get("/export/commissions-riders.csv")

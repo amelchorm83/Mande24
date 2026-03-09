@@ -5,7 +5,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_current_user, require_roles
-from app.db.models import Delivery, Guide, PricingRule, Service, Station, WorkflowStage
+from app.db.models import ClientProfile, Delivery, Guide, GuideParty, PricingRule, Service, Station, WorkflowStage
 from app.db.models import User, UserRole
 from app.db.session import get_db
 from app.models.schemas import DeliveryResponse, DeliveryStageUpdate, GuideCreate, GuideResponse
@@ -62,11 +62,30 @@ def create_guide(
     if not pricing_rule:
         raise HTTPException(status_code=400, detail="No active pricing rule for service and station")
 
+    origin_client = None
+    destination_client = None
+    if payload.origin_client_id:
+        origin_client = db.query(ClientProfile).filter(ClientProfile.id == payload.origin_client_id, ClientProfile.active.is_(True)).first()
+        if not origin_client:
+            raise HTTPException(status_code=404, detail="Origin client not found or inactive")
+
+    if payload.destination_client_id:
+        destination_client = db.query(ClientProfile).filter(ClientProfile.id == payload.destination_client_id, ClientProfile.active.is_(True)).first()
+        if not destination_client:
+            raise HTTPException(status_code=404, detail="Destination client not found or inactive")
+
+    customer_name = payload.customer_name.strip()
+    destination_name = payload.destination_name.strip()
+    if origin_client:
+        customer_name = origin_client.display_name
+    if destination_client:
+        destination_name = destination_client.display_name
+
     guide_code = f"M24-{datetime.now(timezone.utc).strftime('%Y%m%d')}-{uuid4().hex[:6].upper()}"
     guide = Guide(
         guide_code=guide_code,
-        customer_name=payload.customer_name,
-        destination_name=payload.destination_name,
+        customer_name=customer_name,
+        destination_name=destination_name,
         service_type=service.service_type.value,
         service_id=service.id,
         station_id=station.id,
@@ -81,6 +100,18 @@ def create_guide(
         stage=WorkflowStage.assigned,
     )
     db.add(delivery)
+
+    party = GuideParty(
+        guide_id=guide.id,
+        origin_client_id=origin_client.id if origin_client else None,
+        destination_client_id=destination_client.id if destination_client else None,
+        origin_wants_invoice=(
+            payload.origin_wants_invoice
+            if payload.origin_wants_invoice is not None
+            else (origin_client.wants_invoice if origin_client else False)
+        ),
+    )
+    db.add(party)
     db.commit()
     db.refresh(guide)
     return _to_guide_response(guide)

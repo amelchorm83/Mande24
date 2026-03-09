@@ -6,14 +6,37 @@ const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
 export default function ClientPortalPage() {
   const [token, setToken] = useState("");
+  const [registerName, setRegisterName] = useState("Nuevo Cliente");
+  const [registerEmail, setRegisterEmail] = useState("");
+  const [registerPassword, setRegisterPassword] = useState("");
+  const [registerMsg, setRegisterMsg] = useState("");
   const [services, setServices] = useState([]);
   const [stations, setStations] = useState([]);
-  const [customerName, setCustomerName] = useState("Cliente Portal");
-  const [destinationName, setDestinationName] = useState("Destino Portal");
+  const [originProfiles, setOriginProfiles] = useState([]);
+  const [destinationProfiles, setDestinationProfiles] = useState([]);
+  const [states, setStates] = useState([]);
+  const [municipalities, setMunicipalities] = useState([]);
+  const [postalCodes, setPostalCodes] = useState([]);
+  const [customerName, setCustomerName] = useState("Cliente Origen");
+  const [destinationName, setDestinationName] = useState("Cliente Destino");
+  const [originClientId, setOriginClientId] = useState("");
+  const [destinationClientId, setDestinationClientId] = useState("");
+  const [originWantsInvoice, setOriginWantsInvoice] = useState(false);
   const [serviceId, setServiceId] = useState("");
   const [stationId, setStationId] = useState("");
+  const [newClientName, setNewClientName] = useState("");
+  const [newClientKind, setNewClientKind] = useState("origin");
+  const [stateCode, setStateCode] = useState("");
+  const [municipalityCode, setMunicipalityCode] = useState("");
+  const [postalCode, setPostalCode] = useState("");
+  const [addressLine, setAddressLine] = useState("");
+  const [createPortalAccess, setCreatePortalAccess] = useState(true);
+  const [portalEmail, setPortalEmail] = useState("");
+  const [portalPassword, setPortalPassword] = useState("");
   const [guideResult, setGuideResult] = useState(null);
   const [deliveryId, setDeliveryId] = useState("");
+  const [sentGuides, setSentGuides] = useState([]);
+  const [receivedGuides, setReceivedGuides] = useState([]);
   const [msg, setMsg] = useState("");
 
   const headers = useMemo(
@@ -24,7 +47,67 @@ export default function ClientPortalPage() {
   useEffect(() => {
     const saved = localStorage.getItem("m24_token") || "";
     setToken(saved);
+    const email = localStorage.getItem("m24_email") || "";
+    if (email) setRegisterEmail(email);
   }, []);
+
+  async function registerAndLoginClient(e) {
+    e.preventDefault();
+    if (!registerEmail || !registerPassword || !registerName) {
+      setRegisterMsg("Completa nombre, email y password.");
+      return;
+    }
+    setRegisterMsg("Procesando registro...");
+
+    try {
+      const registerRes = await fetch(`${API_BASE}/api/v1/auth/register`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email: registerEmail,
+          full_name: registerName,
+          password: registerPassword,
+          role: "client",
+        }),
+      });
+      if (!registerRes.ok && registerRes.status !== 409) {
+        const err = await registerRes.text();
+        setRegisterMsg(`Registro fallido: ${err}`);
+        return;
+      }
+
+      const loginRes = await fetch(`${API_BASE}/api/v1/auth/login`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: registerEmail, password: registerPassword }),
+      });
+      if (!loginRes.ok) {
+        const err = await loginRes.text();
+        setRegisterMsg(`Login fallido: ${err}`);
+        return;
+      }
+
+      const data = await loginRes.json();
+      setToken(data.access_token);
+      localStorage.setItem("m24_token", data.access_token);
+      localStorage.setItem("m24_role", "client");
+      localStorage.setItem("m24_email", registerEmail);
+      setRegisterMsg("Cuenta lista. Sesion iniciada como cliente.");
+      setMsg("Token de cliente listo. Ahora carga catalogos.");
+    } catch (error) {
+      setRegisterMsg(`Error: ${error.message}`);
+    }
+  }
+
+  useEffect(() => {
+    if (!token || !stateCode) return;
+    loadMunicipalities(stateCode);
+  }, [token, stateCode]);
+
+  useEffect(() => {
+    if (!token || !municipalityCode) return;
+    loadPostalCodes(municipalityCode);
+  }, [token, municipalityCode]);
 
   async function loadCatalogs() {
     if (!token) {
@@ -46,10 +129,103 @@ export default function ClientPortalPage() {
       setStations(stData);
       if (svcData.length && !serviceId) setServiceId(svcData[0].id);
       if (stData.length && !stationId) setStationId(stData[0].id);
-      setMsg("Catalogos cargados.");
+      await Promise.all([loadProfiles(), loadGeoStates(), loadShipments()]);
+      setMsg("Catalogos y clientes cargados.");
     } catch (error) {
       setMsg(`Error catalogos: ${error.message}`);
     }
+  }
+
+  async function loadProfiles() {
+    const [origRes, destRes] = await Promise.all([
+      fetch(`${API_BASE}/api/v1/clients/profiles?client_kind=origin`, { headers }),
+      fetch(`${API_BASE}/api/v1/clients/profiles?client_kind=destination`, { headers }),
+    ]);
+    if (origRes.ok) {
+      const rows = await origRes.json();
+      setOriginProfiles(rows);
+      if (!originClientId && rows.length) {
+        setOriginClientId(rows[0].id);
+        setCustomerName(rows[0].display_name);
+        setOriginWantsInvoice(Boolean(rows[0].wants_invoice));
+      }
+    }
+    if (destRes.ok) {
+      const rows = await destRes.json();
+      setDestinationProfiles(rows);
+      if (!destinationClientId && rows.length) {
+        setDestinationClientId(rows[0].id);
+        setDestinationName(rows[0].display_name);
+      }
+    }
+  }
+
+  async function loadGeoStates() {
+    const res = await fetch(`${API_BASE}/api/v1/clients/geo/states`, { headers });
+    if (!res.ok) return;
+    const rows = await res.json();
+    setStates(rows);
+    if (!stateCode && rows.length) setStateCode(rows[0].code);
+  }
+
+  async function loadMunicipalities(code) {
+    const res = await fetch(`${API_BASE}/api/v1/clients/geo/municipalities?state_code=${encodeURIComponent(code)}`, { headers });
+    if (!res.ok) return;
+    const rows = await res.json();
+    setMunicipalities(rows);
+    setMunicipalityCode(rows.length ? rows[0].code : "");
+  }
+
+  async function loadPostalCodes(code) {
+    const res = await fetch(`${API_BASE}/api/v1/clients/geo/postal-codes?municipality_code=${encodeURIComponent(code)}`, { headers });
+    if (!res.ok) return;
+    const rows = await res.json();
+    setPostalCodes(rows);
+    setPostalCode(rows.length ? rows[0].code : "");
+  }
+
+  async function loadShipments() {
+    const res = await fetch(`${API_BASE}/api/v1/clients/shipments/my`, { headers });
+    if (!res.ok) return;
+    const data = await res.json();
+    setSentGuides(data.sent || []);
+    setReceivedGuides(data.received || []);
+  }
+
+  async function createClientProfile(e) {
+    e.preventDefault();
+    if (!newClientName || !stateCode || !municipalityCode || !postalCode) {
+      setMsg("Completa nombre y direccion del cliente.");
+      return;
+    }
+    const payload = {
+      display_name: newClientName,
+      client_kind: newClientKind,
+      state_code: stateCode,
+      municipality_code: municipalityCode,
+      postal_code: postalCode,
+      address_line: addressLine,
+      wants_invoice: originWantsInvoice,
+      create_portal_access: createPortalAccess,
+      email: createPortalAccess ? portalEmail : null,
+      password: createPortalAccess ? portalPassword : null,
+    };
+    const res = await fetch(`${API_BASE}/api/v1/clients/profiles`, {
+      method: "POST",
+      headers,
+      body: JSON.stringify(payload),
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      setMsg(`Error alta cliente: ${JSON.stringify(data)}`);
+      return;
+    }
+    setMsg("Cliente registrado correctamente.");
+    setNewClientName("");
+    setAddressLine("");
+    setPortalEmail("");
+    setPortalPassword("");
+    await loadProfiles();
   }
 
   async function createGuide(e) {
@@ -62,7 +238,15 @@ export default function ClientPortalPage() {
       const res = await fetch(`${API_BASE}/api/v1/guides`, {
         method: "POST",
         headers,
-        body: JSON.stringify({ customer_name: customerName, destination_name: destinationName, service_id: serviceId, station_id: stationId }),
+        body: JSON.stringify({
+          customer_name: customerName,
+          destination_name: destinationName,
+          origin_client_id: originClientId || null,
+          destination_client_id: destinationClientId || null,
+          origin_wants_invoice: originWantsInvoice,
+          service_id: serviceId,
+          station_id: stationId,
+        }),
       });
       const data = await res.json();
       if (!res.ok) {
@@ -80,9 +264,25 @@ export default function ClientPortalPage() {
 
       setGuideResult(data);
       setMsg("Guia creada correctamente.");
+      await loadShipments();
     } catch (error) {
       setMsg(`Error creando guia: ${error.message}`);
     }
+  }
+
+  function onSelectOriginProfile(profileId) {
+    setOriginClientId(profileId);
+    const profile = originProfiles.find((item) => item.id === profileId);
+    if (profile) {
+      setCustomerName(profile.display_name);
+      setOriginWantsInvoice(Boolean(profile.wants_invoice));
+    }
+  }
+
+  function onSelectDestinationProfile(profileId) {
+    setDestinationClientId(profileId);
+    const profile = destinationProfiles.find((item) => item.id === profileId);
+    if (profile) setDestinationName(profile.display_name);
   }
 
   return (
@@ -90,7 +290,7 @@ export default function ClientPortalPage() {
       <header className="topbar">
         <div className="brand">
           <div className="brand-mark" />
-          <h2>Mande24 Independent</h2>
+          <h2>ERPMande24</h2>
         </div>
         <nav className="nav-pills">
           <a className="nav-link" href="/auth">Auth</a>
@@ -101,8 +301,34 @@ export default function ClientPortalPage() {
       </header>
 
       <span className="badge">Portal Cliente</span>
-      <h1>Crear Guia Operativa</h1>
-      <p className="hero-note">Este portal crea una guia y te devuelve el `delivery_id` necesario para que el rider continue el flujo.</p>
+      <h1>Clientes Origen/Destino y Guias</h1>
+      <p className="hero-note">Da de alta clientes con direccion (estado, municipio, CP), define facturacion del cliente origen y crea guias con trazabilidad de envios enviados/recibidos.</p>
+
+      <section className="panel">
+        <h2>No tienes cuenta?</h2>
+        <p className="field-hint">Registrate aqui para entrar al Portal Cliente sin pasar por otra pantalla.</p>
+      </section>
+
+      <section className="panel">
+        <h2>Registro rapido de cuenta cliente</h2>
+        <p className="field-hint">Si aun no tienes usuario, puedes crearlo aqui mismo y entrar automaticamente.</p>
+        <form className="form-grid" onSubmit={registerAndLoginClient}>
+          <label>
+            Nombre completo
+            <input value={registerName} onChange={(e) => setRegisterName(e.target.value)} required />
+          </label>
+          <label>
+            Email
+            <input type="email" value={registerEmail} onChange={(e) => setRegisterEmail(e.target.value)} required />
+          </label>
+          <label>
+            Password
+            <input type="password" value={registerPassword} onChange={(e) => setRegisterPassword(e.target.value)} required minLength={8} />
+          </label>
+          <button className="btn btn-primary" type="submit">Crear cuenta cliente</button>
+        </form>
+        <p className={`status-line ${registerMsg.includes("fallido") || registerMsg.includes("Error") ? "warn" : "ok"}`}>{registerMsg}</p>
+      </section>
 
       <section className="panel">
         <h2>Paso 1: Token y catalogos</h2>
@@ -118,15 +344,95 @@ export default function ClientPortalPage() {
       </section>
 
       <section className="panel">
-        <h2>Paso 2: Crear guia</h2>
-        <form className="form-grid" onSubmit={createGuide}>
+        <h2>Paso 2: Alta cliente</h2>
+        <form className="form-grid" onSubmit={createClientProfile}>
           <label>
             Nombre cliente
-            <input value={customerName} onChange={(e) => setCustomerName(e.target.value)} required />
+            <input value={newClientName} onChange={(e) => setNewClientName(e.target.value)} required />
           </label>
           <label>
-            Nombre destino
-            <input value={destinationName} onChange={(e) => setDestinationName(e.target.value)} required />
+            Tipo cliente
+            <select value={newClientKind} onChange={(e) => setNewClientKind(e.target.value)}>
+              <option value="origin">Origen</option>
+              <option value="destination">Destino</option>
+              <option value="both">Ambos</option>
+            </select>
+          </label>
+          <label>
+            Estado
+            <select value={stateCode} onChange={(e) => setStateCode(e.target.value)}>
+              {states.map((item) => <option key={item.code} value={item.code}>{item.name}</option>)}
+            </select>
+          </label>
+          <label>
+            Municipio
+            <select value={municipalityCode} onChange={(e) => setMunicipalityCode(e.target.value)}>
+              {municipalities.map((item) => <option key={item.code} value={item.code}>{item.name}</option>)}
+            </select>
+          </label>
+          <label>
+            Codigo postal
+            <select value={postalCode} onChange={(e) => setPostalCode(e.target.value)}>
+              {postalCodes.map((item) => <option key={item.code} value={item.code}>{item.code}</option>)}
+            </select>
+          </label>
+          <label>
+            Calle y numero
+            <input value={addressLine} onChange={(e) => setAddressLine(e.target.value)} />
+          </label>
+          <label>
+            Facturar servicios (solo origen)
+            <select value={originWantsInvoice ? "true" : "false"} onChange={(e) => setOriginWantsInvoice(e.target.value === "true")}>
+              <option value="true">Si</option>
+              <option value="false">No</option>
+            </select>
+          </label>
+          <label>
+            Crear acceso portal/PWA destino
+            <select value={createPortalAccess ? "true" : "false"} onChange={(e) => setCreatePortalAccess(e.target.value === "true")}>
+              <option value="false">No</option>
+              <option value="true">Si</option>
+            </select>
+          </label>
+          {createPortalAccess && (
+            <>
+              <label>
+                Email portal
+                <input value={portalEmail} onChange={(e) => setPortalEmail(e.target.value)} required />
+              </label>
+              <label>
+                Password portal
+                <input type="password" value={portalPassword} onChange={(e) => setPortalPassword(e.target.value)} required />
+              </label>
+            </>
+          )}
+          <button className="btn btn-primary" type="submit">Registrar cliente</button>
+        </form>
+      </section>
+
+      <section className="panel">
+        <h2>Paso 3: Crear guia</h2>
+        <form className="form-grid" onSubmit={createGuide}>
+          <label>
+            Cliente origen
+            <select value={originClientId} onChange={(e) => onSelectOriginProfile(e.target.value)}>
+              <option value="">Selecciona</option>
+              {originProfiles.map((item) => <option key={item.id} value={item.id}>{item.display_name}</option>)}
+            </select>
+          </label>
+          <label>
+            Cliente destino
+            <select value={destinationClientId} onChange={(e) => onSelectDestinationProfile(e.target.value)}>
+              <option value="">Selecciona</option>
+              {destinationProfiles.map((item) => <option key={item.id} value={item.id}>{item.display_name}</option>)}
+            </select>
+          </label>
+          <label>
+            Facturar servicio origen
+            <select value={originWantsInvoice ? "true" : "false"} onChange={(e) => setOriginWantsInvoice(e.target.value === "true")}>
+              <option value="true">Si</option>
+              <option value="false">No</option>
+            </select>
           </label>
           <label>
             Servicio
@@ -158,6 +464,35 @@ export default function ClientPortalPage() {
           </div>
         )}
         <p className={`status-line ${msg.includes("Error") ? "warn" : "ok"}`}>{msg}</p>
+      </section>
+
+      <section className="panel">
+        <h2>Envios enviados y recibidos</h2>
+        <div className="inline-actions">
+          <button className="btn btn-ghost" onClick={loadShipments}>Actualizar envios</button>
+        </div>
+        <h3>Enviados</h3>
+        <div className="table-wrap">
+          <table>
+            <thead><tr><th>Guia</th><th>Origen</th><th>Destino</th><th>Monto</th></tr></thead>
+            <tbody>
+              {sentGuides.map((item) => (
+                <tr key={`sent-${item.guide_code}`}><td>{item.guide_code}</td><td>{item.customer_name}</td><td>{item.destination_name}</td><td>{item.sale_amount} {item.currency}</td></tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        <h3>Recibidos</h3>
+        <div className="table-wrap">
+          <table>
+            <thead><tr><th>Guia</th><th>Origen</th><th>Destino</th><th>Monto</th></tr></thead>
+            <tbody>
+              {receivedGuides.map((item) => (
+                <tr key={`recv-${item.guide_code}`}><td>{item.guide_code}</td><td>{item.customer_name}</td><td>{item.destination_name}</td><td>{item.sale_amount} {item.currency}</td></tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </section>
     </main>
   );

@@ -37,6 +37,12 @@ class RiderState(str, Enum):
     rejected = "rejected"
 
 
+class ClientKind(str, Enum):
+    origin = "origin"
+    destination = "destination"
+    both = "both"
+
+
 class User(Base):
     __tablename__ = "users"
 
@@ -64,6 +70,7 @@ class Guide(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
 
     deliveries: Mapped[list["Delivery"]] = relationship(back_populates="guide", cascade="all, delete-orphan")
+    parties: Mapped[list["GuideParty"]] = relationship(back_populates="guide", cascade="all, delete-orphan")
 
 
 class Delivery(Base):
@@ -166,3 +173,55 @@ class StationCommission(Base):
     sold_guide_amount: Mapped[float] = mapped_column(Float, default=0.0)
     total_amount: Mapped[float] = mapped_column(Float, default=0.0)
     state: Mapped[str] = mapped_column(String(20), default="draft")
+
+
+class GeoState(Base):
+    __tablename__ = "geo_states"
+
+    code: Mapped[str] = mapped_column(String(10), primary_key=True)
+    name: Mapped[str] = mapped_column(String(120), unique=True, index=True)
+
+
+class GeoMunicipality(Base):
+    __tablename__ = "geo_municipalities"
+
+    code: Mapped[str] = mapped_column(String(20), primary_key=True)
+    state_code: Mapped[str] = mapped_column(String(10), ForeignKey("geo_states.code"), index=True)
+    name: Mapped[str] = mapped_column(String(150), index=True)
+
+
+class GeoPostalCode(Base):
+    __tablename__ = "geo_postal_codes"
+
+    code: Mapped[str] = mapped_column(String(10), primary_key=True)
+    municipality_code: Mapped[str] = mapped_column(String(20), ForeignKey("geo_municipalities.code"), index=True)
+    settlement: Mapped[str] = mapped_column(String(150), default="")
+
+
+class ClientProfile(Base):
+    __tablename__ = "client_profiles"
+
+    id: Mapped[str] = mapped_column(String(32), primary_key=True, default=lambda: uuid4().hex)
+    user_id: Mapped[str | None] = mapped_column(String(32), ForeignKey("users.id"), nullable=True, index=True)
+    display_name: Mapped[str] = mapped_column(String(150), index=True)
+    client_kind: Mapped[ClientKind] = mapped_column(SqlEnum(ClientKind, name="client_kind"), default=ClientKind.origin)
+    state_code: Mapped[str] = mapped_column(String(10), ForeignKey("geo_states.code"), index=True)
+    municipality_code: Mapped[str] = mapped_column(String(20), ForeignKey("geo_municipalities.code"), index=True)
+    postal_code: Mapped[str] = mapped_column(String(10), ForeignKey("geo_postal_codes.code"), index=True)
+    address_line: Mapped[str] = mapped_column(String(255), default="")
+    wants_invoice: Mapped[bool] = mapped_column(Boolean, default=False)
+    active: Mapped[bool] = mapped_column(Boolean, default=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+
+
+class GuideParty(Base):
+    __tablename__ = "guide_parties"
+    __table_args__ = (UniqueConstraint("guide_id", name="uq_guide_parties_guide"),)
+
+    id: Mapped[str] = mapped_column(String(32), primary_key=True, default=lambda: uuid4().hex)
+    guide_id: Mapped[str] = mapped_column(String(32), ForeignKey("guides.id", ondelete="CASCADE"), index=True)
+    origin_client_id: Mapped[str | None] = mapped_column(String(32), ForeignKey("client_profiles.id"), nullable=True, index=True)
+    destination_client_id: Mapped[str | None] = mapped_column(String(32), ForeignKey("client_profiles.id"), nullable=True, index=True)
+    origin_wants_invoice: Mapped[bool] = mapped_column(Boolean, default=False)
+
+    guide: Mapped[Guide] = relationship(back_populates="parties")

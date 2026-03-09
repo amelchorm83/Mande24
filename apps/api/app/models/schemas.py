@@ -1,7 +1,7 @@
 from datetime import datetime
 
 from pydantic import BaseModel, Field
-from app.db.models import RiderState, ServiceType, UserRole, WorkflowStage
+from app.db.models import ClientKind, RiderState, ServiceType, UserRole, WorkflowStage
 
 
 class RegisterRequest(BaseModel):
@@ -100,6 +100,9 @@ class PricingRuleResponse(BaseModel):
 class GuideCreate(BaseModel):
     customer_name: str = Field(min_length=2, max_length=150)
     destination_name: str = Field(min_length=2, max_length=150)
+    origin_client_id: str | None = None
+    destination_client_id: str | None = None
+    origin_wants_invoice: bool | None = None
     service_id: str
     station_id: str
 
@@ -170,3 +173,60 @@ class StationCommissionHistoryRow(BaseModel):
     sold_guide_amount: float
     total_amount: float
     state: str
+
+
+class GeoStateResponse(BaseModel):
+    code: str
+    name: str
+
+
+class GeoMunicipalityResponse(BaseModel):
+    code: str
+    state_code: str
+    name: str
+
+
+class GeoPostalCodeResponse(BaseModel):
+    code: str
+    municipality_code: str
+    settlement: str
+
+
+class ClientProfileCreate(BaseModel):
+    display_name: str = Field(min_length=2, max_length=150)
+    client_kind: ClientKind = ClientKind.origin
+    state_code: str = Field(min_length=2, max_length=10)
+    municipality_code: str = Field(min_length=2, max_length=20)
+    postal_code: str = Field(min_length=3, max_length=10)
+    address_line: str = Field(default="", max_length=255)
+    wants_invoice: bool = False
+    create_portal_access: bool = False
+    email: str | None = None
+    password: str | None = None
+
+
+class ClientProfileResponse(BaseModel):
+    id: str
+    user_id: str | None
+    display_name: str
+    client_kind: ClientKind
+    state_code: str
+    municipality_code: str
+    postal_code: str
+    address_line: str
+    wants_invoice: bool
+    active: bool
+
+
+class ShipmentGuideSummary(BaseModel):
+    guide_code: str
+    customer_name: str
+    destination_name: str
+    sale_amount: float
+    currency: str
+    created_at: datetime
+
+
+class MyShipmentsResponse(BaseModel):
+    sent: list[ShipmentGuideSummary]
+    received: list[ShipmentGuideSummary]
