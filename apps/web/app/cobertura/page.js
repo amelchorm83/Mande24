@@ -1,8 +1,22 @@
-const tabascoCoverage = [
-  { zone: "Centro", municipalities: "Centro, Nacajuca, Jalpa de Mendez" },
-  { zone: "Chontalpa", municipalities: "Comalcalco, Cardenas, Huimanguillo" },
-  { zone: "Sierra", municipalities: "Teapa, Tacotalpa, Jalapa" },
-  { zone: "Rios", municipalities: "Balancan, Tenosique, Emiliano Zapata" },
+const coverageByState = [
+  {
+    state: "Tabasco",
+    zones: [
+      { zone: "Centro", municipalities: "Centro, Nacajuca, Jalpa de Mendez" },
+      { zone: "Chontalpa", municipalities: "Comalcalco, Cardenas, Huimanguillo" },
+      { zone: "Sierra", municipalities: "Teapa, Tacotalpa, Jalapa" },
+      { zone: "Rios", municipalities: "Balancan, Tenosique, Emiliano Zapata" },
+    ],
+  },
+  {
+    state: "Campeche",
+    zones: [
+      { zone: "Campeche Capital", municipalities: "Campeche, Lerma" },
+      { zone: "Carmen", municipalities: "Ciudad del Carmen, Sabancuy" },
+      { zone: "Norte", municipalities: "Calkini, Hecelchakan, Tenabo" },
+      { zone: "Oriente", municipalities: "Champoton, Escarcega" },
+    ],
+  },
 ];
 
 export default function CoberturaPage() {
@@ -32,8 +46,8 @@ export default function CoberturaPage() {
       </header>
 
       <span className="badge">Cobertura</span>
-      <h1>Cobertura activa en Tabasco con enfoque operativo por zonas.</h1>
-      <p className="hero-note">Nuestra operacion actual esta concentrada en Tabasco para asegurar tiempos confiables, control de ruta y calidad de servicio.</p>
+      <h1>Cobertura activa en Tabasco y Campeche con enfoque operativo por zonas.</h1>
+      <p className="hero-note">La cobertura se gestiona por zonas, municipios y capacidad operativa para mantener tiempos confiables y mejor experiencia para cliente final.</p>
       <img className="hero-banner" src="/brand/banner.svg" alt="Banner de cobertura Mande24" />
 
       <section className="panel">
@@ -42,8 +56,8 @@ export default function CoberturaPage() {
           <article className="media-card">
             <img src="/brand/photo-map.svg" alt="Mapa de cobertura de Tabasco" />
             <div>
-              <h3>Tabasco Prioritario</h3>
-              <p className="hero-note">La cobertura se define por municipio, codigo postal y colonia para asignacion mas precisa.</p>
+              <h3>Operacion Regional</h3>
+              <p className="hero-note">Cobertura definida por municipio, codigo postal y colonia para una asignacion mas precisa.</p>
             </div>
           </article>
           <article className="media-card">
@@ -56,23 +70,43 @@ export default function CoberturaPage() {
         </div>
       </section>
 
+      {coverageByState.map((stateItem) => (
+        <section className="panel" key={stateItem.state}>
+          <h2>Zonas Operativas: {stateItem.state}</h2>
+          <div className="grid">
+            {stateItem.zones.map((item) => (
+              <article className="card" key={`${stateItem.state}-${item.zone}`}>
+                <h3>{item.zone}</h3>
+                <p>{item.municipalities}</p>
+              </article>
+            ))}
+          </div>
+        </section>
+      ))}
+
       <section className="panel">
-        <h2>Zonas Operativas</h2>
+        <h2>Promesa de Servicio por Zona</h2>
         <div className="grid">
-          {tabascoCoverage.map((item) => (
-            <article className="card" key={item.zone}>
-              <h3>{item.zone}</h3>
-              <p>{item.municipalities}</p>
-            </article>
-          ))}
+          <article className="card">
+            <h3>Express urbano</h3>
+            <p>Atencion prioritaria en zonas urbanas con asignacion rapida de rider.</p>
+          </article>
+          <article className="card">
+            <h3>Programado intermunicipal</h3>
+            <p>Ventanas horarias para entregas entre municipios de Tabasco y Campeche.</p>
+          </article>
+          <article className="card">
+            <h3>Rutas recurrentes</h3>
+            <p>Planeacion semanal para empresas con volumen estable y entregas frecuentes.</p>
+          </article>
         </div>
       </section>
 
       <section className="panel">
         <h2>Plan de Expansion</h2>
         <ol className="flow-list">
-          <li>Consolidar cobertura por colonia y codigo postal en los municipios activos de Tabasco.</li>
-          <li>Escalar a corredores regionales colindantes con demanda sostenida.</li>
+          <li>Consolidar cobertura por colonia y codigo postal en municipios activos de Tabasco y Campeche.</li>
+          <li>Escalar a corredores regionales colindantes con demanda sostenida en sureste.</li>
           <li>Automatizar asignacion por zonas geograficas dentro del ERP para mejorar tiempos de respuesta.</li>
         </ol>
       </section>

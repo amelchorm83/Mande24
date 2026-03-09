@@ -40,7 +40,7 @@ export default async function HomePage() {
 
       <span className="badge">Inicio</span>
       <h1>La red logistica de Tabasco para empresas y familias que necesitan resolver entregas al instante.</h1>
-      <p className="hero-note">Mande24 Logistics integra mensajeria, paqueteria y mandaditos con monitoreo digital para una operacion rapida, confiable y cercana.</p>
+      <p className="hero-note">Mande24 Logistics integra mensajeria, paqueteria y mandaditos con monitoreo digital para una operacion rapida, confiable y cercana en Tabasco y Campeche.</p>
       <img className="hero-banner" src="/brand/banner.svg" alt="Banner operativo Mande24 Logistics" />
 
       <section className="panel hero-strip">
@@ -51,10 +51,41 @@ export default async function HomePage() {
         <div className="inline-actions">
           <a className="btn btn-primary" href="/servicios">Ver Servicios</a>
           <a className="btn" href="/servicios#mandaditos">Mandaditos 24</a>
-          <a className="btn" href="/cobertura">Cobertura Tabasco</a>
+          <a className="btn" href="/cobertura">Cobertura Tabasco y Campeche</a>
           <a className="btn" href="/noticias">Noticias</a>
           <a className="btn" href="/contacto">Solicitar cotizacion</a>
         </div>
+      </section>
+
+      <section className="panel">
+        <h2>Soluciones por tipo de cliente</h2>
+        <div className="grid">
+          <article className="card">
+            <h3>Negocios con entregas diarias</h3>
+            <p>Centraliza tus pedidos en una sola operacion con guias, evidencia y reportes de cumplimiento por semana.</p>
+            <small>Ideal para retail, farmacias, refaccionarias y distribuidores.</small>
+          </article>
+          <article className="card">
+            <h3>Empresas con picos de demanda</h3>
+            <p>Escala en temporadas altas sin perder control de tiempos, prioridades y trazabilidad en ruta.</p>
+            <small>Ideal para campañas comerciales y temporadas de alta venta.</small>
+          </article>
+          <article className="card">
+            <h3>Personas y familias</h3>
+            <p>Resuelve pendientes urgentes con mandaditos confiables y confirmacion digital de entrega.</p>
+            <small>Ideal para documentos, compras de ultimo minuto y articulos olvidados.</small>
+          </article>
+        </div>
+      </section>
+
+      <section className="panel">
+        <h2>Como funciona en 4 pasos</h2>
+        <ol className="flow-list">
+          <li>Solicitas servicio por portal o formulario con datos de origen y destino.</li>
+          <li>Asignamos rider y ruta segun zona de cobertura y prioridad operativa.</li>
+          <li>Monitoreas etapas de entrega con evidencia y actualizacion en tiempo real.</li>
+          <li>Recibes confirmacion final y, si aplica, documentacion para facturacion.</li>
+        </ol>
       </section>
 
       <section className="panel">
@@ -110,8 +141,26 @@ export default async function HomePage() {
             <p>Concentrado semanal de comisiones para riders y estaciones con cierre administrativo controlado.</p>
           </article>
           <article className="card">
-            <h3>Cobertura Tabasco</h3>
-            <p>Segmentacion geografica por municipio, codigo postal y colonia para optimizar asignacion de zonas.</p>
+            <h3>Cobertura Tabasco y Campeche</h3>
+            <p>Segmentacion geografica por municipio, codigo postal y colonia para optimizar asignacion de zonas en ambos estados.</p>
+          </article>
+        </div>
+      </section>
+
+      <section className="panel">
+        <h2>Preguntas frecuentes</h2>
+        <div className="grid">
+          <article className="card">
+            <h3>Cuanto tardan en asignar un servicio?</h3>
+            <p>La asignacion depende de zona y demanda, pero en servicios express suele hacerse en minutos.</p>
+          </article>
+          <article className="card">
+            <h3>Puedo programar rutas semanales?</h3>
+            <p>Si. Diseñamos rutas recurrentes para operaciones con volumen estable por dia o por semana.</p>
+          </article>
+          <article className="card">
+            <h3>Atienden empresas y clientes individuales?</h3>
+            <p>Si. Tenemos esquemas para negocio y tambien para solicitudes puntuales de clientes finales.</p>
           </article>
         </div>
       </section>

@@ -76,7 +76,7 @@ export default function ContactoPage() {
 
       <span className="badge">Contacto</span>
       <h1>Hablemos de tu operacion de entregas.</h1>
-      <p className="hero-note">Comparte tus necesidades y te proponemos una solucion de ultima milla para tu negocio en Tabasco.</p>
+      <p className="hero-note">Comparte tus necesidades y te proponemos una solucion de ultima milla para tu negocio en Tabasco y Campeche.</p>
       <img className="hero-banner" src="/brand/banner.svg" alt="Banner contacto Mande24" />
 
       <section className="panel contact-grid">
@@ -131,6 +131,33 @@ export default function ContactoPage() {
           </ul>
           <img className="hero-banner" src="/brand/photo-station.svg" alt="Equipo de atencion comercial" />
         </article>
+      </section>
+
+      <section className="panel">
+        <h2>Que informacion nos ayuda a cotizar mejor</h2>
+        <div className="grid">
+          <article className="card">
+            <h3>Volumen estimado</h3>
+            <p>Numero de entregas por dia o por semana para proyectar capacidad y tiempos.</p>
+          </article>
+          <article className="card">
+            <h3>Tipo de servicio</h3>
+            <p>Express, programado o rutas recurrentes para recomendar el esquema correcto.</p>
+          </article>
+          <article className="card">
+            <h3>Zonas de operacion</h3>
+            <p>Colonias o municipios de Tabasco y Campeche donde necesitas cobertura.</p>
+          </article>
+        </div>
+      </section>
+
+      <section className="panel">
+        <h2>Proceso comercial</h2>
+        <ol className="flow-list">
+          <li>Recibimos tu solicitud y validamos datos operativos.</li>
+          <li>Te enviamos propuesta con alcance, tiempos y esquema de servicio.</li>
+          <li>Definimos arranque y seguimiento con indicadores claros.</li>
+        </ol>
       </section>
     </main>
   );

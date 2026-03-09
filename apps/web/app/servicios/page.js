@@ -26,7 +26,7 @@ export default function ServiciosPage() {
 
       <span className="badge">Servicios</span>
       <h1>Mensajeria, paqueteria y mandaditos para resolver entregas urgentes todos los dias.</h1>
-      <p className="hero-note">Diseñamos servicios escalables para empresas y personas que necesitan rapidez, comunicacion clara y evidencia de entrega.</p>
+      <p className="hero-note">Diseñamos servicios escalables para empresas y personas que necesitan rapidez, comunicacion clara y evidencia de entrega en Tabasco y Campeche.</p>
       <img className="hero-banner" src="/brand/banner.svg" alt="Banner de servicios Mande24" />
 
       <section className="panel" id="mandaditos">
@@ -86,6 +86,37 @@ export default function ServiciosPage() {
       </section>
 
       <section className="panel">
+        <h2>Planes para clientes y potenciales clientes</h2>
+        <div className="grid">
+          <article className="card">
+            <h3>Plan Inicial</h3>
+            <p>Para negocios que estan comenzando su operacion de entregas.</p>
+            <small>Incluye express urbano y reportes basicos por semana.</small>
+          </article>
+          <article className="card">
+            <h3>Plan Crecimiento</h3>
+            <p>Para empresas con aumento de volumen y entregas diarias.</p>
+            <small>Incluye programadas, recurrentes y prioridad por zona.</small>
+          </article>
+          <article className="card">
+            <h3>Plan Enterprise</h3>
+            <p>Para operaciones con multiples rutas, sucursales y control avanzado.</p>
+            <small>Incluye tablero operativo, SLA y seguimiento dedicado.</small>
+          </article>
+        </div>
+      </section>
+
+      <section className="panel">
+        <h2>Que incluye cada servicio</h2>
+        <ol className="flow-list">
+          <li>Captura de solicitud con datos de origen, destino y prioridad.</li>
+          <li>Asignacion operativa segun zona de cobertura y disponibilidad.</li>
+          <li>Seguimiento por etapas con confirmacion de entrega.</li>
+          <li>Evidencia digital para control y reduccion de reclamos.</li>
+        </ol>
+      </section>
+
+      <section className="panel">
         <h2>Operacion Unificada</h2>
         <p className="hero-note">Nuestros portales conectan autenticacion, captura, reparto y comisiones en un mismo flujo digital.</p>
         <div className="inline-actions">
@@ -93,6 +124,24 @@ export default function ServiciosPage() {
           <a className="btn" href="/client">Portal Cliente</a>
           <a className="btn" href="/rider">Portal Rider</a>
           <a className="btn" href="/station">Portal Estacion</a>
+        </div>
+      </section>
+
+      <section className="panel">
+        <h2>FAQ Comercial</h2>
+        <div className="grid">
+          <article className="card">
+            <h3>Atienden solo empresas?</h3>
+            <p>No. Atendemos empresas, comercios y tambien solicitudes puntuales de clientes individuales.</p>
+          </article>
+          <article className="card">
+            <h3>Pueden operar en dos estados?</h3>
+            <p>Si. Actualmente operamos con cobertura en Tabasco y Campeche segun zona y disponibilidad.</p>
+          </article>
+          <article className="card">
+            <h3>Como solicito una propuesta?</h3>
+            <p>Desde contacto o WhatsApp comercial. Nuestro equipo arma una propuesta segun volumen y tipo de entrega.</p>
+          </article>
         </div>
       </section>
 
