@@ -192,12 +192,22 @@ class GeoPostalCodeResponse(BaseModel):
     settlement: str
 
 
+class GeoColonyResponse(BaseModel):
+    id: str
+    state_code: str
+    municipality_code: str
+    postal_code: str
+    name: str
+    settlement_type: str
+
+
 class ClientProfileCreate(BaseModel):
     display_name: str = Field(min_length=2, max_length=150)
     client_kind: ClientKind = ClientKind.origin
     state_code: str = Field(min_length=2, max_length=10)
     municipality_code: str = Field(min_length=2, max_length=20)
     postal_code: str = Field(min_length=3, max_length=10)
+    colony_id: str | None = Field(default=None, max_length=64)
     address_line: str = Field(default="", max_length=255)
     wants_invoice: bool = False
     create_portal_access: bool = False
@@ -213,6 +223,8 @@ class ClientProfileResponse(BaseModel):
     state_code: str
     municipality_code: str
     postal_code: str
+    colony_id: str | None
+    colony_name: str | None
     address_line: str
     wants_invoice: bool
     active: bool

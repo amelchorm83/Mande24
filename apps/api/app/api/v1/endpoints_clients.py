@@ -4,8 +4,10 @@ from sqlalchemy.orm import Session
 from app.api.deps import get_current_user, require_roles
 from app.core.security import hash_password
 from app.db.geo_seed import seed_geo_catalogs
+from app.db.sepomex_sync import sync_sepomex_catalog
 from app.db.models import (
     ClientKind,
+    GeoColony,
     ClientProfile,
     GeoMunicipality,
     GeoPostalCode,
@@ -17,6 +19,7 @@ from app.db.models import (
 )
 from app.db.session import get_db
 from app.models.schemas import (
+    GeoColonyResponse,
     ClientProfileCreate,
     ClientProfileResponse,
     GeoMunicipalityResponse,
@@ -31,7 +34,10 @@ router = APIRouter(prefix="/clients", tags=["clients"])
 
 @router.get("/geo/states", response_model=list[GeoStateResponse])
 def list_geo_states(db: Session = Depends(get_db), _user: User = Depends(get_current_user)) -> list[GeoStateResponse]:
-    seed_geo_catalogs(db)
+    try:
+        sync_sepomex_catalog(db)
+    except Exception:
+        seed_geo_catalogs(db)
     rows = db.query(GeoState).order_by(GeoState.name.asc()).all()
     return [GeoStateResponse(code=item.code, name=item.name) for item in rows]
 
@@ -69,6 +75,37 @@ def list_geo_postal_codes(
     ]
 
 
+@router.get("/geo/colonies", response_model=list[GeoColonyResponse])
+def list_geo_colonies(
+    state_code: str = Query(..., min_length=2, max_length=10),
+    municipality_code: str = Query(..., min_length=2, max_length=20),
+    postal_code: str = Query(..., min_length=3, max_length=10),
+    db: Session = Depends(get_db),
+    _user: User = Depends(get_current_user),
+) -> list[GeoColonyResponse]:
+    rows = (
+        db.query(GeoColony)
+        .filter(
+            GeoColony.state_code == state_code.strip().upper(),
+            GeoColony.municipality_code == municipality_code.strip().upper(),
+            GeoColony.postal_code == postal_code.strip(),
+        )
+        .order_by(GeoColony.name.asc())
+        .all()
+    )
+    return [
+        GeoColonyResponse(
+            id=item.id,
+            state_code=item.state_code,
+            municipality_code=item.municipality_code,
+            postal_code=item.postal_code,
+            name=item.name,
+            settlement_type=item.settlement_type,
+        )
+        for item in rows
+    ]
+
+
 @router.post("/profiles", response_model=ClientProfileResponse)
 def create_client_profile(
     payload: ClientProfileCreate,
@@ -101,6 +138,21 @@ def create_client_profile(
     if not postal_code:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Postal code not found")
 
+    colony = None
+    if payload.colony_id:
+        colony = (
+            db.query(GeoColony)
+            .filter(
+                GeoColony.id == payload.colony_id.strip(),
+                GeoColony.state_code == state.code,
+                GeoColony.municipality_code == municipality.code,
+                GeoColony.postal_code == postal_code.code,
+            )
+            .first()
+        )
+        if not colony:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Colony not found")
+
     target_user_id: str | None = None
     if payload.create_portal_access:
         if not payload.email or not payload.password:
@@ -130,6 +182,7 @@ def create_client_profile(
         state_code=state.code,
         municipality_code=municipality.code,
         postal_code=postal_code.code,
+        colony_id=colony.id if colony else None,
         address_line=payload.address_line.strip(),
         wants_invoice=payload.wants_invoice,
     )
@@ -144,6 +197,8 @@ def create_client_profile(
         state_code=profile.state_code,
         municipality_code=profile.municipality_code,
         postal_code=profile.postal_code,
+        colony_id=profile.colony_id,
+        colony_name=colony.name if colony else None,
         address_line=profile.address_line,
         wants_invoice=profile.wants_invoice,
         active=profile.active,
@@ -166,6 +221,11 @@ def list_client_profiles(
             query = query.filter(ClientProfile.client_kind == ClientKind.both)
 
     rows = query.order_by(ClientProfile.display_name.asc()).all()
+    colony_ids = [item.colony_id for item in rows if item.colony_id]
+    colonies = {}
+    if colony_ids:
+        for item in db.query(GeoColony).filter(GeoColony.id.in_(colony_ids)).all():
+            colonies[item.id] = item.name
     return [
         ClientProfileResponse(
             id=item.id,
@@ -175,6 +235,8 @@ def list_client_profiles(
             state_code=item.state_code,
             municipality_code=item.municipality_code,
             postal_code=item.postal_code,
+            colony_id=item.colony_id,
+            colony_name=colonies.get(item.colony_id) if item.colony_id else None,
             address_line=item.address_line,
             wants_invoice=item.wants_invoice,
             active=item.active,

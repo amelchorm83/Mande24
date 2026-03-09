@@ -198,6 +198,18 @@ class GeoPostalCode(Base):
     settlement: Mapped[str] = mapped_column(String(150), default="")
 
 
+class GeoColony(Base):
+    __tablename__ = "geo_colonies"
+
+    id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    state_code: Mapped[str] = mapped_column(String(10), ForeignKey("geo_states.code"), index=True)
+    municipality_code: Mapped[str] = mapped_column(String(20), ForeignKey("geo_municipalities.code"), index=True)
+    postal_code: Mapped[str] = mapped_column(String(10), ForeignKey("geo_postal_codes.code"), index=True)
+    name: Mapped[str] = mapped_column(String(180), index=True)
+    settlement_type: Mapped[str] = mapped_column(String(60), default="")
+    sepomex_code: Mapped[str] = mapped_column(String(20), default="")
+
+
 class ClientProfile(Base):
     __tablename__ = "client_profiles"
 
@@ -208,6 +220,7 @@ class ClientProfile(Base):
     state_code: Mapped[str] = mapped_column(String(10), ForeignKey("geo_states.code"), index=True)
     municipality_code: Mapped[str] = mapped_column(String(20), ForeignKey("geo_municipalities.code"), index=True)
     postal_code: Mapped[str] = mapped_column(String(10), ForeignKey("geo_postal_codes.code"), index=True)
+    colony_id: Mapped[str | None] = mapped_column(String(64), ForeignKey("geo_colonies.id"), nullable=True, index=True)
     address_line: Mapped[str] = mapped_column(String(255), default="")
     wants_invoice: Mapped[bool] = mapped_column(Boolean, default=False)
     active: Mapped[bool] = mapped_column(Boolean, default=True)
@@ -225,3 +238,23 @@ class GuideParty(Base):
     origin_wants_invoice: Mapped[bool] = mapped_column(Boolean, default=False)
 
     guide: Mapped[Guide] = relationship(back_populates="parties")
+
+
+class ZoneGeoRule(Base):
+    __tablename__ = "zone_geo_rules"
+
+    id: Mapped[str] = mapped_column(String(32), primary_key=True, default=lambda: uuid4().hex)
+    zone_id: Mapped[str] = mapped_column(String(32), ForeignKey("zones.id", ondelete="CASCADE"), index=True)
+    state_code: Mapped[str] = mapped_column(String(10), ForeignKey("geo_states.code"), index=True)
+    municipality_code: Mapped[str | None] = mapped_column(String(20), ForeignKey("geo_municipalities.code"), nullable=True, index=True)
+    postal_code: Mapped[str | None] = mapped_column(String(10), ForeignKey("geo_postal_codes.code"), nullable=True, index=True)
+    colony_id: Mapped[str | None] = mapped_column(String(64), ForeignKey("geo_colonies.id"), nullable=True, index=True)
+    active: Mapped[bool] = mapped_column(Boolean, default=True)
+
+
+class GeoCatalogSync(Base):
+    __tablename__ = "geo_catalog_sync"
+
+    key: Mapped[str] = mapped_column(String(80), primary_key=True)
+    value: Mapped[str] = mapped_column(String(255), default="")
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))

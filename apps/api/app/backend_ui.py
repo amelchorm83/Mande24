@@ -14,6 +14,7 @@ from app.db.models import (
     ClientKind,
     ClientProfile,
     Delivery,
+    GeoColony,
     GeoMunicipality,
     GeoPostalCode,
     GeoState,
@@ -30,6 +31,7 @@ from app.db.models import (
     UserRole,
     WorkflowStage,
     Zone,
+    ZoneGeoRule,
 )
 from app.core.security import hash_password
 from app.db.session import get_db
@@ -1279,9 +1281,22 @@ def backend_zone_detail(zone_id: str, db: Session = Depends(get_db), msg: str = 
     if not zone:
         return _render_layout("zones", "Zona", "Detalle", '<section class="panel"><div class="empty">Zona no encontrada.</div></section>', msg, "error")
     stations = db.query(Station).filter(Station.zone_id == zone.id).order_by(Station.name.asc()).all()
+    states = db.query(GeoState).order_by(GeoState.name.asc()).all()
+    coverage = db.query(ZoneGeoRule).filter(ZoneGeoRule.zone_id == zone.id).order_by(ZoneGeoRule.id.desc()).all()
+    state_map = {item.code: item for item in states}
+    municipality_codes = [item.municipality_code for item in coverage if item.municipality_code]
+    municipality_map = {}
+    if municipality_codes:
+        municipality_map = {
+            item.code: item for item in db.query(GeoMunicipality).filter(GeoMunicipality.code.in_(municipality_codes)).all()
+        }
+    colony_ids = [item.colony_id for item in coverage if item.colony_id]
+    colony_map = {}
+    if colony_ids:
+        colony_map = {item.id: item for item in db.query(GeoColony).filter(GeoColony.id.in_(colony_ids)).all()}
     station_rows = [[escape(item.id), f'<a href="/ERPMande24/catalogs/stations/{escape(item.id)}">{escape(item.name)}</a>', "activa" if item.active else "inactiva"] for item in stations]
     content = (
-        f"{_tabs([('resumen', 'Resumen'), ('relacionados', 'Relacionados')])}"
+        f"{_tabs([('resumen', 'Resumen'), ('relacionados', 'Relacionados'), ('cobertura', 'Cobertura Geo')])}"
         "<section id=\"resumen\" class=\"panel\"><h3>Ficha de Zona</h3>"
         "<div class=\"kpi-grid\">"
         f"<article class=\"kpi\"><small>ID</small><strong>{escape(zone.id)}</strong></article>"
@@ -1291,7 +1306,167 @@ def backend_zone_detail(zone_id: str, db: Session = Depends(get_db), msg: str = 
         "</div></section>"
     )
     content += f"<section id=\"relacionados\" class=\"panel\"><h3>Estaciones en la Zona</h3>{_table(['ID', 'Nombre', 'Estado'], station_rows)}</section>"
+
+    state_options = "".join([f'<option value="{escape(item.code)}">{escape(item.name)}</option>' for item in states])
+    coverage_rows = []
+    for item in coverage:
+        state = state_map.get(item.state_code)
+        municipality = municipality_map.get(item.municipality_code) if item.municipality_code else None
+        colony = colony_map.get(item.colony_id) if item.colony_id else None
+        coverage_rows.append(
+            [
+                escape(state.name if state else item.state_code),
+                escape(municipality.name if municipality else (item.municipality_code or "*")),
+                escape(item.postal_code or "*"),
+                escape(colony.name if colony else "*"),
+                (
+                    f'<form class="inline-form" method="post" action="/ERPMande24/catalogs/zones/{escape(zone.id)}/coverage/{escape(item.id)}/delete">'
+                    f'<button type="submit">Quitar</button></form>'
+                ),
+            ]
+        )
+
+    content += (
+        "<section id=\"cobertura\" class=\"panel\"><h3>Cobertura Geografica</h3>"
+        f"<form class=\"grid\" method=\"post\" action=\"/ERPMande24/catalogs/zones/{escape(zone.id)}/coverage/add\">"
+        f"<label>Estado<select id=\"zone-state\" name=\"state_code\" required><option value=\"\">Selecciona</option>{state_options}</select></label>"
+        "<label>Municipio<select id=\"zone-municipality\" name=\"municipality_code\"><option value=\"\">Todos</option></select></label>"
+        "<label>Codigo postal<select id=\"zone-postal\" name=\"postal_code\"><option value=\"\">Todos</option></select></label>"
+        "<label>Colonia<select id=\"zone-colony\" name=\"colony_id\"><option value=\"\">Todas</option></select></label>"
+        "<div class=\"full actions\"><button class=\"primary\" type=\"submit\">Agregar cobertura</button></div>"
+        "</form>"
+        f"{_table(['Estado', 'Municipio', 'CP', 'Colonia', 'Accion'], coverage_rows)}"
+        "</section>"
+        """
+<script>
+(() => {
+  const stateEl = document.getElementById('zone-state');
+  const munEl = document.getElementById('zone-municipality');
+  const postalEl = document.getElementById('zone-postal');
+  const colonyEl = document.getElementById('zone-colony');
+  if (!stateEl || !munEl || !postalEl || !colonyEl) return;
+
+  const setRows = (el, rows, placeholder, valueKey = 'code', labelKey = 'name') => {
+    el.innerHTML = '';
+    const all = document.createElement('option');
+    all.value = '';
+    all.textContent = placeholder;
+    el.appendChild(all);
+    rows.forEach((row) => {
+      const opt = document.createElement('option');
+      opt.value = row[valueKey];
+      opt.textContent = row[labelKey] || row[valueKey];
+      el.appendChild(opt);
+    });
+  };
+
+  stateEl.addEventListener('change', async () => {
+    setRows(munEl, [], 'Todos');
+    setRows(postalEl, [], 'Todos');
+    setRows(colonyEl, [], 'Todas');
+    if (!stateEl.value) return;
+    const data = await fetch(`/ERPMande24/geo/municipalities?state_code=${encodeURIComponent(stateEl.value)}`).then((r) => r.json());
+    setRows(munEl, data, 'Todos');
+  });
+
+  munEl.addEventListener('change', async () => {
+    setRows(postalEl, [], 'Todos');
+    setRows(colonyEl, [], 'Todas');
+    if (!munEl.value) return;
+    const data = await fetch(`/ERPMande24/geo/postal-codes?municipality_code=${encodeURIComponent(munEl.value)}`).then((r) => r.json());
+    setRows(postalEl, data, 'Todos', 'code', 'code');
+  });
+
+  postalEl.addEventListener('change', async () => {
+    setRows(colonyEl, [], 'Todas');
+    if (!postalEl.value || !stateEl.value || !munEl.value) return;
+    const q = `state_code=${encodeURIComponent(stateEl.value)}&municipality_code=${encodeURIComponent(munEl.value)}&postal_code=${encodeURIComponent(postalEl.value)}`;
+    const data = await fetch(`/ERPMande24/geo/colonies?${q}`).then((r) => r.json());
+    setRows(colonyEl, data, 'Todas', 'id', 'name');
+  });
+})();
+</script>
+"""
+    )
     return _render_layout("zones", f"Zona {zone.name}", "Vista detalle tipo formulario.", content, msg, kind)
+
+
+@router.post("/catalogs/zones/{zone_id}/coverage/add")
+def backend_zone_add_coverage(
+    zone_id: str,
+    state_code: str = Form(...),
+    municipality_code: str = Form(""),
+    postal_code: str = Form(""),
+    colony_id: str = Form(""),
+    request: Request = None,
+    db: Session = Depends(get_db),
+) -> RedirectResponse:
+    forbidden = _require_manage(request, f"/ERPMande24/catalogs/zones/{zone_id}", "editar cobertura de zona")
+    if forbidden:
+        return forbidden
+
+    zone = db.query(Zone).filter(Zone.id == zone_id).first()
+    if not zone:
+        return _redirect("/ERPMande24/catalogs/zones", "Zona no encontrada.", "error")
+
+    state_value = state_code.strip().upper()
+    municipality_value = municipality_code.strip().upper() or None
+    postal_value = postal_code.strip() or None
+    colony_value = colony_id.strip() or None
+
+    if not db.query(GeoState).filter(GeoState.code == state_value).first():
+        return _redirect(f"/ERPMande24/catalogs/zones/{zone_id}", "Estado no valido.", "error")
+
+    if municipality_value and not db.query(GeoMunicipality).filter(GeoMunicipality.code == municipality_value, GeoMunicipality.state_code == state_value).first():
+        return _redirect(f"/ERPMande24/catalogs/zones/{zone_id}", "Municipio no valido para ese estado.", "error")
+
+    if postal_value and municipality_value:
+        if not db.query(GeoPostalCode).filter(GeoPostalCode.code == postal_value, GeoPostalCode.municipality_code == municipality_value).first():
+            return _redirect(f"/ERPMande24/catalogs/zones/{zone_id}", "Codigo postal no valido para ese municipio.", "error")
+
+    if colony_value and municipality_value and postal_value:
+        if not db.query(GeoColony).filter(
+            GeoColony.id == colony_value,
+            GeoColony.state_code == state_value,
+            GeoColony.municipality_code == municipality_value,
+            GeoColony.postal_code == postal_value,
+        ).first():
+            return _redirect(f"/ERPMande24/catalogs/zones/{zone_id}", "Colonia no valida para esa cobertura.", "error")
+
+    exists = db.query(ZoneGeoRule).filter(
+        ZoneGeoRule.zone_id == zone_id,
+        ZoneGeoRule.state_code == state_value,
+        ZoneGeoRule.municipality_code == municipality_value,
+        ZoneGeoRule.postal_code == postal_value,
+        ZoneGeoRule.colony_id == colony_value,
+    ).first()
+    if exists:
+        return _redirect(f"/ERPMande24/catalogs/zones/{zone_id}", "Esa cobertura ya existe.", "error")
+
+    row = ZoneGeoRule(
+        zone_id=zone_id,
+        state_code=state_value,
+        municipality_code=municipality_value,
+        postal_code=postal_value,
+        colony_id=colony_value,
+        active=True,
+    )
+    db.add(row)
+    db.commit()
+    return _redirect(f"/ERPMande24/catalogs/zones/{zone_id}", "Cobertura agregada correctamente.")
+
+
+@router.post("/catalogs/zones/{zone_id}/coverage/{coverage_id}/delete")
+def backend_zone_delete_coverage(zone_id: str, coverage_id: str, request: Request = None, db: Session = Depends(get_db)) -> RedirectResponse:
+    forbidden = _require_manage(request, f"/ERPMande24/catalogs/zones/{zone_id}", "eliminar cobertura de zona")
+    if forbidden:
+        return forbidden
+    row = db.query(ZoneGeoRule).filter(ZoneGeoRule.id == coverage_id, ZoneGeoRule.zone_id == zone_id).first()
+    if not row:
+        return _redirect(f"/ERPMande24/catalogs/zones/{zone_id}", "Cobertura no encontrada.", "error")
+    db.delete(row)
+    db.commit()
+    return _redirect(f"/ERPMande24/catalogs/zones/{zone_id}", "Cobertura eliminada.")
 
 
 @router.post("/catalogs/zones/create")
@@ -1568,6 +1743,46 @@ def backend_rider_detail(rider_id: str, db: Session = Depends(get_db), msg: str 
     return _render_layout("riders", f"Rider {rider.id}", "Vista detalle tipo formulario.", content, msg, kind)
 
 
+@router.get("/geo/municipalities", response_class=JSONResponse)
+def backend_geo_municipalities(state_code: str, db: Session = Depends(get_db)) -> JSONResponse:
+    rows = (
+        db.query(GeoMunicipality)
+        .filter(GeoMunicipality.state_code == state_code.strip().upper())
+        .order_by(GeoMunicipality.name.asc())
+        .all()
+    )
+    payload = [{"code": item.code, "name": item.name} for item in rows]
+    return JSONResponse(payload)
+
+
+@router.get("/geo/postal-codes", response_class=JSONResponse)
+def backend_geo_postal_codes(municipality_code: str, db: Session = Depends(get_db)) -> JSONResponse:
+    rows = (
+        db.query(GeoPostalCode)
+        .filter(GeoPostalCode.municipality_code == municipality_code.strip().upper())
+        .order_by(GeoPostalCode.code.asc())
+        .all()
+    )
+    payload = [{"code": item.code} for item in rows]
+    return JSONResponse(payload)
+
+
+@router.get("/geo/colonies", response_class=JSONResponse)
+def backend_geo_colonies(state_code: str, municipality_code: str, postal_code: str, db: Session = Depends(get_db)) -> JSONResponse:
+    rows = (
+        db.query(GeoColony)
+        .filter(
+            GeoColony.state_code == state_code.strip().upper(),
+            GeoColony.municipality_code == municipality_code.strip().upper(),
+            GeoColony.postal_code == postal_code.strip(),
+        )
+        .order_by(GeoColony.name.asc())
+        .all()
+    )
+    payload = [{"id": item.id, "name": item.name, "settlement_type": item.settlement_type} for item in rows]
+    return JSONResponse(payload)
+
+
 @router.get("/catalogs/clients", response_class=HTMLResponse)
 def backend_clients(
     db: Session = Depends(get_db),
@@ -1603,6 +1818,10 @@ def backend_clients(
     states = {item.code: item for item in db.query(GeoState).all()}
     municipalities = {item.code: item for item in db.query(GeoMunicipality).all()}
     postal_codes = {item.code: item for item in db.query(GeoPostalCode).all()}
+    colony_ids = [item.colony_id for item in clients if item.colony_id]
+    colonies = {}
+    if colony_ids:
+        colonies = {item.id: item for item in db.query(GeoColony).filter(GeoColony.id.in_(colony_ids)).all()}
     state_options = "".join(
         [
             f'<option value="{escape(item.code)}" {"selected" if item.code == state_code else ""}>{escape(item.name)}</option>'
@@ -1632,6 +1851,7 @@ def backend_clients(
         state = states.get(item.state_code)
         municipality = municipalities.get(item.municipality_code)
         postal_code = postal_codes.get(item.postal_code)
+        colony = colonies.get(item.colony_id) if item.colony_id else None
         linked_user = users.get(item.user_id) if item.user_id else None
         rows.append(
             [
@@ -1641,6 +1861,7 @@ def backend_clients(
                 escape(state.name if state else item.state_code),
                 escape(municipality.name if municipality else item.municipality_code),
                 escape(postal_code.code if postal_code else item.postal_code),
+                escape(colony.name if colony else "-"),
                 escape(item.address_line or "-"),
                 "si" if item.wants_invoice else "no",
                 escape(linked_user.email if linked_user else "sin acceso portal"),
@@ -1652,21 +1873,15 @@ def backend_clients(
     state_create_options = "".join(
         [f'<option value="{escape(item.code)}">{escape(item.name)}</option>' for item in sorted(states.values(), key=lambda row: row.name.lower())]
     )
-    municipality_create_options = "".join(
-        [f'<option value="{escape(item.code)}">{escape(item.name)}</option>' for item in sorted(municipalities.values(), key=lambda row: row.name.lower())]
-    )
-    postal_create_options = "".join(
-        [f'<option value="{escape(item.code)}">{escape(item.code)}</option>' for item in sorted(postal_codes.values(), key=lambda row: row.code)]
-    )
-
     create_form = (
         "<section id=\"nuevo-cliente\" class=\"panel\"><h3>Nuevo Cliente</h3>"
         "<form class=\"grid\" method=\"post\" action=\"/ERPMande24/catalogs/clients/create\">"
         "<label>Nombre cliente<input name=\"display_name\" required minlength=\"2\" maxlength=\"150\" /></label>"
         "<label>Tipo cliente<select name=\"client_kind\"><option value=\"origin\">Origen</option><option value=\"destination\">Destino</option><option value=\"both\">Ambos</option></select></label>"
-        f"<label>Estado<select name=\"state_code\" required><option value=\"\">Selecciona</option>{state_create_options}</select></label>"
-        f"<label>Municipio<select name=\"municipality_code\" required><option value=\"\">Selecciona</option>{municipality_create_options}</select></label>"
-        f"<label>Codigo postal<select name=\"postal_code\" required><option value=\"\">Selecciona</option>{postal_create_options}</select></label>"
+        f"<label>Estado<select id=\"new-client-state\" name=\"state_code\" required><option value=\"\">Selecciona</option>{state_create_options}</select></label>"
+        "<label>Municipio<select id=\"new-client-municipality\" name=\"municipality_code\" required><option value=\"\">Selecciona estado</option></select></label>"
+        "<label>Codigo postal<select id=\"new-client-postal\" name=\"postal_code\" required><option value=\"\">Selecciona municipio</option></select></label>"
+        "<label>Colonia<select id=\"new-client-colony\" name=\"colony_id\" required><option value=\"\">Selecciona codigo postal</option></select></label>"
         "<label>Direccion<input name=\"address_line\" maxlength=\"255\" /></label>"
         "<label>Facturar servicios origen<select name=\"wants_invoice\"><option value=\"false\">No</option><option value=\"true\">Si</option></select></label>"
         "<label>Crear acceso portal<select name=\"create_portal_access\"><option value=\"false\">No</option><option value=\"true\">Si</option></select></label>"
@@ -1675,6 +1890,57 @@ def backend_clients(
         "<div class=\"full actions\"><button class=\"primary\" type=\"submit\">Crear Cliente</button></div>"
         "</form></section>"
     )
+
+    cascade_script = """
+<script>
+(() => {
+    const stateEl = document.getElementById('new-client-state');
+    const munEl = document.getElementById('new-client-municipality');
+    const postalEl = document.getElementById('new-client-postal');
+    const colonyEl = document.getElementById('new-client-colony');
+    if (!stateEl || !munEl || !postalEl || !colonyEl) return;
+
+    const setOptions = (el, rows, placeholder, valueKey = 'code', labelKey = 'name') => {
+        el.innerHTML = '';
+        const first = document.createElement('option');
+        first.value = '';
+        first.textContent = placeholder;
+        el.appendChild(first);
+        rows.forEach((row) => {
+            const opt = document.createElement('option');
+            opt.value = row[valueKey];
+            opt.textContent = row[labelKey] || row[valueKey];
+            el.appendChild(opt);
+        });
+    };
+
+    stateEl.addEventListener('change', async () => {
+        setOptions(munEl, [], 'Cargando municipios...');
+        setOptions(postalEl, [], 'Selecciona municipio');
+        setOptions(colonyEl, [], 'Selecciona codigo postal');
+        if (!stateEl.value) return setOptions(munEl, [], 'Selecciona estado');
+        const data = await fetch(`/ERPMande24/geo/municipalities?state_code=${encodeURIComponent(stateEl.value)}`).then((r) => r.json());
+        setOptions(munEl, data, 'Selecciona municipio');
+    });
+
+    munEl.addEventListener('change', async () => {
+        setOptions(postalEl, [], 'Cargando codigos...');
+        setOptions(colonyEl, [], 'Selecciona codigo postal');
+        if (!munEl.value) return setOptions(postalEl, [], 'Selecciona municipio');
+        const data = await fetch(`/ERPMande24/geo/postal-codes?municipality_code=${encodeURIComponent(munEl.value)}`).then((r) => r.json());
+        setOptions(postalEl, data, 'Selecciona codigo postal', 'code', 'code');
+    });
+
+    postalEl.addEventListener('change', async () => {
+        setOptions(colonyEl, [], 'Cargando colonias...');
+        if (!postalEl.value || !stateEl.value || !munEl.value) return setOptions(colonyEl, [], 'Selecciona codigo postal');
+        const q = `state_code=${encodeURIComponent(stateEl.value)}&municipality_code=${encodeURIComponent(munEl.value)}&postal_code=${encodeURIComponent(postalEl.value)}`;
+        const data = await fetch(`/ERPMande24/geo/colonies?${q}`).then((r) => r.json());
+        setOptions(colonyEl, data, 'Selecciona colonia', 'id', 'name');
+    });
+})();
+</script>
+"""
 
     content = (
         "<section class=\"panel\"><h3>Catalogo de Clientes</h3>"
@@ -1686,10 +1952,10 @@ def backend_clients(
         "<a class=\"btn\" href=\"/ERPMande24/catalogs/clients\">Limpiar</a>"
         "</form>"
         f"<div class=\"actions\"><a class=\"btn primary\" href=\"/ERPMande24/catalogs/clients#nuevo-cliente\">Crear cliente nuevo</a><a class=\"btn\" href=\"{escape(export_url)}\">Exportar CSV</a><a class=\"btn\" href=\"/client\">Abrir Portal Cliente</a><a class=\"btn\" href=\"/station\">Abrir Portal Estacion</a></div>"
-        f"{_table(['ID', 'Nombre', 'Tipo', 'Estado', 'Municipio', 'CP', 'Direccion', 'Factura Origen', 'Usuario Portal', 'Estado Registro', 'Accion'], rows)}"
+        f"{_table(['ID', 'Nombre', 'Tipo', 'Estado', 'Municipio', 'CP', 'Colonia', 'Direccion', 'Factura Origen', 'Usuario Portal', 'Estado Registro', 'Accion'], rows)}"
         "</section>"
     )
-    return _render_layout("clients", "Catalogo de Clientes", "Clientes origen y destino con direccion y facturacion.", create_form + content, msg, kind)
+    return _render_layout("clients", "Catalogo de Clientes", "Clientes origen y destino con direccion y facturacion.", create_form + content + cascade_script, msg, kind)
 
 
 @router.post("/catalogs/clients/create")
@@ -1699,6 +1965,7 @@ def backend_create_client(
     state_code: str = Form(...),
     municipality_code: str = Form(...),
     postal_code: str = Form(...),
+    colony_id: str = Form(...),
     address_line: str = Form(""),
     wants_invoice: str = Form("false"),
     create_portal_access: str = Form("false"),
@@ -1730,6 +1997,19 @@ def backend_create_client(
     )
     if not postal:
         return _redirect("/ERPMande24/catalogs/clients", "Codigo postal no encontrado para ese municipio.", "error")
+
+    colony = (
+        db.query(GeoColony)
+        .filter(
+            GeoColony.id == colony_id.strip(),
+            GeoColony.state_code == state.code,
+            GeoColony.municipality_code == municipality.code,
+            GeoColony.postal_code == postal.code,
+        )
+        .first()
+    )
+    if not colony:
+        return _redirect("/ERPMande24/catalogs/clients", "Colonia no encontrada para ese estado/municipio/CP.", "error")
 
     try:
         kind_value = ClientKind(client_kind)
@@ -1763,6 +2043,7 @@ def backend_create_client(
         state_code=state.code,
         municipality_code=municipality.code,
         postal_code=postal.code,
+        colony_id=colony.id,
         address_line=address_line.strip(),
         wants_invoice=(wants_invoice == "true"),
         active=True,
@@ -1779,13 +2060,34 @@ def backend_client_detail(client_id: str, db: Session = Depends(get_db), msg: st
         return _render_layout("clients", "Cliente", "Detalle", '<section class="panel"><div class="empty">Cliente no encontrado.</div></section>', msg, "error")
 
     states = db.query(GeoState).order_by(GeoState.name.asc()).all()
-    municipalities = db.query(GeoMunicipality).order_by(GeoMunicipality.name.asc()).all()
-    postals = db.query(GeoPostalCode).order_by(GeoPostalCode.code.asc()).all()
+    municipalities = (
+        db.query(GeoMunicipality)
+        .filter(GeoMunicipality.state_code == client.state_code)
+        .order_by(GeoMunicipality.name.asc())
+        .all()
+    )
+    postals = (
+        db.query(GeoPostalCode)
+        .filter(GeoPostalCode.municipality_code == client.municipality_code)
+        .order_by(GeoPostalCode.code.asc())
+        .all()
+    )
+    colonies = (
+        db.query(GeoColony)
+        .filter(
+            GeoColony.state_code == client.state_code,
+            GeoColony.municipality_code == client.municipality_code,
+            GeoColony.postal_code == client.postal_code,
+        )
+        .order_by(GeoColony.name.asc())
+        .all()
+    )
     linked_user = db.query(User).filter(User.id == client.user_id).first() if client.user_id else None
 
     state_options = "".join([f'<option value="{escape(item.code)}" {"selected" if item.code == client.state_code else ""}>{escape(item.name)}</option>' for item in states])
     municipality_options = "".join([f'<option value="{escape(item.code)}" {"selected" if item.code == client.municipality_code else ""}>{escape(item.name)}</option>' for item in municipalities])
     postal_options = "".join([f'<option value="{escape(item.code)}" {"selected" if item.code == client.postal_code else ""}>{escape(item.code)}</option>' for item in postals])
+    colony_options = "".join([f'<option value="{escape(item.id)}" {"selected" if item.id == client.colony_id else ""}>{escape(item.name)}</option>' for item in colonies])
 
     content = (
         f"{_tabs([('resumen', 'Resumen'), ('editar', 'Editar')])}"
@@ -1804,9 +2106,10 @@ def backend_client_detail(client_id: str, db: Session = Depends(get_db), msg: st
         f"<option value=\"destination\" {'selected' if client.client_kind.value == 'destination' else ''}>Destino</option>"
         f"<option value=\"both\" {'selected' if client.client_kind.value == 'both' else ''}>Ambos</option>"
         "</select></label>"
-        f"<label>Estado<select name=\"state_code\" required>{state_options}</select></label>"
-        f"<label>Municipio<select name=\"municipality_code\" required>{municipality_options}</select></label>"
-        f"<label>Codigo postal<select name=\"postal_code\" required>{postal_options}</select></label>"
+        f"<label>Estado<select id=\"edit-client-state\" name=\"state_code\" required>{state_options}</select></label>"
+        f"<label>Municipio<select id=\"edit-client-municipality\" name=\"municipality_code\" required>{municipality_options}</select></label>"
+        f"<label>Codigo postal<select id=\"edit-client-postal\" name=\"postal_code\" required>{postal_options}</select></label>"
+        f"<label>Colonia<select id=\"edit-client-colony\" name=\"colony_id\" required>{colony_options}</select></label>"
         f"<label>Direccion<input name=\"address_line\" value=\"{escape(client.address_line or '')}\" maxlength=\"255\" /></label>"
         f"<label>Facturar origen<select name=\"wants_invoice\"><option value=\"true\" {'selected' if client.wants_invoice else ''}>Si</option><option value=\"false\" {'selected' if not client.wants_invoice else ''}>No</option></select></label>"
         f"<label>Estado registro<select name=\"active\"><option value=\"true\" {'selected' if client.active else ''}>Activo</option><option value=\"false\" {'selected' if not client.active else ''}>Inactivo</option></select></label>"
@@ -1815,6 +2118,52 @@ def backend_client_detail(client_id: str, db: Session = Depends(get_db), msg: st
         "<div class=\"full actions\"><button class=\"primary\" type=\"submit\">Guardar cambios</button><a class=\"btn\" href=\"/ERPMande24/catalogs/clients\">Volver</a></div>"
         "</form></section>"
     )
+    content += """
+<script>
+(() => {
+    const stateEl = document.getElementById('edit-client-state');
+    const munEl = document.getElementById('edit-client-municipality');
+    const postalEl = document.getElementById('edit-client-postal');
+    const colonyEl = document.getElementById('edit-client-colony');
+    if (!stateEl || !munEl || !postalEl || !colonyEl) return;
+
+    const fill = (el, rows, placeholder, valueKey = 'code', labelKey = 'name') => {
+        const current = el.value;
+        el.innerHTML = '';
+        const first = document.createElement('option');
+        first.value = '';
+        first.textContent = placeholder;
+        el.appendChild(first);
+        rows.forEach((row) => {
+            const opt = document.createElement('option');
+            opt.value = row[valueKey];
+            opt.textContent = row[labelKey] || row[valueKey];
+            if (opt.value === current) opt.selected = true;
+            el.appendChild(opt);
+        });
+    };
+
+    stateEl.addEventListener('change', async () => {
+        const data = await fetch(`/ERPMande24/geo/municipalities?state_code=${encodeURIComponent(stateEl.value)}`).then((r) => r.json());
+        fill(munEl, data, 'Selecciona municipio');
+        fill(postalEl, [], 'Selecciona municipio');
+        fill(colonyEl, [], 'Selecciona codigo postal');
+    });
+
+    munEl.addEventListener('change', async () => {
+        const data = await fetch(`/ERPMande24/geo/postal-codes?municipality_code=${encodeURIComponent(munEl.value)}`).then((r) => r.json());
+        fill(postalEl, data, 'Selecciona codigo postal', 'code', 'code');
+        fill(colonyEl, [], 'Selecciona codigo postal');
+    });
+
+    postalEl.addEventListener('change', async () => {
+        const q = `state_code=${encodeURIComponent(stateEl.value)}&municipality_code=${encodeURIComponent(munEl.value)}&postal_code=${encodeURIComponent(postalEl.value)}`;
+        const data = await fetch(`/ERPMande24/geo/colonies?${q}`).then((r) => r.json());
+        fill(colonyEl, data, 'Selecciona colonia', 'id', 'name');
+    });
+})();
+</script>
+"""
     return _render_layout("clients", f"Cliente {client.display_name}", "Edicion de catalogo de clientes.", content, msg, kind)
 
 
@@ -1826,6 +2175,7 @@ def backend_update_client(
     state_code: str = Form(...),
     municipality_code: str = Form(...),
     postal_code: str = Form(...),
+    colony_id: str = Form(...),
     address_line: str = Form(""),
     wants_invoice: str = Form("false"),
     active: str = Form("true"),
@@ -1853,7 +2203,17 @@ def backend_update_client(
         .filter(GeoPostalCode.code == postal_code.strip(), GeoPostalCode.municipality_code == municipality_code.strip().upper())
         .first()
     )
-    if not state or not municipality or not postal:
+    colony = (
+        db.query(GeoColony)
+        .filter(
+            GeoColony.id == colony_id.strip(),
+            GeoColony.state_code == state_code.strip().upper(),
+            GeoColony.municipality_code == municipality_code.strip().upper(),
+            GeoColony.postal_code == postal_code.strip(),
+        )
+        .first()
+    )
+    if not state or not municipality or not postal or not colony:
         return _redirect(f"/ERPMande24/catalogs/clients/{client_id}", "Direccion no valida (estado/municipio/CP).", "error")
 
     try:
@@ -1866,6 +2226,7 @@ def backend_update_client(
     client.state_code = state.code
     client.municipality_code = municipality.code
     client.postal_code = postal.code
+    client.colony_id = colony.id
     client.address_line = address_line.strip()
     client.wants_invoice = wants_invoice == "true"
     client.active = active == "true"
@@ -2324,10 +2685,15 @@ def backend_export_clients_csv(
     clients = clients_query.order_by(ClientProfile.created_at.desc()).all()
     states = {item.code: item for item in db.query(GeoState).all()}
     municipalities = {item.code: item for item in db.query(GeoMunicipality).all()}
+    colony_ids = [item.colony_id for item in clients if item.colony_id]
+    colonies = {}
+    if colony_ids:
+        colonies = {item.id: item for item in db.query(GeoColony).filter(GeoColony.id.in_(colony_ids)).all()}
     rows = []
     for item in clients:
         state = states.get(item.state_code)
         municipality = municipalities.get(item.municipality_code)
+        colony = colonies.get(item.colony_id) if item.colony_id else None
         rows.append(
             [
                 item.id,
@@ -2336,6 +2702,7 @@ def backend_export_clients_csv(
                 state.name if state else item.state_code,
                 municipality.name if municipality else item.municipality_code,
                 item.postal_code,
+                colony.name if colony else "",
                 item.address_line or "",
                 str(item.wants_invoice),
                 item.user_id or "",
@@ -2352,6 +2719,7 @@ def backend_export_clients_csv(
             "state",
             "municipality",
             "postal_code",
+            "colony",
             "address_line",
             "wants_invoice",
             "user_id",

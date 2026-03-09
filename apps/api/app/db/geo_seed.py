@@ -1,4 +1,4 @@
-from app.db.models import GeoMunicipality, GeoPostalCode, GeoState
+from app.db.models import GeoColony, GeoMunicipality, GeoPostalCode, GeoState
 
 # Base bootstrap catalog for MX states with representative municipality/postal code.
 # The structure supports loading a larger official catalog later without code changes.
@@ -39,18 +39,47 @@ GEO_SEED_ROWS = [
 
 
 def seed_geo_catalogs(db) -> None:
-    if db.query(GeoState).first():
+    if db.query(GeoState).first() and db.query(GeoColony).first():
         return
 
+    state_codes = {row[0] for row in db.query(GeoState.code).all()}
+    municipality_codes = {row[0] for row in db.query(GeoMunicipality.code).all()}
+    postal_codes = {row[0] for row in db.query(GeoPostalCode.code).all()}
+    colony_ids = {row[0] for row in db.query(GeoColony.id).all()}
+
     for state_code, state_name, _municipality_code, _municipality_name, _postal_code, _settlement in GEO_SEED_ROWS:
-        db.add(GeoState(code=state_code, name=state_name))
+        if state_code not in state_codes:
+            db.add(GeoState(code=state_code, name=state_name))
+            state_codes.add(state_code)
     db.flush()
 
     for state_code, _state_name, municipality_code, municipality_name, _postal_code, _settlement in GEO_SEED_ROWS:
-        db.add(GeoMunicipality(code=municipality_code, state_code=state_code, name=municipality_name))
+        if municipality_code not in municipality_codes:
+            db.add(GeoMunicipality(code=municipality_code, state_code=state_code, name=municipality_name))
+            municipality_codes.add(municipality_code)
     db.flush()
 
     for _state_code, _state_name, municipality_code, _municipality_name, postal_code, settlement in GEO_SEED_ROWS:
-        db.add(GeoPostalCode(code=postal_code, municipality_code=municipality_code, settlement=settlement))
+        if postal_code not in postal_codes:
+            db.add(GeoPostalCode(code=postal_code, municipality_code=municipality_code, settlement=settlement))
+            postal_codes.add(postal_code)
+
+    db.flush()
+
+    for state_code, _state_name, municipality_code, _municipality_name, postal_code, settlement in GEO_SEED_ROWS:
+        colony_id = f"{postal_code}:{municipality_code}"
+        if colony_id not in colony_ids:
+            db.add(
+                GeoColony(
+                    id=colony_id,
+                    state_code=state_code,
+                    municipality_code=municipality_code,
+                    postal_code=postal_code,
+                    name=settlement,
+                    settlement_type="Colonia",
+                    sepomex_code=municipality_code,
+                )
+            )
+            colony_ids.add(colony_id)
 
     db.commit()

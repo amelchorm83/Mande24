@@ -11,12 +11,14 @@ export default function StationPortalPage() {
   const [states, setStates] = useState([]);
   const [municipalities, setMunicipalities] = useState([]);
   const [postalCodes, setPostalCodes] = useState([]);
+  const [colonies, setColonies] = useState([]);
   const [profiles, setProfiles] = useState([]);
   const [newClientName, setNewClientName] = useState("");
   const [newClientKind, setNewClientKind] = useState("destination");
   const [stateCode, setStateCode] = useState("");
   const [municipalityCode, setMunicipalityCode] = useState("");
   const [postalCode, setPostalCode] = useState("");
+  const [colonyId, setColonyId] = useState("");
   const [addressLine, setAddressLine] = useState("");
   const [wantsInvoice, setWantsInvoice] = useState(false);
   const [createPortalAccess, setCreatePortalAccess] = useState(true);
@@ -44,6 +46,11 @@ export default function StationPortalPage() {
     loadPostalCodes(municipalityCode);
   }, [token, municipalityCode]);
 
+  useEffect(() => {
+    if (!token || !stateCode || !municipalityCode || !postalCode) return;
+    loadColonies(stateCode, municipalityCode, postalCode);
+  }, [token, stateCode, municipalityCode, postalCode]);
+
   async function loadGeoStates() {
     const headers = { Authorization: `Bearer ${token}` };
     const res = await fetch(`${API_BASE}/api/v1/clients/geo/states`, { headers });
@@ -60,6 +67,10 @@ export default function StationPortalPage() {
     const rows = await res.json();
     setMunicipalities(rows);
     setMunicipalityCode(rows.length ? rows[0].code : "");
+    setPostalCodes([]);
+    setPostalCode("");
+    setColonies([]);
+    setColonyId("");
   }
 
   async function loadPostalCodes(code) {
@@ -69,6 +80,22 @@ export default function StationPortalPage() {
     const rows = await res.json();
     setPostalCodes(rows);
     setPostalCode(rows.length ? rows[0].code : "");
+    setColonies([]);
+    setColonyId("");
+  }
+
+  async function loadColonies(state, municipality, postal) {
+    const headers = { Authorization: `Bearer ${token}` };
+    const q = new URLSearchParams({
+      state_code: state,
+      municipality_code: municipality,
+      postal_code: postal,
+    });
+    const res = await fetch(`${API_BASE}/api/v1/clients/geo/colonies?${q.toString()}`, { headers });
+    if (!res.ok) return;
+    const rows = await res.json();
+    setColonies(rows);
+    setColonyId(rows.length ? rows[0].id : "");
   }
 
   async function loadProfiles() {
@@ -81,6 +108,10 @@ export default function StationPortalPage() {
 
   async function createClientProfile(e) {
     e.preventDefault();
+    if (!newClientName || !stateCode || !municipalityCode || !postalCode || !colonyId) {
+      setMsg("Completa nombre, estado, municipio, CP y colonia para registrar cliente.");
+      return;
+    }
     const headers = { Authorization: `Bearer ${token}`, "Content-Type": "application/json" };
     const payload = {
       display_name: newClientName,
@@ -88,6 +119,7 @@ export default function StationPortalPage() {
       state_code: stateCode,
       municipality_code: municipalityCode,
       postal_code: postalCode,
+      colony_id: colonyId,
       address_line: addressLine,
       wants_invoice: wantsInvoice,
       create_portal_access: createPortalAccess,
@@ -107,6 +139,7 @@ export default function StationPortalPage() {
     setMsg("Cliente registrado desde estacion.");
     setNewClientName("");
     setAddressLine("");
+    setColonyId("");
     setPortalEmail("");
     setPortalPassword("");
     await loadProfiles();
@@ -204,6 +237,13 @@ export default function StationPortalPage() {
             </select>
           </label>
           <label>
+            Colonia
+            <select value={colonyId} onChange={(e) => setColonyId(e.target.value)}>
+              <option value="">Selecciona</option>
+              {colonies.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
+            </select>
+          </label>
+          <label>
             Calle y numero
             <input value={addressLine} onChange={(e) => setAddressLine(e.target.value)} />
           </label>
@@ -291,12 +331,12 @@ export default function StationPortalPage() {
         <div className="table-wrap">
           <table>
             <thead>
-              <tr><th>Nombre</th><th>Tipo</th><th>Estado</th><th>Municipio</th><th>CP</th><th>Factura</th></tr>
+              <tr><th>Nombre</th><th>Tipo</th><th>Estado</th><th>Municipio</th><th>CP</th><th>Colonia</th><th>Factura</th></tr>
             </thead>
             <tbody>
               {profiles.map((row) => (
                 <tr key={row.id}>
-                  <td>{row.display_name}</td><td>{row.client_kind}</td><td>{row.state_code}</td><td>{row.municipality_code}</td><td>{row.postal_code}</td><td>{row.wants_invoice ? "Si" : "No"}</td>
+                  <td>{row.display_name}</td><td>{row.client_kind}</td><td>{row.state_code}</td><td>{row.municipality_code}</td><td>{row.postal_code}</td><td>{row.colony_name || "-"}</td><td>{row.wants_invoice ? "Si" : "No"}</td>
                 </tr>
               ))}
             </tbody>

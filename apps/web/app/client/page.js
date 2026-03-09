@@ -17,6 +17,7 @@ export default function ClientPortalPage() {
   const [states, setStates] = useState([]);
   const [municipalities, setMunicipalities] = useState([]);
   const [postalCodes, setPostalCodes] = useState([]);
+  const [colonies, setColonies] = useState([]);
   const [customerName, setCustomerName] = useState("Cliente Origen");
   const [destinationName, setDestinationName] = useState("Cliente Destino");
   const [originClientId, setOriginClientId] = useState("");
@@ -29,6 +30,7 @@ export default function ClientPortalPage() {
   const [stateCode, setStateCode] = useState("");
   const [municipalityCode, setMunicipalityCode] = useState("");
   const [postalCode, setPostalCode] = useState("");
+  const [colonyId, setColonyId] = useState("");
   const [addressLine, setAddressLine] = useState("");
   const [createPortalAccess, setCreatePortalAccess] = useState(true);
   const [portalEmail, setPortalEmail] = useState("");
@@ -109,6 +111,11 @@ export default function ClientPortalPage() {
     loadPostalCodes(municipalityCode);
   }, [token, municipalityCode]);
 
+  useEffect(() => {
+    if (!token || !stateCode || !municipalityCode || !postalCode) return;
+    loadColonies(stateCode, municipalityCode, postalCode);
+  }, [token, stateCode, municipalityCode, postalCode]);
+
   async function loadCatalogs() {
     if (!token) {
       setMsg("Necesitas token. Ve primero a /auth.");
@@ -174,6 +181,10 @@ export default function ClientPortalPage() {
     const rows = await res.json();
     setMunicipalities(rows);
     setMunicipalityCode(rows.length ? rows[0].code : "");
+    setPostalCodes([]);
+    setPostalCode("");
+    setColonies([]);
+    setColonyId("");
   }
 
   async function loadPostalCodes(code) {
@@ -182,6 +193,21 @@ export default function ClientPortalPage() {
     const rows = await res.json();
     setPostalCodes(rows);
     setPostalCode(rows.length ? rows[0].code : "");
+    setColonies([]);
+    setColonyId("");
+  }
+
+  async function loadColonies(state, municipality, postal) {
+    const q = new URLSearchParams({
+      state_code: state,
+      municipality_code: municipality,
+      postal_code: postal,
+    });
+    const res = await fetch(`${API_BASE}/api/v1/clients/geo/colonies?${q.toString()}`, { headers });
+    if (!res.ok) return;
+    const rows = await res.json();
+    setColonies(rows);
+    setColonyId(rows.length ? rows[0].id : "");
   }
 
   async function loadShipments() {
@@ -194,8 +220,8 @@ export default function ClientPortalPage() {
 
   async function createClientProfile(e) {
     e.preventDefault();
-    if (!newClientName || !stateCode || !municipalityCode || !postalCode) {
-      setMsg("Completa nombre y direccion del cliente.");
+    if (!newClientName || !stateCode || !municipalityCode || !postalCode || !colonyId) {
+      setMsg("Completa nombre, estado, municipio, CP y colonia del cliente.");
       return;
     }
     const payload = {
@@ -204,6 +230,7 @@ export default function ClientPortalPage() {
       state_code: stateCode,
       municipality_code: municipalityCode,
       postal_code: postalCode,
+      colony_id: colonyId,
       address_line: addressLine,
       wants_invoice: originWantsInvoice,
       create_portal_access: createPortalAccess,
@@ -223,6 +250,7 @@ export default function ClientPortalPage() {
     setMsg("Cliente registrado correctamente.");
     setNewClientName("");
     setAddressLine("");
+    setColonyId("");
     setPortalEmail("");
     setPortalPassword("");
     await loadProfiles();
@@ -374,6 +402,13 @@ export default function ClientPortalPage() {
             Codigo postal
             <select value={postalCode} onChange={(e) => setPostalCode(e.target.value)}>
               {postalCodes.map((item) => <option key={item.code} value={item.code}>{item.code}</option>)}
+            </select>
+          </label>
+          <label>
+            Colonia
+            <select value={colonyId} onChange={(e) => setColonyId(e.target.value)}>
+              <option value="">Selecciona</option>
+              {colonies.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
             </select>
           </label>
           <label>
