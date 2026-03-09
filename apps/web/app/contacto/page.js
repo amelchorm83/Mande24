@@ -1,4 +1,58 @@
+"use client";
+
+import { useState } from "react";
+
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+
 export default function ContactoPage() {
+  const [fullName, setFullName] = useState("");
+  const [company, setCompany] = useState("");
+  const [email, setEmail] = useState("");
+  const [phone, setPhone] = useState("");
+  const [serviceInterest, setServiceInterest] = useState("express");
+  const [message, setMessage] = useState("");
+  const [statusMsg, setStatusMsg] = useState("");
+  const [isSending, setIsSending] = useState(false);
+
+  async function onSubmit(ev) {
+    ev.preventDefault();
+    setIsSending(true);
+    setStatusMsg("Enviando solicitud...");
+
+    try {
+      const res = await fetch(`${API_BASE}/api/v1/public/contact`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          full_name: fullName,
+          company,
+          email,
+          phone,
+          service_interest: serviceInterest,
+          message,
+        }),
+      });
+      const data = await res.json();
+
+      if (!res.ok) {
+        setStatusMsg(`No se pudo enviar: ${JSON.stringify(data)}`);
+        return;
+      }
+
+      setStatusMsg(data.message || "Solicitud enviada correctamente.");
+      setFullName("");
+      setCompany("");
+      setEmail("");
+      setPhone("");
+      setServiceInterest("express");
+      setMessage("");
+    } catch (error) {
+      setStatusMsg(`Error de red: ${error.message}`);
+    } finally {
+      setIsSending(false);
+    }
+  }
+
   return (
     <main className="shell public-shell">
       <header className="topbar">
@@ -27,26 +81,26 @@ export default function ContactoPage() {
       <section className="panel contact-grid">
         <article className="card">
           <h2>Formulario de Contacto</h2>
-          <form className="form-grid">
+          <form className="form-grid" onSubmit={onSubmit}>
             <label>
               Nombre completo
-              <input placeholder="Tu nombre" />
+              <input value={fullName} onChange={(e) => setFullName(e.target.value)} placeholder="Tu nombre" required />
             </label>
             <label>
               Empresa
-              <input placeholder="Nombre de tu empresa" />
+              <input value={company} onChange={(e) => setCompany(e.target.value)} placeholder="Nombre de tu empresa" />
             </label>
             <label>
               Correo
-              <input type="email" placeholder="correo@empresa.com" />
+              <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="correo@empresa.com" required />
             </label>
             <label>
               Telefono
-              <input placeholder="993 000 0000" />
+              <input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="993 000 0000" />
             </label>
             <label>
               Tipo de servicio
-              <select defaultValue="express">
+              <select value={serviceInterest} onChange={(e) => setServiceInterest(e.target.value)}>
                 <option value="express">Entrega Express</option>
                 <option value="programada">Entrega Programada</option>
                 <option value="recurrente">Ruta Recurrente</option>
@@ -54,10 +108,11 @@ export default function ContactoPage() {
             </label>
             <label>
               Mensaje
-              <textarea rows={5} placeholder="Describe tu operacion y volumen estimado" />
+              <textarea value={message} onChange={(e) => setMessage(e.target.value)} rows={5} placeholder="Describe tu operacion y volumen estimado" required minLength={10} />
             </label>
-            <button className="btn btn-primary" type="submit">Enviar solicitud</button>
+            <button className="btn btn-primary" type="submit" disabled={isSending}>{isSending ? "Enviando..." : "Enviar solicitud"}</button>
           </form>
+          <p className={`status-line ${statusMsg.includes("No se pudo") || statusMsg.includes("Error") ? "warn" : "ok"}`}>{statusMsg}</p>
         </article>
 
         <article className="card">

@@ -6,6 +6,7 @@ from app.api.v1.endpoints_clients import router as clients_router
 from app.api.v1.endpoints_commissions import router as commissions_router
 from app.api.v1.endpoints_guides import router as guides_router
 from app.api.v1.endpoints_health import router as health_router
+from app.api.v1.endpoints_public import router as public_router
 
 api_router = APIRouter()
 api_router.include_router(health_router)
@@ -14,3 +15,4 @@ api_router.include_router(catalogs_router)
 api_router.include_router(clients_router)
 api_router.include_router(commissions_router)
 api_router.include_router(guides_router)
+api_router.include_router(public_router)

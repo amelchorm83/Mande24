@@ -258,3 +258,17 @@ class GeoCatalogSync(Base):
     key: Mapped[str] = mapped_column(String(80), primary_key=True)
     value: Mapped[str] = mapped_column(String(255), default="")
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+
+
+class ContactLead(Base):
+    __tablename__ = "contact_leads"
+
+    id: Mapped[str] = mapped_column(String(32), primary_key=True, default=lambda: uuid4().hex)
+    full_name: Mapped[str] = mapped_column(String(150), index=True)
+    company: Mapped[str] = mapped_column(String(150), default="")
+    email: Mapped[str] = mapped_column(String(190), index=True)
+    phone: Mapped[str] = mapped_column(String(40), default="")
+    service_interest: Mapped[str] = mapped_column(String(40), default="express")
+    message: Mapped[str] = mapped_column(Text, default="")
+    source: Mapped[str] = mapped_column(String(40), default="web_contact")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))

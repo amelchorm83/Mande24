@@ -242,3 +242,18 @@ class ShipmentGuideSummary(BaseModel):
 class MyShipmentsResponse(BaseModel):
     sent: list[ShipmentGuideSummary]
     received: list[ShipmentGuideSummary]
+
+
+class ContactLeadCreate(BaseModel):
+    full_name: str = Field(min_length=2, max_length=150)
+    company: str = Field(default="", max_length=150)
+    email: str = Field(min_length=5, max_length=190)
+    phone: str = Field(default="", max_length=40)
+    service_interest: str = Field(default="express", max_length=40)
+    message: str = Field(min_length=10, max_length=2000)
+
+
+class ContactLeadResponse(BaseModel):
+    lead_id: str
+    status: str
+    message: str
