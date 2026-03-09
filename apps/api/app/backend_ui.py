@@ -720,18 +720,33 @@ def backend_dashboard(
     allowed_periods = {"today", "7d", "30d", "all"}
     safe_period = period if period in allowed_periods else "7d"
     lead_filters = []
+    previous_filters = []
     period_label = "Ultimos 7 dias"
+    previous_label = "Periodo anterior"
     if safe_period == "today":
         lead_filters.append(func.date(ContactLead.created_at) == today)
+        previous_filters.append(func.date(ContactLead.created_at) == (today - timedelta(days=1)))
         period_label = "Hoy"
+        previous_label = "Ayer"
     elif safe_period == "7d":
-        lead_filters.append(ContactLead.created_at >= now_dt - timedelta(days=7))
+        current_start = now_dt - timedelta(days=7)
+        previous_start = now_dt - timedelta(days=14)
+        previous_end = current_start
+        lead_filters.append(ContactLead.created_at >= current_start)
+        previous_filters.extend([ContactLead.created_at >= previous_start, ContactLead.created_at < previous_end])
         period_label = "Ultimos 7 dias"
+        previous_label = "7 dias previos"
     elif safe_period == "30d":
-        lead_filters.append(ContactLead.created_at >= now_dt - timedelta(days=30))
+        current_start = now_dt - timedelta(days=30)
+        previous_start = now_dt - timedelta(days=60)
+        previous_end = current_start
+        lead_filters.append(ContactLead.created_at >= current_start)
+        previous_filters.extend([ContactLead.created_at >= previous_start, ContactLead.created_at < previous_end])
         period_label = "Ultimos 30 dias"
+        previous_label = "30 dias previos"
     else:
         period_label = "Historico completo"
+        previous_label = "No aplica"
 
     guides_total = db.query(func.count(Guide.id)).scalar() or 0
     deliveries_total = db.query(func.count(Delivery.id)).scalar() or 0
@@ -743,6 +758,14 @@ def backend_dashboard(
     leads_new = db.query(func.count(ContactLead.id)).filter(*lead_filters, ContactLead.status == "new").scalar() or 0
     leads_contacted = db.query(func.count(ContactLead.id)).filter(*lead_filters, ContactLead.status == "contacted").scalar() or 0
     leads_closed = db.query(func.count(ContactLead.id)).filter(*lead_filters, ContactLead.status == "closed").scalar() or 0
+
+    leads_prev_total = 0
+    leads_prev_contacted = 0
+    leads_prev_closed = 0
+    if previous_filters:
+        leads_prev_total = db.query(func.count(ContactLead.id)).filter(*previous_filters).scalar() or 0
+        leads_prev_contacted = db.query(func.count(ContactLead.id)).filter(*previous_filters, ContactLead.status == "contacted").scalar() or 0
+        leads_prev_closed = db.query(func.count(ContactLead.id)).filter(*previous_filters, ContactLead.status == "closed").scalar() or 0
     sepomex_sync = db.query(GeoCatalogSync).filter(GeoCatalogSync.key == "sepomex_last_sync").first()
     sepomex_catalog_date = db.query(GeoCatalogSync).filter(GeoCatalogSync.key == "sepomex_catalog_date").first()
 
@@ -753,6 +776,22 @@ def backend_dashboard(
     conversion_pct = 0.0
     if leads_total:
         conversion_pct = ((leads_contacted + leads_closed) / leads_total) * 100
+
+    previous_conversion_pct = 0.0
+    if leads_prev_total:
+        previous_conversion_pct = ((leads_prev_contacted + leads_prev_closed) / leads_prev_total) * 100
+
+    leads_delta_label = "N/A"
+    conversion_delta_label = "N/A"
+    if previous_filters:
+        if leads_prev_total:
+            leads_delta = ((leads_total - leads_prev_total) / leads_prev_total) * 100
+            leads_delta_label = f"{leads_delta:+.1f}% vs {previous_label}"
+        else:
+            leads_delta_label = "+100.0% vs periodo sin leads" if leads_total else "0.0% vs periodo sin leads"
+
+        conversion_delta = conversion_pct - previous_conversion_pct
+        conversion_delta_label = f"{conversion_delta:+.1f} pp vs {previous_label}"
 
     stage_rows = (
         db.query(Delivery.stage, func.count(Delivery.id))
@@ -831,6 +870,8 @@ def backend_dashboard(
         f"<article class=\"kpi\"><small>contacted</small><strong>{leads_contacted}</strong></article>"
         f"<article class=\"kpi\"><small>closed</small><strong>{leads_closed}</strong></article>"
         f"<article class=\"kpi\"><small>Conversion</small><strong>{conversion_pct:.1f}%</strong></article>"
+        f"<article class=\"kpi\"><small>Variacion Leads</small><strong>{escape(leads_delta_label)}</strong></article>"
+        f"<article class=\"kpi\"><small>Variacion Conversion</small><strong>{escape(conversion_delta_label)}</strong></article>"
         "</div>"
         "<div class=\"actions\"><a class=\"btn\" href=\"/ERPMande24/leads\">Abrir Leads</a><a class=\"btn\" href=\"/ERPMande24/export/leads.csv\">Exportar Leads CSV</a></div>"
         "</section>"
