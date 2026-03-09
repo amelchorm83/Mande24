@@ -647,6 +647,27 @@ def _role_switcher(current_role: str, return_to: str) -> str:
     )
 
 
+def _operator_switcher(request: Request | None, return_to: str) -> str:
+    current_id = ""
+    current_email = ""
+    if request:
+        current_id = request.cookies.get("m24_erpmande24_user_id") or request.cookies.get("m24_backend_user_id") or ""
+        current_email = (
+            request.cookies.get("m24_erpmande24_user_email") or request.cookies.get("m24_backend_user_email") or ""
+        )
+
+    return (
+        '<section style="margin-top:0.8rem;padding-top:0.8rem;border-top:1px solid #3b4959;">'
+        '<small style="color:#ffedd5;display:block;margin-bottom:0.3rem;">Operador ERP (auditoria)</small>'
+        '<form method="post" action="/ERPMande24/operator/select" style="display:grid;gap:0.35rem;">'
+        f'<input type="hidden" name="return_to" value="{escape(return_to)}" />'
+        f'<input name="user_email" placeholder="operador@mande24.com" value="{escape(current_email)}" />'
+        f'<input name="user_id" placeholder="ID usuario (opcional)" value="{escape(current_id)}" />'
+        '<button type="submit">Guardar Operador</button>'
+        '</form></section>'
+    )
+
+
 def _can_manage(role: str) -> bool:
     return role == "admin"
 
@@ -772,7 +793,7 @@ def _render_layout(
         "<aside class=\"sidebar\">"
         "<div class=\"brand-row\"><img class=\"brand-logo\" src=\"/ERPMande24/icon.svg?v=2\" alt=\"Icono ERPMande24\" /><div class=\"brand-copy\"><h2>ERPMande24</h2><small>Entrega segura. Ruta inteligente.</small></div></div>"
         "<span class=\"tag\">ERPMande24 Admin</span>"
-        f"<nav class=\"menu\">{_menu_html(active, role_value)}</nav>{_role_switcher(role_value, path_value)}</aside>"
+        f"<nav class=\"menu\">{_menu_html(active, role_value)}</nav>{_role_switcher(role_value, path_value)}{_operator_switcher(request, path_value)}</aside>"
         "<main class=\"content\">"
         f"<header class=\"header\"><div><h1>{escape(title)}</h1><p class=\"subtitle\">{escape(subtitle)}</p></div>"
         "<div class=\"top-actions\"><a class=\"btn\" href=\"/ERPMande24\">Dashboard</a><a class=\"btn primary\" href=\"/ERPMande24/guides/new\">Nueva Guia</a></div></header>"
@@ -870,6 +891,29 @@ def backend_select_role(role: str = Form("admin"), return_to: str = Form("/ERPMa
     selected = role if role in ROLE_OPTIONS else "admin"
     response = RedirectResponse(url=return_to or "/ERPMande24", status_code=303)
     response.set_cookie("m24_erpmande24_role", selected, httponly=False, samesite="lax")
+    return response
+
+
+@router.post("/operator/select")
+def backend_select_operator(
+    user_email: str = Form(""),
+    user_id: str = Form(""),
+    return_to: str = Form("/ERPMande24"),
+) -> RedirectResponse:
+    response = RedirectResponse(url=return_to or "/ERPMande24", status_code=303)
+    clean_email = user_email.strip().lower()
+    clean_id = user_id.strip()
+
+    if clean_email:
+        response.set_cookie("m24_erpmande24_user_email", clean_email, httponly=False, samesite="lax")
+    else:
+        response.delete_cookie("m24_erpmande24_user_email")
+
+    if clean_id:
+        response.set_cookie("m24_erpmande24_user_id", clean_id, httponly=False, samesite="lax")
+    else:
+        response.delete_cookie("m24_erpmande24_user_id")
+
     return response
 
 
