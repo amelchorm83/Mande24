@@ -294,6 +294,31 @@ try {
     Add-Result "FAIL teardown admin restore: $($_.Exception.Message)"
 }
 
+Add-Result "INFO section=contact_fields_extension"
+try {
+    $contactAuditScript = Join-Path $PSScriptRoot "e2e_contact_fields_audit.ps1"
+    if (-not (Test-Path $contactAuditScript)) {
+        Add-Result "WARN contact fields audit script not found"
+    } else {
+        $childOutput = & powershell -NoProfile -ExecutionPolicy Bypass -File $contactAuditScript 2>&1
+        foreach ($line in $childOutput) {
+            $text = [string]$line
+            if ($text -like "PASS*" -or $text -like "WARN*" -or $text -like "FAIL*" -or $text -like "INFO section=*") {
+                Add-Result $text
+            } elseif ($text -like "SUMMARY *") {
+                Add-Result "INFO contact_fields $text"
+            }
+        }
+        if ($LASTEXITCODE -ne 0) {
+            Add-Result "FAIL contact fields extension exited code=$LASTEXITCODE"
+        } else {
+            Add-Result "PASS contact fields extension completed"
+        }
+    }
+} catch {
+    Add-Result "FAIL contact fields extension run: $($_.Exception.Message)"
+}
+
 $passCount = ($results | Where-Object { $_ -like "PASS*" }).Count
 $warnCount = ($results | Where-Object { $_ -like "WARN*" }).Count
 $failCount = ($results | Where-Object { $_ -like "FAIL*" }).Count
