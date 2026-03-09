@@ -11,7 +11,10 @@ export default function ServiciosPage() {
           <a className="nav-link active" href="/servicios">Servicios</a>
           <a className="nav-link" href="/cobertura">Cobertura</a>
           <a className="nav-link" href="/noticias">Noticias</a>
-          <a className="nav-link" href="/client">Portales</a>
+          <a className="nav-link" href="/auth">Portal Auth</a>
+          <a className="nav-link" href="/client">Portal Cliente</a>
+          <a className="nav-link" href="/rider">Portal Rider</a>
+          <a className="nav-link" href="/station">Portal Estacion</a>
         </nav>
       </header>
 
@@ -48,10 +51,10 @@ export default function ServiciosPage() {
         <h2>Operacion Unificada</h2>
         <p className="hero-note">Nuestros portales conectan autenticacion, captura, reparto y comisiones en un mismo flujo digital.</p>
         <div className="inline-actions">
-          <a className="btn" href="/auth">Auth</a>
-          <a className="btn" href="/client">Cliente</a>
-          <a className="btn" href="/rider">Rider</a>
-          <a className="btn" href="/station">Estacion</a>
+          <a className="btn" href="/auth">Portal Auth</a>
+          <a className="btn" href="/client">Portal Cliente</a>
+          <a className="btn" href="/rider">Portal Rider</a>
+          <a className="btn" href="/station">Portal Estacion</a>
         </div>
       </section>
     </main>
