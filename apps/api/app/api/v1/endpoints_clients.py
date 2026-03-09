@@ -7,6 +7,7 @@ from app.db.geo_seed import seed_geo_catalogs
 from app.db.sepomex_sync import sync_sepomex_catalog
 from app.db.models import (
     ClientKind,
+    GeoCatalogSync,
     GeoColony,
     ClientProfile,
     GeoMunicipality,
@@ -30,6 +31,26 @@ from app.models.schemas import (
 )
 
 router = APIRouter(prefix="/clients", tags=["clients"])
+
+
+@router.post("/geo/sync-sepomex")
+def force_geo_sync_sepomex(
+    db: Session = Depends(get_db),
+    _user: User = Depends(require_roles(UserRole.admin)),
+) -> dict[str, str | int | bool]:
+    changed = sync_sepomex_catalog(db, force=True)
+    marker = db.query(GeoCatalogSync).filter(GeoCatalogSync.key == "sepomex_last_sync").first()
+    catalog_date = db.query(GeoCatalogSync).filter(GeoCatalogSync.key == "sepomex_catalog_date").first()
+    return {
+        "ok": True,
+        "changed": changed,
+        "last_sync": marker.value if marker else "",
+        "catalog_date": catalog_date.value if catalog_date else "",
+        "states": db.query(GeoState).count(),
+        "municipalities": db.query(GeoMunicipality).count(),
+        "postal_codes": db.query(GeoPostalCode).count(),
+        "colonies": db.query(GeoColony).count(),
+    }
 
 
 @router.get("/geo/states", response_model=list[GeoStateResponse])

@@ -15,6 +15,7 @@ from app.db.models import (
     ClientProfile,
     Delivery,
     GeoColony,
+    GeoCatalogSync,
     GeoMunicipality,
     GeoPostalCode,
     GeoState,
@@ -33,6 +34,7 @@ from app.db.models import (
     Zone,
     ZoneGeoRule,
 )
+from app.db.sepomex_sync import sync_sepomex_catalog
 from app.core.security import hash_password
 from app.db.session import get_db
 from app.services.commissions import close_rider_week, close_station_week, resolve_week_window
@@ -641,6 +643,8 @@ def backend_dashboard(db: Session = Depends(get_db), msg: str = "", kind: str = 
     services_total = db.query(func.count(Service.id)).scalar() or 0
     stations_total = db.query(func.count(Station.id)).scalar() or 0
     riders_total = db.query(func.count(Rider.id)).scalar() or 0
+    sepomex_sync = db.query(GeoCatalogSync).filter(GeoCatalogSync.key == "sepomex_last_sync").first()
+    sepomex_catalog_date = db.query(GeoCatalogSync).filter(GeoCatalogSync.key == "sepomex_catalog_date").first()
 
     guides_today = db.query(func.count(Guide.id)).filter(func.date(Guide.created_at) == today).scalar() or 0
     deliveries_today = db.query(func.count(Delivery.id)).filter(func.date(Delivery.created_at) == today).scalar() or 0
@@ -693,6 +697,15 @@ def backend_dashboard(db: Session = Depends(get_db), msg: str = "", kind: str = 
         f"<article class=\"kpi\"><small>Estaciones</small><strong>{stations_total}</strong></article>"
         f"<article class=\"kpi\"><small>Riders</small><strong>{riders_total}</strong></article>"
         "</div></section>"
+        "<section class=\"panel\"><h3>SEPOMEX</h3>"
+        "<div class=\"kpi-grid\">"
+        f"<article class=\"kpi\"><small>Ultima Sync</small><strong>{escape(sepomex_sync.value if sepomex_sync else 'Sin registro')}</strong></article>"
+        f"<article class=\"kpi\"><small>Fecha Catalogo</small><strong>{escape(sepomex_catalog_date.value if sepomex_catalog_date else 'No detectada')}</strong></article>"
+        f"<article class=\"kpi\"><small>Colonias</small><strong>{db.query(func.count(GeoColony.id)).scalar() or 0}</strong></article>"
+        "</div>"
+        "<form class=\"actions\" method=\"post\" action=\"/ERPMande24/geo/sync-sepomex\">"
+        "<button class=\"primary\" type=\"submit\">Forzar sync SEPOMEX ahora</button>"
+        "</form></section>"
         f"<section class=\"panel\"><h3>Distribucion por Etapa</h3>{stage_table}</section>"
         f"{stage_chart}"
         f"{guides_7d_chart}"
@@ -700,6 +713,23 @@ def backend_dashboard(db: Session = Depends(get_db), msg: str = "", kind: str = 
     )
 
     return _render_layout("dashboard", "Dashboard Operativo", "Panel administrativo general con estadisticas y monitoreo por modelo.", content, msg, kind)
+
+
+@router.post("/geo/sync-sepomex")
+def backend_sync_sepomex_now(request: Request, db: Session = Depends(get_db)) -> RedirectResponse:
+    forbidden = _require_manage(request, "/ERPMande24", "forzar sincronizacion SEPOMEX")
+    if forbidden:
+        return forbidden
+    try:
+        changed = sync_sepomex_catalog(db, force=True)
+        colonies = db.query(func.count(GeoColony.id)).scalar() or 0
+        return _redirect(
+            "/ERPMande24",
+            f"Sync SEPOMEX ejecutada. cambios={changed}. colonias={colonies}.",
+        )
+    except Exception as exc:
+        db.rollback()
+        return _redirect("/ERPMande24", f"Error en sync SEPOMEX: {exc}", "error")
 
 
 @router.get("/guides/new", response_class=HTMLResponse)
