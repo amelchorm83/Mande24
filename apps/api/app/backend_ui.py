@@ -62,22 +62,22 @@ MENU = [
 
 ROLE_OPTIONS = ["admin", "station", "rider", "client"]
 
-MODULE_ICONS = {
-    "dashboard": "DB",
-    "guides_new": "NG",
-    "guides": "GU",
-    "deliveries": "EN",
-    "services": "SV",
-    "zones": "ZN",
-    "stations": "ES",
-    "riders": "RD",
-    "clients": "CL",
-    "leads": "LD",
-    "pricing": "TR",
-    "users": "US",
-    "comm_rider": "CR",
-    "comm_station": "CE",
-    "swagger": "API",
+MODULE_ICON_SVG = {
+    "dashboard": "<rect x='3' y='3' width='18' height='18' rx='4'/><path d='M7 16v-4M12 16V8M17 16v-6'/>",
+    "guides_new": "<path d='M7 4h7l4 4v12H7z'/><path d='M14 4v4h4'/><path d='M12 11v6M9 14h6'/>",
+    "guides": "<path d='M7 4h7l4 4v12H7z'/><path d='M14 4v4h4'/><path d='M9 12h6M9 15h6'/>",
+    "deliveries": "<path d='M3 8h12v8H3z'/><path d='M15 11h3l3 3v2h-6z'/><circle cx='8' cy='18' r='1.6'/><circle cx='18' cy='18' r='1.6'/>",
+    "services": "<rect x='4' y='4' width='7' height='7' rx='1.5'/><rect x='13' y='4' width='7' height='7' rx='1.5'/><rect x='4' y='13' width='7' height='7' rx='1.5'/><rect x='13' y='13' width='7' height='7' rx='1.5'/>",
+    "zones": "<path d='M12 21s6-5.7 6-10a6 6 0 1 0-12 0c0 4.3 6 10 6 10z'/><circle cx='12' cy='11' r='2'/>",
+    "stations": "<path d='M4 20h16'/><rect x='6' y='6' width='12' height='14' rx='1.5'/><path d='M9 10h2M13 10h2M9 14h2M13 14h2'/>",
+    "riders": "<circle cx='9' cy='8' r='2'/><path d='M9 10v4l3 2'/><circle cx='7' cy='18' r='2'/><circle cx='17' cy='18' r='2'/><path d='M9 14h5l3 4'/>",
+    "clients": "<circle cx='9' cy='9' r='2.5'/><circle cx='16' cy='10' r='2.2'/><path d='M4.5 18c.8-2.1 2.6-3.3 4.5-3.3s3.7 1.2 4.5 3.3'/><path d='M13.5 18c.5-1.5 1.8-2.4 3.4-2.4 1.3 0 2.4.6 3.1 1.7'/>",
+    "leads": "<circle cx='12' cy='12' r='7'/><circle cx='12' cy='12' r='3.5'/><circle cx='12' cy='12' r='1.3'/>",
+    "pricing": "<path d='M4 8l8-5 8 5-8 5z'/><path d='M4 12l8 5 8-5'/><path d='M4 16l8 5 8-5'/>",
+    "users": "<path d='M12 3l7 3v5c0 5-3 8-7 10-4-2-7-5-7-10V6z'/><circle cx='12' cy='10' r='2'/><path d='M9.5 14.5c.7-1.2 1.6-1.8 2.5-1.8s1.8.6 2.5 1.8'/>",
+    "comm_rider": "<circle cx='12' cy='12' r='8'/><path d='M9.5 9h3.5a1.8 1.8 0 1 1 0 3.6H11a1.8 1.8 0 1 0 0 3.6h3.5'/><path d='M11 8v8'/><path d='M15.8 7.2l1.6-1.6M17.4 18.4l-1.6-1.6'/>",
+    "comm_station": "<circle cx='12' cy='12' r='8'/><path d='M14.8 9.2c-.6-.7-1.4-1.1-2.5-1.1-1.8 0-3 1-3 2.5 0 1.4 1.1 2.1 2.7 2.4l1.1.2c1 .2 1.5.5 1.5 1.2 0 .8-.8 1.4-2 1.4-1.1 0-2-.4-2.8-1.2'/><path d='M12 7v10'/>",
+    "swagger": "<path d='M8 6c-2 0-3 1.2-3 3v2c0 1.2-.5 1.8-1.5 2 1 .2 1.5.8 1.5 2v2c0 1.8 1 3 3 3'/><path d='M16 6c2 0 3 1.2 3 3v2c0 1.2.5 1.8 1.5 2-1 .2-1.5.8-1.5 2v2c0 1.8-1 3-3 3'/><path d='M11 8h2v8h-2z'/>",
 }
 
 MODULE_GROUP = {
@@ -239,15 +239,13 @@ body {
 .menu a .mod-ico {
     width: 30px;
     height: 30px;
+    padding: 5px;
+    box-sizing: border-box;
     border-radius: 8px;
     border: 1px solid #6a7584;
     background: rgba(251, 146, 60, 0.16);
     color: #fff7ed;
-    font-size: 0.66rem;
-    font-weight: 700;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
+    display: block;
 }
 
 .menu a .mod-label {
@@ -301,15 +299,13 @@ body {
 .module-head .mod-ico {
     width: 34px;
     height: 34px;
+    padding: 5px;
+    box-sizing: border-box;
     border-radius: 9px;
     border: 1px solid #f2b183;
     background: linear-gradient(130deg, #fb923c, #c2410c);
     color: #fff;
-    font-size: 0.7rem;
-    font-weight: 700;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
+    display: block;
 }
 
 .module-meta {
@@ -577,16 +573,23 @@ th {
 """
 
 
+def _module_icon_svg(key: str, css_class: str = "mod-ico") -> str:
+    body = MODULE_ICON_SVG.get(key, MODULE_ICON_SVG["dashboard"])
+    return (
+        f'<svg class="{css_class}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" '
+        f'stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">{body}</svg>'
+    )
+
+
 def _menu_html(active: str) -> str:
     rows: list[str] = []
     for key, label, href in MENU:
         cls = "active" if key == active else ""
-        icon = MODULE_ICONS.get(key, "MD")
         group = MODULE_GROUP.get(key, "Modulo")
         rows.append(
-            f'<a href="{href}" class="{cls}"><span class="mod-ico">{icon}</span><span class="mod-label">{label}<small>{group}</small></span></a>'
+            f'<a href="{href}" class="{cls}">{_module_icon_svg(key)}<span class="mod-label">{label}<small>{group}</small></span></a>'
         )
-    rows.append('<a href="/docs"><span class="mod-ico">API</span><span class="mod-label">Swagger API<small>Integracion</small></span></a>')
+    rows.append(f'<a href="/docs">{_module_icon_svg("swagger")}<span class="mod-label">Swagger API<small>Integracion</small></span></a>')
     return "".join(rows)
 
 
@@ -1031,10 +1034,9 @@ def backend_dashboard(
 
     module_cards = []
     for key, label, href in MENU:
-        icon = MODULE_ICONS.get(key, "MD")
         group = MODULE_GROUP.get(key, "Modulo")
         module_cards.append(
-            f'<a class="module-card" href="{href}"><div class="module-head"><span class="mod-ico">{icon}</span><strong>{label}</strong></div><small class="module-meta">Grupo: {group}</small></a>'
+            f'<a class="module-card" href="{href}"><div class="module-head">{_module_icon_svg(key)}<strong>{label}</strong></div><small class="module-meta">Grupo: {group}</small></a>'
         )
 
     content = (
