@@ -32,7 +32,10 @@ export default function NosotrosPage() {
           <a className="nav-link" href="/noticias">Noticias</a>
           <a className="nav-link active" href="/nosotros">Nosotros</a>
           <a className="nav-link" href="/contacto">Contacto</a>
-        </nav>
+        
+          <a className="nav-link" href="/cotizador">Cotizador</a>
+          <a className="nav-link" href="/niveles-servicio">Niveles de Servicio</a>
+          <a className="nav-link" href="/industrias">Industrias</a></nav>
       </header>
 
       <span className="badge">Nosotros</span>

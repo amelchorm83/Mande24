@@ -21,7 +21,10 @@ export default function ServiciosPage() {
           <a className="nav-link" href="/client">Portal Cliente</a>
           <a className="nav-link" href="/rider">Portal Rider</a>
           <a className="nav-link" href="/station">Portal Estacion</a>
-        </nav>
+        
+          <a className="nav-link" href="/cotizador">Cotizador</a>
+          <a className="nav-link" href="/niveles-servicio">Niveles de Servicio</a>
+          <a className="nav-link" href="/industrias">Industrias</a></nav>
       </header>
 
       <span className="badge">Servicios</span>

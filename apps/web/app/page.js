@@ -35,11 +35,14 @@ export default async function HomePage() {
           <a className="nav-link" href="/client">Portal Cliente</a>
           <a className="nav-link" href="/rider">Portal Rider</a>
           <a className="nav-link" href="/station">Portal Estacion</a>
-        </nav>
+        
+          <a className="nav-link" href="/cotizador">Cotizador</a>
+          <a className="nav-link" href="/niveles-servicio">Niveles de Servicio</a>
+          <a className="nav-link" href="/industrias">Industrias</a></nav>
       </header>
 
       <span className="badge">Inicio</span>
-      <h1>La red logistica de Tabasco para empresas y familias que necesitan resolver entregas al instante.</h1>
+      <h1>La red logistica de Tabasco y Campeche para empresas y familias que necesitan resolver entregas al instante.</h1>
       <p className="hero-note">Mande24 Logistics integra mensajeria, paqueteria y mandaditos con monitoreo digital para una operacion rapida, confiable y cercana en Tabasco y Campeche.</p>
       <img className="hero-banner" src="/brand/banner.svg" alt="Banner operativo Mande24 Logistics" />
 
@@ -86,6 +89,50 @@ export default async function HomePage() {
           <li>Monitoreas etapas de entrega con evidencia y actualizacion en tiempo real.</li>
           <li>Recibes confirmacion final y, si aplica, documentacion para facturacion.</li>
         </ol>
+      </section>
+
+      <section className="panel">
+        <h2>Indicadores que mejoran tu operacion</h2>
+        <div className="grid">
+          <article className="card">
+            <h3>Cumplimiento por franja</h3>
+            <p>Visualiza entregas a tiempo por ventana horaria para tomar decisiones de capacidad diaria.</p>
+          </article>
+          <article className="card">
+            <h3>Tiempo promedio por zona</h3>
+            <p>Identifica colonias o municipios con mayor duracion para ajustar promesa y rutas.</p>
+          </article>
+          <article className="card">
+            <h3>Tasa de reintentos</h3>
+            <p>Mide incidencias de direccion o ausencia del receptor para reducir costos operativos.</p>
+          </article>
+          <article className="card">
+            <h3>Productividad por rider</h3>
+            <p>Compara servicios completados por turno con evidencia digital para gestion objetiva.</p>
+          </article>
+        </div>
+      </section>
+
+      <section className="panel">
+        <h2>Modelos de servicio por necesidad</h2>
+        <div className="grid">
+          <article className="card">
+            <h3>Ultima milla para e-commerce</h3>
+            <p>Despacho diario con horarios comprometidos, evidencia y atencion de incidencias.</p>
+          </article>
+          <article className="card">
+            <h3>Mensajeria corporativa</h3>
+            <p>Rutas internas para contratos, documentos legales y entregas entre sucursales.</p>
+          </article>
+          <article className="card">
+            <h3>Farmacia y salud</h3>
+            <p>Servicios prioritarios para medicamentos y productos sensibles con seguimiento puntual.</p>
+          </article>
+          <article className="card">
+            <h3>Refacciones y retail</h3>
+            <p>Operacion mixta express y programada para piezas urgentes y reposicion en tienda.</p>
+          </article>
+        </div>
       </section>
 
       <section className="panel">
@@ -144,6 +191,20 @@ export default async function HomePage() {
             <h3>Cobertura Tabasco y Campeche</h3>
             <p>Segmentacion geografica por municipio, codigo postal y colonia para optimizar asignacion de zonas en ambos estados.</p>
           </article>
+        </div>
+      </section>
+
+      <section className="panel">
+        <h2>Nuevas paginas con funcionalidad e informacion</h2>
+        <p className="hero-note">Explora herramientas nuevas para cotizar, definir niveles de servicio, identificar tu esquema por industria y consultar ayuda operativa.</p>
+        <div className="inline-actions">
+          <a className="btn btn-primary" href="/cotizador">Cotizador Express</a>
+          <a className="btn" href="/niveles-servicio">Niveles de Servicio</a>
+          <a className="btn" href="/industrias">Soluciones por Industria</a>
+          <a className="btn" href="/casos-exito">Casos de Exito</a>
+          <a className="btn" href="/tarifas-politicas">Tarifas y Politicas</a>
+          <a className="btn" href="/centro-ayuda">Centro de Ayuda</a>
+          <a className="btn" href="/rastreo-guia">Rastreo de Guia</a>
         </div>
       </section>
 
