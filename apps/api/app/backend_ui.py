@@ -629,6 +629,13 @@ def _actor_identity_from_request(request: Request) -> tuple[str | None, str | No
     return actor_user_id, actor_email
 
 
+def _current_operator_label(request: Request | None) -> str:
+    if not request:
+        return "N/A"
+    actor_user_id, actor_email = _actor_identity_from_request(request)
+    return actor_email or actor_user_id or "N/A"
+
+
 def _role_switcher(current_role: str, return_to: str) -> str:
     options = "".join(
         [
@@ -731,6 +738,7 @@ def _render_layout(
 ) -> str:
     role_value = current_role or (_role_from_request(request) if request else "admin")
     path_value = current_path or (str(request.url.path) if request else "/ERPMande24")
+    operator_label = _current_operator_label(request)
 
     msg_html = ""
     if msg:
@@ -796,7 +804,7 @@ def _render_layout(
         f"<nav class=\"menu\">{_menu_html(active, role_value)}</nav>{_role_switcher(role_value, path_value)}{_operator_switcher(request, path_value)}</aside>"
         "<main class=\"content\">"
         f"<header class=\"header\"><div><h1>{escape(title)}</h1><p class=\"subtitle\">{escape(subtitle)}</p></div>"
-        "<div class=\"top-actions\"><a class=\"btn\" href=\"/ERPMande24\">Dashboard</a><a class=\"btn primary\" href=\"/ERPMande24/guides/new\">Nueva Guia</a></div></header>"
+        f"<div class=\"top-actions\"><span class=\"tag\">Operador: {escape(operator_label)}</span><a class=\"btn\" href=\"/ERPMande24\">Dashboard</a><a class=\"btn primary\" href=\"/ERPMande24/guides/new\">Nueva Guia</a></div></header>"
         f"{hero_block}{msg_html}{content}</main></div>{script}</body></html>"
     )
 
