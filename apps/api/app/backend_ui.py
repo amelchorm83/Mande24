@@ -7,12 +7,13 @@ from uuid import uuid4
 
 from fastapi import APIRouter, Depends, Form, Request
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse, Response
-from sqlalchemy import func
+from sqlalchemy import func, or_
 from sqlalchemy.orm import Session
 
 from app.db.models import (
     ClientKind,
     ClientProfile,
+    ContactLead,
     Delivery,
     GeoColony,
     GeoCatalogSync,
@@ -52,6 +53,7 @@ MENU = [
     ("stations", "Estaciones", "/ERPMande24/catalogs/stations"),
     ("riders", "Riders", "/ERPMande24/catalogs/riders"),
     ("clients", "Clientes", "/ERPMande24/catalogs/clients"),
+    ("leads", "Leads Contacto", "/ERPMande24/leads"),
     ("pricing", "Tarifas", "/ERPMande24/catalogs/pricing-rules"),
     ("users", "Usuarios", "/ERPMande24/users"),
     ("comm_rider", "Comisiones Rider", "/ERPMande24/commissions/riders"),
@@ -2589,6 +2591,133 @@ def backend_user_detail(user_id: str, request: Request, db: Session = Depends(ge
     return _render_layout("users", f"Usuario {user.email}", "Vista detalle tipo formulario.", content, msg, kind, request=request)
 
 
+@router.get("/leads", response_class=HTMLResponse)
+def backend_contact_leads(
+    request: Request,
+    db: Session = Depends(get_db),
+    q: str = "",
+    status: str = "all",
+    page: int = 1,
+    page_size: int = 25,
+    msg: str = "",
+    kind: str = "ok",
+) -> str:
+    forbidden = _require_ops(request, "/ERPMande24", "consultar leads de contacto")
+    if forbidden:
+        return _render_layout(
+            "dashboard",
+            "Sin permisos",
+            "No tienes permisos para esta vista.",
+            '<section class="panel"><div class="empty">Acceso denegado.</div></section>',
+            "Sin permisos para consultar leads.",
+            "error",
+            request=request,
+        )
+
+    allowed_statuses = {"new", "contacted", "closed", "all"}
+    safe_status = status if status in allowed_statuses else "all"
+    safe_page = max(1, page)
+    safe_page_size = max(5, min(page_size, 100))
+
+    query = db.query(ContactLead)
+    term = q.strip()
+    if term:
+        like = f"%{term}%"
+        query = query.filter(
+            or_(
+                ContactLead.full_name.ilike(like),
+                ContactLead.company.ilike(like),
+                ContactLead.email.ilike(like),
+                ContactLead.phone.ilike(like),
+                ContactLead.message.ilike(like),
+            )
+        )
+    if safe_status != "all":
+        query = query.filter(ContactLead.status == safe_status)
+
+    total = query.count()
+    offset = (safe_page - 1) * safe_page_size
+    leads = query.order_by(ContactLead.created_at.desc()).offset(offset).limit(safe_page_size).all()
+
+    rows: list[list[str]] = []
+    for item in leads:
+        rows.append(
+            [
+                escape(item.id),
+                escape(item.full_name),
+                escape(item.company or "-"),
+                escape(item.email),
+                escape(item.phone or "-"),
+                escape(item.service_interest),
+                escape(item.status),
+                escape((item.message or "")[:120] + ("..." if len(item.message or "") > 120 else "")),
+                item.created_at.strftime("%Y-%m-%d %H:%M"),
+                (
+                    f'<form class="inline-form" method="post" action="/ERPMande24/leads/{escape(item.id)}/status">'
+                    '<select name="status">'
+                    f'<option value="new" {"selected" if item.status == "new" else ""}>new</option>'
+                    f'<option value="contacted" {"selected" if item.status == "contacted" else ""}>contacted</option>'
+                    f'<option value="closed" {"selected" if item.status == "closed" else ""}>closed</option>'
+                    '</select>'
+                    '<button type="submit">Guardar</button>'
+                    '</form>'
+                ),
+            ]
+        )
+
+    pager_params = {"q": term} if term else {}
+    if safe_status != "all":
+        pager_params["status"] = safe_status
+    pager = _pagination("/ERPMande24/leads", safe_page, safe_page_size, total, query_params=pager_params or None)
+
+    status_filter = (
+        '<form class="actions" method="get" action="/ERPMande24/leads">'
+        f'<input name="q" value="{escape(term)}" placeholder="Buscar por nombre, email, empresa o mensaje" />'
+        '<select name="status">'
+        f'<option value="all" {"selected" if safe_status == "all" else ""}>Todos</option>'
+        f'<option value="new" {"selected" if safe_status == "new" else ""}>new</option>'
+        f'<option value="contacted" {"selected" if safe_status == "contacted" else ""}>contacted</option>'
+        f'<option value="closed" {"selected" if safe_status == "closed" else ""}>closed</option>'
+        '</select>'
+        '<button type="submit">Filtrar</button>'
+        '<a class="btn" href="/ERPMande24/leads">Limpiar</a>'
+        '</form>'
+    )
+
+    content = (
+        "<section class=\"panel\"><h3>Leads de Contacto</h3>"
+        f"{status_filter}{pager}"
+        "<div class=\"actions\"><a class=\"btn\" href=\"/ERPMande24/export/leads.csv\">Exportar CSV</a></div>"
+        f"{_table(['ID', 'Nombre', 'Empresa', 'Email', 'Telefono', 'Interes', 'Estado', 'Mensaje', 'Creado', 'Accion'], rows)}"
+        f"{pager}</section>"
+    )
+    return _render_layout("leads", "Leads de Contacto", "Seguimiento comercial de solicitudes web.", content, msg, kind, request=request)
+
+
+@router.post("/leads/{lead_id}/status")
+def backend_update_contact_lead_status(
+    lead_id: str,
+    status: str = Form(...),
+    request: Request = None,
+    db: Session = Depends(get_db),
+) -> RedirectResponse:
+    forbidden = _require_ops(request, "/ERPMande24/leads", "actualizar estado de lead")
+    if forbidden:
+        return forbidden
+
+    safe_status = status.strip().lower()
+    if safe_status not in {"new", "contacted", "closed"}:
+        return _redirect("/ERPMande24/leads", "Estado de lead no valido.", "error")
+
+    lead = db.query(ContactLead).filter(ContactLead.id == lead_id).first()
+    if not lead:
+        return _redirect("/ERPMande24/leads", "Lead no encontrado.", "error")
+
+    lead.status = safe_status
+    db.commit()
+    return _redirect("/ERPMande24/leads", f"Lead {lead.email} actualizado a {safe_status}.")
+
+
 @router.get("/commissions/riders", response_class=HTMLResponse)
 def backend_rider_commissions(db: Session = Depends(get_db), msg: str = "", kind: str = "ok") -> str:
     rows_db = db.query(RiderCommission).order_by(RiderCommission.week_start.desc()).limit(200).all()
@@ -2753,6 +2882,31 @@ def backend_export_users_csv(db: Session = Depends(get_db)) -> Response:
     users = db.query(User).order_by(User.created_at.desc()).all()
     rows = [[item.id, item.full_name, item.email, item.role.value, str(item.is_active), item.created_at.isoformat()] for item in users]
     return _csv_response("users.csv", ["id", "full_name", "email", "role", "is_active", "created_at"], rows)
+
+
+@router.get("/export/leads.csv")
+def backend_export_leads_csv(db: Session = Depends(get_db)) -> Response:
+    leads = db.query(ContactLead).order_by(ContactLead.created_at.desc()).limit(3000).all()
+    rows = [
+        [
+            item.id,
+            item.full_name,
+            item.company or "",
+            item.email,
+            item.phone or "",
+            item.service_interest,
+            item.status,
+            item.message,
+            item.created_at.isoformat(),
+            item.updated_at.isoformat() if item.updated_at else "",
+        ]
+        for item in leads
+    ]
+    return _csv_response(
+        "leads.csv",
+        ["id", "full_name", "company", "email", "phone", "service_interest", "status", "message", "created_at", "updated_at"],
+        rows,
+    )
 
 
 @router.get("/export/clients.csv")

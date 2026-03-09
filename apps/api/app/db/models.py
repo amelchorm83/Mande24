@@ -271,4 +271,10 @@ class ContactLead(Base):
     service_interest: Mapped[str] = mapped_column(String(40), default="express")
     message: Mapped[str] = mapped_column(Text, default="")
     source: Mapped[str] = mapped_column(String(40), default="web_contact")
+    status: Mapped[str] = mapped_column(String(20), default="new", index=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
+    )

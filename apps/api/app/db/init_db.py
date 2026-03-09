@@ -14,10 +14,22 @@ def _ensure_runtime_schema() -> None:
 
     columns = {col["name"] for col in inspector.get_columns("client_profiles")}
     if "colony_id" in columns:
+        pass
+    else:
+        with engine.begin() as conn:
+            conn.execute(text("ALTER TABLE client_profiles ADD COLUMN colony_id VARCHAR(64)"))
+
+    if "contact_leads" not in tables:
         return
 
+    lead_columns = {col["name"] for col in inspector.get_columns("contact_leads")}
     with engine.begin() as conn:
-        conn.execute(text("ALTER TABLE client_profiles ADD COLUMN colony_id VARCHAR(64)"))
+        if "status" not in lead_columns:
+            conn.execute(text("ALTER TABLE contact_leads ADD COLUMN status VARCHAR(20) DEFAULT 'new'"))
+            conn.execute(text("UPDATE contact_leads SET status = 'new' WHERE status IS NULL OR status = ''"))
+        if "updated_at" not in lead_columns:
+            conn.execute(text("ALTER TABLE contact_leads ADD COLUMN updated_at TIMESTAMP WITH TIME ZONE"))
+            conn.execute(text("UPDATE contact_leads SET updated_at = created_at WHERE updated_at IS NULL"))
 
 
 def init_db() -> None:

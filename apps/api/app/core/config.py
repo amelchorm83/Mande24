@@ -15,6 +15,13 @@ class Settings(BaseSettings):
     commission_close_minute_utc: int = 0
     commission_scheduler_run_on_startup: bool = False
     cors_allow_origins: str = "*"
+    smtp_host: str = ""
+    smtp_port: int = 587
+    smtp_user: str = ""
+    smtp_password: str = ""
+    smtp_from_email: str = ""
+    smtp_to_email: str = ""
+    smtp_use_tls: bool = True
 
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 
