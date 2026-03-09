@@ -613,6 +613,22 @@ def _role_from_request(request: Request) -> str:
     return role if role in ROLE_OPTIONS else "admin"
 
 
+def _actor_identity_from_request(request: Request) -> tuple[str | None, str | None]:
+    actor_user_id = (
+        request.headers.get("x-m24-user-id")
+        or request.cookies.get("m24_erpmande24_user_id")
+        or request.cookies.get("m24_backend_user_id")
+    )
+    actor_email = (
+        request.headers.get("x-m24-user-email")
+        or request.cookies.get("m24_erpmande24_user_email")
+        or request.cookies.get("m24_backend_user_email")
+    )
+    actor_user_id = actor_user_id.strip() if actor_user_id else None
+    actor_email = actor_email.strip().lower() if actor_email else None
+    return actor_user_id, actor_email
+
+
 def _role_switcher(current_role: str, return_to: str) -> str:
     options = "".join(
         [
@@ -2882,12 +2898,15 @@ def backend_update_user_role(
     previous_role = user.role
     user.role = role_value
     actor_role = _role_from_request(request)
+    actor_user_id, actor_email = _actor_identity_from_request(request)
     db.add(
         UserRoleAudit(
             user_id=user.id,
             old_role=previous_role,
             new_role=role_value,
             changed_by_role=actor_role,
+            changed_by_user_id=actor_user_id,
+            changed_by_email=actor_email,
         )
     )
     db.commit()
@@ -2931,10 +2950,11 @@ def backend_user_detail(user_id: str, request: Request, db: Session = Depends(ge
     if rider:
         timeline_events.append((user.created_at.strftime("%Y-%m-%d %H:%M"), f"Rider vinculado: {rider.id}"))
     for audit in role_audits:
+        actor_label = audit.changed_by_email or audit.changed_by_user_id or "N/A"
         timeline_events.append(
             (
                 audit.changed_at.strftime("%Y-%m-%d %H:%M"),
-                f"Cambio de rol: {audit.old_role.value} -> {audit.new_role.value} (por rol {audit.changed_by_role.value})",
+                f"Cambio de rol: {audit.old_role.value} -> {audit.new_role.value} (por rol {audit.changed_by_role.value}, actor {actor_label})",
             )
         )
 

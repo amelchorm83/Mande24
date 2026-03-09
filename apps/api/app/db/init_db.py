@@ -9,6 +9,15 @@ from sqlalchemy import inspect, text
 def _ensure_runtime_schema() -> None:
     inspector = inspect(engine)
     tables = set(inspector.get_table_names())
+
+    if "user_role_audits" in tables:
+        audit_columns = {col["name"] for col in inspector.get_columns("user_role_audits")}
+        with engine.begin() as conn:
+            if "changed_by_user_id" not in audit_columns:
+                conn.execute(text("ALTER TABLE user_role_audits ADD COLUMN changed_by_user_id VARCHAR(32)"))
+            if "changed_by_email" not in audit_columns:
+                conn.execute(text("ALTER TABLE user_role_audits ADD COLUMN changed_by_email VARCHAR(190)"))
+
     if "client_profiles" not in tables:
         return
 

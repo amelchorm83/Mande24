@@ -63,6 +63,8 @@ class UserRoleAudit(Base):
     old_role: Mapped[UserRole] = mapped_column(SqlEnum(UserRole, name="user_role"))
     new_role: Mapped[UserRole] = mapped_column(SqlEnum(UserRole, name="user_role"))
     changed_by_role: Mapped[UserRole] = mapped_column(SqlEnum(UserRole, name="user_role"), default=UserRole.admin)
+    changed_by_user_id: Mapped[str | None] = mapped_column(String(32), ForeignKey("users.id"), nullable=True)
+    changed_by_email: Mapped[str | None] = mapped_column(String(190), nullable=True)
     changed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
 
 
