@@ -556,28 +556,47 @@ def _render_layout(
         '</div>'
         '<div class="hero-media">'
         '<svg viewBox="0 0 600 280" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Banner ERPMande24">'
-        '<defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#fb923c"/><stop offset="100%" stop-color="#c2410c"/></linearGradient><linearGradient id="b" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#ffedd5"/><stop offset="100%" stop-color="#fdba74"/></linearGradient></defs>'
+        '<defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#ff8a1f"/><stop offset="100%" stop-color="#c2410c"/></linearGradient><linearGradient id="b" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#fff1df"/><stop offset="100%" stop-color="#ffd3ad"/></linearGradient></defs>'
         '<rect width="600" height="280" fill="url(#g)"/>'
-        '<circle cx="116" cy="78" r="58" fill="#ffffff1d"/>'
-        '<rect x="26" y="84" width="300" height="168" rx="14" fill="#ffffff16" stroke="#ffffff22"/>'
-        '<text x="50" y="136" font-family="Trebuchet MS, sans-serif" font-size="34" font-weight="700" fill="#fff7ed">Mande24</text>'
-        '<text x="50" y="168" font-family="Trebuchet MS, sans-serif" font-size="16" font-weight="700" fill="#ffedd5">Mensajeria | Paqueteria | Mandaditos</text>'
-        '<text x="50" y="193" font-family="Trebuchet MS, sans-serif" font-size="14" fill="#fff7ed">Entrega local rapida con seguimiento claro.</text>'
-        '<rect x="50" y="206" width="246" height="30" rx="15" fill="#ffedd5"/>'
-        '<text x="66" y="226" font-family="Trebuchet MS, sans-serif" font-size="13" font-weight="700" fill="#7c2d12">Entrega segura. Ruta inteligente.</text>'
-        '<rect x="356" y="42" width="218" height="194" rx="18" fill="#ffffff19" stroke="#ffffff2a"/>'
-        '<circle cx="464" cy="140" r="60" fill="#ffffff1f"/>'
-        '<path d="M392 184c18-2 36-12 51-34 10 13 23 23 39 28" fill="none" stroke="#fff7ed" stroke-width="10" stroke-linecap="round"/>'
-        '<rect x="437" y="104" width="56" height="40" rx="8" fill="url(#b)" stroke="#9a3412" stroke-width="3"/>'
-        '<path d="M437 120h56" stroke="#9a3412" stroke-width="3"/>'
-        '<path d="M465 104v40" stroke="#9a3412" stroke-width="3"/>'
-        '<circle cx="408" cy="198" r="10" fill="#ffedd5"/>'
-        '<circle cx="517" cy="198" r="10" fill="#ffedd5"/>'
-        '<circle cx="525" cy="78" r="22" fill="#7c2d12"/>'
-        '<text x="525" y="85" text-anchor="middle" font-family="Trebuchet MS, sans-serif" font-size="16" font-weight="700" fill="#fff7ed">24</text>'
+        '<circle cx="76" cy="46" r="64" fill="#ffffff15"/>'
+        '<circle cx="568" cy="268" r="96" fill="#ffffff10"/>'
+        '<rect x="28" y="62" width="330" height="192" rx="18" fill="#ffffff18" stroke="#ffffff2a"/>'
+        '<text x="50" y="124" font-family="Trebuchet MS, sans-serif" font-size="40" font-weight="700" fill="#fffaf5">Mande24</text>'
+        '<rect x="50" y="136" width="248" height="3" rx="2" fill="#ffd3ad"/>'
+        '<text x="50" y="164" font-family="Trebuchet MS, sans-serif" font-size="16" font-weight="700" fill="#fff1df">Mensajeria | Paqueteria | Mandaditos</text>'
+        '<text x="50" y="188" font-family="Trebuchet MS, sans-serif" font-size="13" fill="#fffaf5">Entrega local rapida con seguimiento claro.</text>'
+        '<rect x="50" y="203" width="252" height="30" rx="15" fill="#fff1df"/>'
+        '<text x="66" y="223" font-family="Trebuchet MS, sans-serif" font-size="13" font-weight="700" fill="#8a2f08">ERPMande24: control operativo y comercial.</text>'
+        '<rect x="374" y="36" width="204" height="206" rx="20" fill="#ffffff1a" stroke="#ffffff30"/>'
+        '<rect x="406" y="62" width="140" height="152" rx="28" fill="#ffffff20"/>'
+        '<path d="M400 184c12-14 30-28 52-42 10 9 23 17 39 24" fill="none" stroke="#fff5eb" stroke-width="8" stroke-linecap="round"/>'
+        '<rect x="438" y="122" width="76" height="56" rx="11" fill="url(#b)" stroke="#8a2f08" stroke-width="3"/>'
+        '<path d="M438 140h76" stroke="#8a2f08" stroke-width="3"/>'
+        '<path d="M476 122v56" stroke="#8a2f08" stroke-width="3"/>'
+        '<circle cx="446" cy="188" r="8" fill="#ffe6d1"/>'
+        '<circle cx="506" cy="188" r="8" fill="#ffe6d1"/>'
+        '<circle cx="530" cy="102" r="18" fill="#7c2d12"/>'
+        '<text x="530" y="108" text-anchor="middle" font-family="Trebuchet MS, sans-serif" font-size="13" font-weight="700" fill="#fff7ed">24</text>'
         '</svg>'
         '</div>'
         '</section>'
+    )
+
+    brand_icon_data_uri = (
+        "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 128 128'%3E"
+        "%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E"
+        "%3Cstop offset='0%25' stop-color='%23ff8a1f'/%3E%3Cstop offset='100%25' stop-color='%23c2410c'/%3E"
+        "%3C/linearGradient%3E%3ClinearGradient id='s' x1='0' y1='0' x2='0' y2='1'%3E"
+        "%3Cstop offset='0%25' stop-color='%23fff1df'/%3E%3Cstop offset='100%25' stop-color='%23ffd3ad'/%3E"
+        "%3C/linearGradient%3E%3C/defs%3E%3Crect x='8' y='8' width='112' height='112' rx='30' fill='url(%23g)'/%3E"
+        "%3Crect x='22' y='22' width='84' height='84' rx='22' fill='%23ffffff1f'/%3E"
+        "%3Cpath d='M30 80c8-10 20-20 35-30 8 8 18 15 30 20' fill='none' stroke='%23fff5eb' stroke-width='7' stroke-linecap='round'/%3E"
+        "%3Crect x='40' y='47' width='48' height='34' rx='9' fill='url(%23s)' stroke='%238a2f08' stroke-width='2.2'/%3E"
+        "%3Cpath d='M40 59h48' stroke='%238a2f08' stroke-width='2.2'/%3E%3Cpath d='M64 47v34' stroke='%238a2f08' stroke-width='2.2'/%3E"
+        "%3Ccircle cx='44' cy='88' r='7' fill='%23ffe6d1'/%3E%3Ccircle cx='84' cy='88' r='7' fill='%23ffe6d1'/%3E"
+        "%3Ccircle cx='92' cy='36' r='14' fill='%237c2d12'/%3E"
+        "%3Ctext x='92' y='40' text-anchor='middle' font-family='Trebuchet MS, sans-serif' font-size='11' font-weight='800' fill='%23fff7ed'%3E24%3C/text%3E"
+        "%3C/svg%3E"
     )
 
     return (
@@ -587,7 +606,7 @@ def _render_layout(
         f"<style>{_base_css()}</style></head><body>"
         "<div class=\"layout\">"
         "<aside class=\"sidebar\">"
-        "<div class=\"brand-row\"><img class=\"brand-logo\" src=\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 128 128'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0%25' stop-color='%23f97316'/%3E%3Cstop offset='100%25' stop-color='%23c2410c'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect x='8' y='8' width='112' height='112' rx='28' fill='url(%23g)'/%3E%3Cpath d='M30 72c10-2 18-9 24-20 7 8 15 13 28 14' fill='none' stroke='%23fff7ed' stroke-width='9' stroke-linecap='round'/%3E%3Ccircle cx='35' cy='87' r='8' fill='%23fed7aa'/%3E%3Ccircle cx='93' cy='87' r='8' fill='%23fed7aa'/%3E%3C/svg%3E\" alt=\"Icono Mande24\" /><div class=\"brand-copy\"><h2>ERPMande24</h2><small>Entrega segura. Ruta inteligente.</small></div></div>"
+        f"<div class=\"brand-row\"><img class=\"brand-logo\" src=\"{brand_icon_data_uri}\" alt=\"Icono ERPMande24\" /><div class=\"brand-copy\"><h2>ERPMande24</h2><small>Entrega segura. Ruta inteligente.</small></div></div>"
         "<span class=\"tag\">ERPMande24 Admin</span>"
         f"<nav class=\"menu\">{_menu_html(active)}</nav>{_role_switcher(role_value, path_value)}</aside>"
         "<main class=\"content\">"
