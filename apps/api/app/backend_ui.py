@@ -62,6 +62,29 @@ MENU = [
 
 ROLE_OPTIONS = ["admin", "station", "rider", "client"]
 
+ERP_ICON_SVG = """<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" role="img" aria-label="Icono ERPMande24">
+    <defs>
+        <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0%" stop-color="#ff8a1f"/>
+            <stop offset="100%" stop-color="#c2410c"/>
+        </linearGradient>
+        <linearGradient id="s" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stop-color="#fff1df"/>
+            <stop offset="100%" stop-color="#ffd3ad"/>
+        </linearGradient>
+    </defs>
+    <rect x="8" y="8" width="112" height="112" rx="30" fill="url(#g)"/>
+    <rect x="22" y="22" width="84" height="84" rx="22" fill="#ffffff1f"/>
+    <path d="M30 80c8-10 20-20 35-30 8 8 18 15 30 20" fill="none" stroke="#fff5eb" stroke-width="7" stroke-linecap="round"/>
+    <rect x="40" y="47" width="48" height="34" rx="9" fill="url(#s)" stroke="#8a2f08" stroke-width="2.2"/>
+    <path d="M40 59h48" stroke="#8a2f08" stroke-width="2.2"/>
+    <path d="M64 47v34" stroke="#8a2f08" stroke-width="2.2"/>
+    <circle cx="44" cy="88" r="7" fill="#ffe6d1"/>
+    <circle cx="84" cy="88" r="7" fill="#ffe6d1"/>
+    <circle cx="92" cy="36" r="14" fill="#7c2d12"/>
+    <text x="92" y="40" text-anchor="middle" font-family="Trebuchet MS, sans-serif" font-size="11" font-weight="800" fill="#fff7ed">24</text>
+</svg>"""
+
 
 @legacy_router.api_route("", methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS", "HEAD"])
 @legacy_router.api_route("/{full_path:path}", methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS", "HEAD"])
@@ -70,6 +93,11 @@ def backend_legacy_redirect(request: Request, full_path: str = "") -> RedirectRe
     if request.url.query:
         target = f"{target}?{request.url.query}"
     return RedirectResponse(url=target, status_code=307)
+
+
+@router.get("/icon.svg")
+def backend_icon_svg() -> Response:
+    return Response(content=ERP_ICON_SVG, media_type="image/svg+xml")
 
 
 def _base_css() -> str:
@@ -582,28 +610,15 @@ def _render_layout(
         '</section>'
     )
 
-    brand_icon_svg = (
-        "<svg class='brand-logo' viewBox='0 0 128 128' xmlns='http://www.w3.org/2000/svg' role='img' aria-label='Icono ERPMande24'>"
-        "<defs><linearGradient id='g' x1='0' y1='0' x2='1' y2='1'><stop offset='0%' stop-color='#ff8a1f'/><stop offset='100%' stop-color='#c2410c'/></linearGradient>"
-        "<linearGradient id='s' x1='0' y1='0' x2='0' y2='1'><stop offset='0%' stop-color='#fff1df'/><stop offset='100%' stop-color='#ffd3ad'/></linearGradient></defs>"
-        "<rect x='8' y='8' width='112' height='112' rx='30' fill='url(#g)'/>"
-        "<rect x='22' y='22' width='84' height='84' rx='22' fill='#ffffff1f'/>"
-        "<path d='M30 80c8-10 20-20 35-30 8 8 18 15 30 20' fill='none' stroke='#fff5eb' stroke-width='7' stroke-linecap='round'/>"
-        "<rect x='40' y='47' width='48' height='34' rx='9' fill='url(#s)' stroke='#8a2f08' stroke-width='2.2'/>"
-        "<path d='M40 59h48' stroke='#8a2f08' stroke-width='2.2'/><path d='M64 47v34' stroke='#8a2f08' stroke-width='2.2'/>"
-        "<circle cx='44' cy='88' r='7' fill='#ffe6d1'/><circle cx='84' cy='88' r='7' fill='#ffe6d1'/>"
-        "<circle cx='92' cy='36' r='14' fill='#7c2d12'/><text x='92' y='40' text-anchor='middle' font-family='Trebuchet MS, sans-serif' font-size='11' font-weight='800' fill='#fff7ed'>24</text>"
-        "</svg>"
-    )
-
     return (
         "<!doctype html><html lang=\"es\"><head><meta charset=\"utf-8\" />"
         "<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\" />"
+        "<link rel=\"icon\" type=\"image/svg+xml\" href=\"/ERPMande24/icon.svg?v=2\" />"
         f"<title>ERPMande24 | {escape(title)}</title>"
         f"<style>{_base_css()}</style></head><body>"
         "<div class=\"layout\">"
         "<aside class=\"sidebar\">"
-        f"<div class=\"brand-row\">{brand_icon_svg}<div class=\"brand-copy\"><h2>ERPMande24</h2><small>Entrega segura. Ruta inteligente.</small></div></div>"
+        "<div class=\"brand-row\"><img class=\"brand-logo\" src=\"/ERPMande24/icon.svg?v=2\" alt=\"Icono ERPMande24\" /><div class=\"brand-copy\"><h2>ERPMande24</h2><small>Entrega segura. Ruta inteligente.</small></div></div>"
         "<span class=\"tag\">ERPMande24 Admin</span>"
         f"<nav class=\"menu\">{_menu_html(active)}</nav>{_role_switcher(role_value, path_value)}</aside>"
         "<main class=\"content\">"
