@@ -58,8 +58,11 @@ export default function AuthPage() {
     <main className="shell">
       <header className="topbar">
         <div className="brand">
-          <div className="brand-mark" />
-          <h2>Mande24 Independent</h2>
+          <img className="brand-logo" src="/brand/icon.svg" alt="Icono Mande24" />
+          <div className="brand-copy">
+            <h2>ERPMande24</h2>
+            <p className="brand-slogan">Acceso central para operacion y control.</p>
+          </div>
         </div>
         <nav className="nav-pills">
           <a className="nav-link" href="/">Inicio</a>
@@ -76,6 +79,19 @@ export default function AuthPage() {
       <span className="badge">Portal Auth</span>
       <h1>Acceso Seguro y Gestion de Token</h1>
       <p className="hero-note">Inicia sesion o registra usuarios operativos. El token se almacena en el navegador para habilitar los demas portales automaticamente.</p>
+      <img className="hero-banner" src="/brand/banner.svg" alt="Banner portal auth" />
+
+      <section className="panel">
+        <div className="media-grid">
+          <article className="media-card">
+            <img src="/brand/photo-station.svg" alt="Panel de control y accesos" />
+            <div>
+              <h3>Control de Accesos</h3>
+              <p className="hero-note">Centraliza la autenticacion para mantener continuidad en todos los portales operativos.</p>
+            </div>
+          </article>
+        </div>
+      </section>
 
       <nav className="section-nav">
         <button className={section === "acceso" ? "section-link active" : "section-link"} onClick={() => setSection("acceso")}>Acceso</button>

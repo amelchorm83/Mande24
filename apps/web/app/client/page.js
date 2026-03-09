@@ -340,8 +340,11 @@ export default function ClientPortalPage() {
     <main className="shell">
       <header className="topbar">
         <div className="brand">
-          <div className="brand-mark" />
-          <h2>ERPMande24</h2>
+          <img className="brand-logo" src="/brand/icon.svg" alt="Icono Mande24" />
+          <div className="brand-copy">
+            <h2>Portal Cliente</h2>
+            <p className="brand-slogan">Registro, guias y seguimiento en una sola vista.</p>
+          </div>
         </div>
         <nav className="nav-pills">
           <a className="nav-link" href="/">Inicio</a>
@@ -358,6 +361,26 @@ export default function ClientPortalPage() {
       <span className="badge">Portal Cliente</span>
       <h1>Gestion de Clientes y Guias</h1>
       <p className="hero-note">Registra clientes de origen y destino con direccion validada, define facturacion y opera guias con trazabilidad de envios enviados y recibidos.</p>
+      <img className="hero-banner" src="/brand/banner.svg" alt="Banner portal cliente" />
+
+      <section className="panel">
+        <div className="media-grid">
+          <article className="media-card">
+            <img src="/brand/photo-hub.svg" alt="Captura de clientes y guias" />
+            <div>
+              <h3>Captura Estructurada</h3>
+              <p className="hero-note">Completa direcciones con cascada geografia y crea guias con menos errores de captura.</p>
+            </div>
+          </article>
+          <article className="media-card">
+            <img src="/brand/photo-map.svg" alt="Cobertura por zonas de entrega" />
+            <div>
+              <h3>Envios con Contexto</h3>
+              <p className="hero-note">Opera envios por zonas de cobertura para mejorar promesas de entrega y servicio.</p>
+            </div>
+          </article>
+        </div>
+      </section>
 
       <nav className="section-nav">
         <button className={section === "acceso" ? "section-link active" : "section-link"} onClick={() => setSection("acceso")}>Acceso</button>

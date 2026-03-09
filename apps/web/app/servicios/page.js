@@ -3,8 +3,11 @@ export default function ServiciosPage() {
     <main className="shell public-shell">
       <header className="topbar">
         <div className="brand">
-          <div className="brand-mark" />
-          <h2>Mande24 Logistics</h2>
+          <img className="brand-logo" src="/brand/icon.svg" alt="Icono Mande24" />
+          <div className="brand-copy">
+            <h2>Mande24 Logistics</h2>
+            <p className="brand-slogan">Entrega segura. Ruta inteligente.</p>
+          </div>
         </div>
         <nav className="nav-pills">
           <a className="nav-link" href="/">Inicio</a>
@@ -21,6 +24,7 @@ export default function ServiciosPage() {
       <span className="badge">Servicios</span>
       <h1>Soluciones de ultima milla para operaciones comerciales exigentes.</h1>
       <p className="hero-note">Diseñamos servicios escalables para entregas urgentes, programadas y recurrentes con control operativo en cada etapa.</p>
+      <img className="hero-banner" src="/brand/banner.svg" alt="Banner de servicios Mande24" />
 
       <section className="panel">
         <div className="grid">
@@ -55,6 +59,26 @@ export default function ServiciosPage() {
           <a className="btn" href="/client">Portal Cliente</a>
           <a className="btn" href="/rider">Portal Rider</a>
           <a className="btn" href="/station">Portal Estacion</a>
+        </div>
+      </section>
+
+      <section className="panel">
+        <h2>Casos Operativos</h2>
+        <div className="media-grid">
+          <article className="media-card">
+            <img src="/brand/photo-rider.svg" alt="Servicio express en ruta" />
+            <div>
+              <h3>Express Urbano</h3>
+              <p className="hero-note">Atencion de pedidos criticos con seguimiento por etapa y evidencia de entrega.</p>
+            </div>
+          </article>
+          <article className="media-card">
+            <img src="/brand/photo-hub.svg" alt="Operacion de hub logistico" />
+            <div>
+              <h3>Consolidacion de Pedidos</h3>
+              <p className="hero-note">Control centralizado de salidas para mejorar tiempos de respuesta y productividad.</p>
+            </div>
+          </article>
         </div>
       </section>
     </main>

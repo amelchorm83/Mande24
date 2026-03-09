@@ -17,8 +17,11 @@ export default async function HomePage() {
     <main className="shell public-shell">
       <header className="topbar">
         <div className="brand">
-          <div className="brand-mark" />
-          <h2>Mande24 Logistics</h2>
+          <img className="brand-logo" src="/brand/icon.svg" alt="Icono Mande24" />
+          <div className="brand-copy">
+            <h2>Mande24 Logistics</h2>
+            <p className="brand-slogan">Entrega segura. Ruta inteligente.</p>
+          </div>
         </div>
         <nav className="nav-pills">
           <a className="nav-link active" href="/">Inicio</a>
@@ -35,6 +38,7 @@ export default async function HomePage() {
       <span className="badge">Inicio</span>
       <h1>La red logistica de Tabasco para empresas que necesitan cumplir a tiempo.</h1>
       <p className="hero-note">Mande24 Logistics integra recoleccion, transporte, entrega y monitoreo digital en una operacion unica para negocios, estaciones y repartidores.</p>
+      <img className="hero-banner" src="/brand/banner.svg" alt="Banner operativo Mande24 Logistics" />
 
       <section className="panel hero-strip">
         <div>
@@ -83,6 +87,33 @@ export default async function HomePage() {
           <article className="card">
             <h3>Cobertura Tabasco</h3>
             <p>Segmentacion geografica por municipio, codigo postal y colonia para optimizar asignacion de zonas.</p>
+          </article>
+        </div>
+      </section>
+
+      <section className="panel">
+        <h2>Operacion en Imagenes</h2>
+        <div className="media-grid">
+          <article className="media-card">
+            <img src="/brand/photo-hub.svg" alt="Centro logistico de Mande24" />
+            <div>
+              <h3>Centro Operativo</h3>
+              <p className="hero-note">Coordinacion de guias, control de salida y trazabilidad de cada entrega.</p>
+            </div>
+          </article>
+          <article className="media-card">
+            <img src="/brand/photo-rider.svg" alt="Rider en ruta de entrega" />
+            <div>
+              <h3>Rider en Ruta</h3>
+              <p className="hero-note">Actualizacion de etapas en tiempo real para mejorar la comunicacion con el cliente.</p>
+            </div>
+          </article>
+          <article className="media-card">
+            <img src="/brand/photo-station.svg" alt="Estacion con indicadores de comision" />
+            <div>
+              <h3>Estacion y Comisiones</h3>
+              <p className="hero-note">Monitoreo semanal con indicadores claros para decisiones operativas rapidas.</p>
+            </div>
           </article>
         </div>
       </section>

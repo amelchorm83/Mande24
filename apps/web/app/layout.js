@@ -1,8 +1,8 @@
 import "./globals.css";
 
 export const metadata = {
-  title: "Mande24 Independent",
-  description: "Portal base para cliente, rider y estacion",
+  title: "Mande24 Logistics",
+  description: "Entrega segura. Ruta inteligente. Plataforma de logistica para Tabasco.",
 };
 
 export default function RootLayout({ children }) {

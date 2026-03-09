@@ -118,16 +118,26 @@ body {
   gap: 0.55rem;
 }
 
-.brand-mark {
-  width: 26px;
-  height: 26px;
-  border-radius: 8px;
-  background: linear-gradient(130deg, #0f766e, #0ea5a3);
+.brand-logo {
+    width: 32px;
+    height: 32px;
+    border-radius: 10px;
+    box-shadow: 0 8px 14px rgba(15, 118, 110, 0.35);
 }
 
 .brand-row h2 {
   margin: 0;
   font-size: 1.05rem;
+}
+
+.brand-copy {
+    display: grid;
+    gap: 0.06rem;
+}
+
+.brand-copy small {
+    color: #9fbed6;
+    font-size: 0.72rem;
 }
 
 .tag {
@@ -203,6 +213,40 @@ h1 {
 
 .panel h3 {
   margin: 0.05rem 0 0.75rem;
+}
+
+.hero-shell {
+    display: grid;
+    grid-template-columns: 1.2fr 1fr;
+    gap: 0.85rem;
+    align-items: center;
+    background: linear-gradient(132deg, #eff7f5, #e8f0fb);
+}
+
+.hero-shell p {
+    margin: 0.35rem 0;
+    color: #43515b;
+}
+
+.hero-badge {
+    display: inline-block;
+    border-radius: 999px;
+    font-size: 0.75rem;
+    padding: 0.16rem 0.5rem;
+    background: #0f766e;
+    color: #fff;
+}
+
+.hero-media {
+    border: 1px solid #c9d5df;
+    border-radius: 12px;
+    overflow: hidden;
+    background: #fff;
+}
+
+.hero-media svg {
+    width: 100%;
+    display: block;
 }
 
 .kpi-grid {
@@ -371,6 +415,7 @@ th {
 
 @media (max-width: 760px) {
   .grid, .grid-3 { grid-template-columns: 1fr; }
+    .hero-shell { grid-template-columns: 1fr; }
 }
 """
 
@@ -487,6 +532,32 @@ def _render_layout(
         "</script>"
     )
 
+    hero_block = (
+        '<section class="panel hero-shell">'
+        '<div>'
+        '<span class="hero-badge">ERPMande24</span>'
+        '<h3>Operacion mas clara con identidad visual unificada</h3>'
+        '<p>Administra guias, entregas, comisiones y catalogos en una interfaz mas amigable para el equipo operativo.</p>'
+        '<p><strong>Eslogan:</strong> Entrega segura. Ruta inteligente. Cliente informado.</p>'
+        '</div>'
+        '<div class="hero-media">'
+        '<svg viewBox="0 0 600 280" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Banner ERPMande24">'
+        '<defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#0f766e"/><stop offset="100%" stop-color="#155e75"/></linearGradient></defs>'
+        '<rect width="600" height="280" fill="url(#g)"/>'
+        '<circle cx="88" cy="70" r="60" fill="#ffffff1e"/>'
+        '<rect x="34" y="122" width="312" height="118" rx="12" fill="#ffffff17"/>'
+        '<text x="56" y="168" font-family="Trebuchet MS, sans-serif" font-size="27" fill="#f8fafc">Mande24 Logistics</text>'
+        '<text x="56" y="198" font-family="Trebuchet MS, sans-serif" font-size="15" fill="#d1fae5">Entrega segura. Ruta inteligente.</text>'
+        '<rect x="380" y="70" width="180" height="130" rx="14" fill="#ffffff1b"/>'
+        '<path d="M405 185h130" stroke="#d1fae5" stroke-width="10" stroke-linecap="round"/>'
+        '<path d="M418 170c22-5 42-29 55-55 23 26 50 42 80 44" fill="none" stroke="#f8fafc" stroke-width="9" stroke-linecap="round"/>'
+        '<circle cx="420" cy="185" r="11" fill="#f59e0b"/>'
+        '<circle cx="530" cy="185" r="11" fill="#f59e0b"/>'
+        '</svg>'
+        '</div>'
+        '</section>'
+    )
+
     return (
         "<!doctype html><html lang=\"es\"><head><meta charset=\"utf-8\" />"
         "<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\" />"
@@ -494,13 +565,13 @@ def _render_layout(
         f"<style>{_base_css()}</style></head><body>"
         "<div class=\"layout\">"
         "<aside class=\"sidebar\">"
-        "<div class=\"brand-row\"><div class=\"brand-mark\"></div><h2>ERPMande24</h2></div>"
+        "<div class=\"brand-row\"><img class=\"brand-logo\" src=\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 128 128'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0%25' stop-color='%230f766e'/%3E%3Cstop offset='100%25' stop-color='%23164e63'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect x='8' y='8' width='112' height='112' rx='28' fill='url(%23g)'/%3E%3Cpath d='M30 72c10-2 18-9 24-20 7 8 15 13 28 14' fill='none' stroke='%23e7f7f3' stroke-width='9' stroke-linecap='round'/%3E%3Ccircle cx='35' cy='87' r='8' fill='%23f59e0b'/%3E%3Ccircle cx='93' cy='87' r='8' fill='%23f59e0b'/%3E%3C/svg%3E\" alt=\"Icono Mande24\" /><div class=\"brand-copy\"><h2>ERPMande24</h2><small>Entrega segura. Ruta inteligente.</small></div></div>"
         "<span class=\"tag\">ERPMande24 Admin</span>"
         f"<nav class=\"menu\">{_menu_html(active)}</nav>{_role_switcher(role_value, path_value)}</aside>"
         "<main class=\"content\">"
         f"<header class=\"header\"><div><h1>{escape(title)}</h1><p class=\"subtitle\">{escape(subtitle)}</p></div>"
         "<div class=\"top-actions\"><a class=\"btn\" href=\"/ERPMande24\">Dashboard</a><a class=\"btn primary\" href=\"/ERPMande24/guides/new\">Nueva Guia</a></div></header>"
-        f"{msg_html}{content}</main></div>{script}</body></html>"
+        f"{hero_block}{msg_html}{content}</main></div>{script}</body></html>"
     )
 
 

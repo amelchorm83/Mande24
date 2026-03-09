@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 420" role="img" aria-label="Estacion y control de comisiones">
+  <rect width="720" height="420" fill="#f4f0e7"/>
+  <rect x="0" y="305" width="720" height="115" fill="#e4ddcc"/>
+  <rect x="90" y="90" width="240" height="220" rx="12" fill="#1e293b"/>
+  <rect x="112" y="120" width="195" height="32" rx="6" fill="#d1fae5"/>
+  <rect x="112" y="168" width="150" height="18" rx="4" fill="#bae6fd"/>
+  <rect x="112" y="196" width="170" height="18" rx="4" fill="#bae6fd"/>
+  <rect x="112" y="224" width="110" height="18" rx="4" fill="#bae6fd"/>
+  <rect x="370" y="130" width="260" height="180" rx="14" fill="#0f766e"/>
+  <rect x="400" y="170" width="200" height="24" rx="8" fill="#ecfeff"/>
+  <rect x="400" y="208" width="170" height="20" rx="8" fill="#d1fae5"/>
+  <rect x="400" y="240" width="130" height="20" rx="8" fill="#d1fae5"/>
+  <text x="122" y="143" font-family="Trebuchet MS, sans-serif" font-size="18" fill="#14532d">COMISIONES</text>
+  <text x="410" y="188" font-family="Trebuchet MS, sans-serif" font-size="18" fill="#0f172a">ESTACION OPERATIVA</text>
+</svg>

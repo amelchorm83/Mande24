@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 420" role="img" aria-label="Mapa de cobertura Tabasco">
+  <rect width="720" height="420" fill="#e7f2ec"/>
+  <path d="M180 105l80 18 58-20 86 22 62-18 70 33-24 65 20 60-43 42-56 26-70-18-70 17-75-35-59-50 21-74z" fill="#c0dfc8" stroke="#5a8f6a" stroke-width="4"/>
+  <circle cx="280" cy="175" r="14" fill="#0f766e"/>
+  <circle cx="380" cy="205" r="14" fill="#0f766e"/>
+  <circle cx="470" cy="186" r="14" fill="#0f766e"/>
+  <path d="M280 175l100 30 90-19" fill="none" stroke="#155e75" stroke-width="5" stroke-linecap="round"/>
+  <rect x="78" y="300" width="250" height="70" rx="10" fill="#ffffffcc"/>
+  <text x="98" y="330" font-family="Trebuchet MS, sans-serif" font-size="24" fill="#1f2937">Cobertura Tabasco</text>
+  <text x="98" y="354" font-family="Trebuchet MS, sans-serif" font-size="16" fill="#334155">Municipio + CP + Colonia</text>
+</svg>

@@ -189,8 +189,11 @@ export default function StationPortalPage() {
     <main className="shell">
       <header className="topbar">
         <div className="brand">
-          <div className="brand-mark" />
-          <h2>ERPMande24</h2>
+          <img className="brand-logo" src="/brand/icon.svg" alt="Icono Mande24" />
+          <div className="brand-copy">
+            <h2>Portal Estacion</h2>
+            <p className="brand-slogan">Control semanal y desempeno operativo.</p>
+          </div>
         </div>
         <nav className="nav-pills">
           <a className="nav-link" href="/">Inicio</a>
@@ -207,6 +210,19 @@ export default function StationPortalPage() {
       <span className="badge">Portal Estacion</span>
       <h1>Control Semanal de Comisiones</h1>
       <p className="hero-note">Consulta resultados de riders y estaciones en tiempo real. El cierre semanal requiere rol `admin`.</p>
+      <img className="hero-banner" src="/brand/banner.svg" alt="Banner portal estacion" />
+
+      <section className="panel">
+        <div className="media-grid">
+          <article className="media-card">
+            <img src="/brand/photo-station.svg" alt="Panel de estacion y comisiones" />
+            <div>
+              <h3>Tablero de Comisiones</h3>
+              <p className="hero-note">Visualiza avances semanales y ejecuta cierres administrativos con mayor claridad.</p>
+            </div>
+          </article>
+        </div>
+      </section>
 
       <nav className="section-nav">
         <button className={section === "clientes" ? "section-link active" : "section-link"} onClick={() => setSection("clientes")}>Alta de Clientes</button>

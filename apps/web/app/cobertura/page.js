@@ -10,8 +10,11 @@ export default function CoberturaPage() {
     <main className="shell public-shell">
       <header className="topbar">
         <div className="brand">
-          <div className="brand-mark" />
-          <h2>Mande24 Logistics</h2>
+          <img className="brand-logo" src="/brand/icon.svg" alt="Icono Mande24" />
+          <div className="brand-copy">
+            <h2>Mande24 Logistics</h2>
+            <p className="brand-slogan">Entrega segura. Ruta inteligente.</p>
+          </div>
         </div>
         <nav className="nav-pills">
           <a className="nav-link" href="/">Inicio</a>
@@ -28,6 +31,27 @@ export default function CoberturaPage() {
       <span className="badge">Cobertura</span>
       <h1>Cobertura activa en Tabasco con enfoque operativo por zonas.</h1>
       <p className="hero-note">Nuestra operacion actual esta concentrada en Tabasco para asegurar tiempos confiables, control de ruta y calidad de servicio.</p>
+      <img className="hero-banner" src="/brand/banner.svg" alt="Banner de cobertura Mande24" />
+
+      <section className="panel">
+        <h2>Mapa de Cobertura</h2>
+        <div className="media-grid">
+          <article className="media-card">
+            <img src="/brand/photo-map.svg" alt="Mapa de cobertura de Tabasco" />
+            <div>
+              <h3>Tabasco Prioritario</h3>
+              <p className="hero-note">La cobertura se define por municipio, codigo postal y colonia para asignacion mas precisa.</p>
+            </div>
+          </article>
+          <article className="media-card">
+            <img src="/brand/photo-station.svg" alt="Estacion operativa para zonas" />
+            <div>
+              <h3>Despacho por Zonas</h3>
+              <p className="hero-note">Las estaciones operan bajo reglas geograficas para optimizar cada ruta de entrega.</p>
+            </div>
+          </article>
+        </div>
+      </section>
 
       <section className="panel">
         <h2>Zonas Operativas</h2>

@@ -21,8 +21,11 @@ export default function NoticiasPage() {
     <main className="shell public-shell">
       <header className="topbar">
         <div className="brand">
-          <div className="brand-mark" />
-          <h2>Mande24 Logistics</h2>
+          <img className="brand-logo" src="/brand/icon.svg" alt="Icono Mande24" />
+          <div className="brand-copy">
+            <h2>Mande24 Logistics</h2>
+            <p className="brand-slogan">Entrega segura. Ruta inteligente.</p>
+          </div>
         </div>
         <nav className="nav-pills">
           <a className="nav-link" href="/">Inicio</a>
@@ -39,6 +42,7 @@ export default function NoticiasPage() {
       <span className="badge">Noticias</span>
       <h1>Actualizaciones de producto, operacion y cobertura.</h1>
       <p className="hero-note">Publicamos avances clave para clientes, aliados y equipos operativos con enfoque en resultados medibles.</p>
+      <img className="hero-banner" src="/brand/banner.svg" alt="Banner de noticias Mande24" />
 
       <section className="panel">
         <div className="grid">
@@ -49,6 +53,26 @@ export default function NoticiasPage() {
               <p>{post.excerpt}</p>
             </article>
           ))}
+        </div>
+      </section>
+
+      <section className="panel">
+        <h2>Galeria de Avances</h2>
+        <div className="media-grid">
+          <article className="media-card">
+            <img src="/brand/photo-hub.svg" alt="Actualizacion en centro operativo" />
+            <div>
+              <h3>Operacion de Hub</h3>
+              <p className="hero-note">Nuevas practicas de control para mejorar salida de guias y trazabilidad.</p>
+            </div>
+          </article>
+          <article className="media-card">
+            <img src="/brand/photo-map.svg" alt="Expansion de cobertura en Tabasco" />
+            <div>
+              <h3>Expansion Geografica</h3>
+              <p className="hero-note">Planeacion por zonas para crecimiento ordenado y respuesta mas rapida.</p>
+            </div>
+          </article>
         </div>
       </section>
     </main>

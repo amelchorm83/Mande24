@@ -45,8 +45,11 @@ export default function RiderPortalPage() {
     <main className="shell">
       <header className="topbar">
         <div className="brand">
-          <div className="brand-mark" />
-          <h2>Mande24 Independent</h2>
+          <img className="brand-logo" src="/brand/icon.svg" alt="Icono Mande24" />
+          <div className="brand-copy">
+            <h2>Portal Rider</h2>
+            <p className="brand-slogan">Seguimiento de entrega en tiempo real.</p>
+          </div>
         </div>
         <nav className="nav-pills">
           <a className="nav-link" href="/">Inicio</a>
@@ -63,6 +66,19 @@ export default function RiderPortalPage() {
       <span className="badge">Portal Rider</span>
       <h1>Control de Entrega en Ruta</h1>
       <p className="hero-note">Captura el <code>delivery_id</code> generado en Cliente y actualiza la entrega por etapas. Para <code>delivered</code> se requiere evidencia y firma.</p>
+      <img className="hero-banner" src="/brand/banner.svg" alt="Banner portal rider" />
+
+      <section className="panel">
+        <div className="media-grid">
+          <article className="media-card">
+            <img src="/brand/photo-rider.svg" alt="Rider en ruta con control de etapas" />
+            <div>
+              <h3>Operacion de Ruta</h3>
+              <p className="hero-note">Actualiza etapas, evidencia y firma para cerrar entregas con trazabilidad completa.</p>
+            </div>
+          </article>
+        </div>
+      </section>
 
       <nav className="section-nav">
         <button className={section === "actualizar" ? "section-link active" : "section-link"} onClick={() => setSection("actualizar")}>Actualizar Etapa</button>
