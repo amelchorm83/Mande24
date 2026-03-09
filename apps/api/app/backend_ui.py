@@ -900,6 +900,7 @@ def backend_dashboard(
     kind: str = "ok",
     period: str = "7d",
 ) -> str:
+    role_value = _role_from_request(request)
     today = datetime.now(timezone.utc).date()
     now_dt = datetime.now(timezone.utc)
 
