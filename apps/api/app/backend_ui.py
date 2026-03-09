@@ -275,6 +275,18 @@ h1 {
   font-size: 1.08rem;
 }
 
+.trend-up {
+    color: var(--ok);
+}
+
+.trend-down {
+    color: var(--warn);
+}
+
+.trend-neutral {
+    color: #475569;
+}
+
 .grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(220px, 1fr));
@@ -783,15 +795,20 @@ def backend_dashboard(
 
     leads_delta_label = "N/A"
     conversion_delta_label = "N/A"
+    leads_delta_css = "trend-neutral"
+    conversion_delta_css = "trend-neutral"
     if previous_filters:
         if leads_prev_total:
             leads_delta = ((leads_total - leads_prev_total) / leads_prev_total) * 100
             leads_delta_label = f"{leads_delta:+.1f}% vs {previous_label}"
+            leads_delta_css = "trend-up" if leads_delta > 0 else ("trend-down" if leads_delta < 0 else "trend-neutral")
         else:
             leads_delta_label = "+100.0% vs periodo sin leads" if leads_total else "0.0% vs periodo sin leads"
+            leads_delta_css = "trend-up" if leads_total else "trend-neutral"
 
         conversion_delta = conversion_pct - previous_conversion_pct
         conversion_delta_label = f"{conversion_delta:+.1f} pp vs {previous_label}"
+        conversion_delta_css = "trend-up" if conversion_delta > 0 else ("trend-down" if conversion_delta < 0 else "trend-neutral")
 
     stage_rows = (
         db.query(Delivery.stage, func.count(Delivery.id))
@@ -870,8 +887,8 @@ def backend_dashboard(
         f"<article class=\"kpi\"><small>contacted</small><strong>{leads_contacted}</strong></article>"
         f"<article class=\"kpi\"><small>closed</small><strong>{leads_closed}</strong></article>"
         f"<article class=\"kpi\"><small>Conversion</small><strong>{conversion_pct:.1f}%</strong></article>"
-        f"<article class=\"kpi\"><small>Variacion Leads</small><strong>{escape(leads_delta_label)}</strong></article>"
-        f"<article class=\"kpi\"><small>Variacion Conversion</small><strong>{escape(conversion_delta_label)}</strong></article>"
+        f"<article class=\"kpi\"><small>Variacion Leads</small><strong class=\"{leads_delta_css}\">{escape(leads_delta_label)}</strong></article>"
+        f"<article class=\"kpi\"><small>Variacion Conversion</small><strong class=\"{conversion_delta_css}\">{escape(conversion_delta_label)}</strong></article>"
         "</div>"
         "<div class=\"actions\"><a class=\"btn\" href=\"/ERPMande24/leads\">Abrir Leads</a><a class=\"btn\" href=\"/ERPMande24/export/leads.csv\">Exportar Leads CSV</a></div>"
         "</section>"
