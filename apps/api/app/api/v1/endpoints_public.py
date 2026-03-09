@@ -11,7 +11,7 @@ from app.models.schemas import ContactLeadCreate, ContactLeadResponse
 
 router = APIRouter(prefix="/public", tags=["public"])
 
-ALLOWED_SERVICE_TYPES = {"express", "programada", "recurrente"}
+ALLOWED_SERVICE_TYPES = {"express", "programada", "recurrente", "mandaditos"}
 
 
 def _send_contact_email_notification(lead: ContactLead) -> None:
