@@ -30,6 +30,7 @@ from app.db.models import (
     Station,
     StationCommission,
     User,
+    UserRoleAudit,
     UserRole,
     WorkflowStage,
     Zone,
@@ -2875,7 +2876,20 @@ def backend_update_user_role(
     except ValueError:
         return _redirect(f"/ERPMande24/users/{user_id}", "Rol no valido.", "error")
 
+    if user.role == role_value:
+        return _redirect(f"/ERPMande24/users/{user_id}", f"El usuario ya tiene rol {user.role.value}.")
+
+    previous_role = user.role
     user.role = role_value
+    actor_role = _role_from_request(request)
+    db.add(
+        UserRoleAudit(
+            user_id=user.id,
+            old_role=previous_role,
+            new_role=role_value,
+            changed_by_role=actor_role,
+        )
+    )
     db.commit()
     return _redirect(f"/ERPMande24/users/{user_id}", f"Rol actualizado a {user.role.value}.")
 
@@ -2904,11 +2918,25 @@ def backend_user_detail(user_id: str, request: Request, db: Session = Depends(ge
     if not user:
         return _render_layout("users", "Usuario", "Detalle", '<section class="panel"><div class="empty">Usuario no encontrado.</div></section>', msg, "error", request=request)
     rider = db.query(Rider).filter(Rider.user_id == user.id).first()
+    role_audits = (
+        db.query(UserRoleAudit)
+        .filter(UserRoleAudit.user_id == user.id)
+        .order_by(UserRoleAudit.changed_at.desc())
+        .limit(20)
+        .all()
+    )
     timeline_events = [(user.created_at.strftime("%Y-%m-%d %H:%M"), "Usuario creado")]
     timeline_events.append((user.created_at.strftime("%Y-%m-%d %H:%M"), f"Rol inicial: {user.role.value}"))
     timeline_events.append((user.created_at.strftime("%Y-%m-%d %H:%M"), f"Estado: {'activo' if user.is_active else 'inactivo'}"))
     if rider:
         timeline_events.append((user.created_at.strftime("%Y-%m-%d %H:%M"), f"Rider vinculado: {rider.id}"))
+    for audit in role_audits:
+        timeline_events.append(
+            (
+                audit.changed_at.strftime("%Y-%m-%d %H:%M"),
+                f"Cambio de rol: {audit.old_role.value} -> {audit.new_role.value} (por rol {audit.changed_by_role.value})",
+            )
+        )
 
     role_options = "".join(
         [

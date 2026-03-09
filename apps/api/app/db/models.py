@@ -55,6 +55,17 @@ class User(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
 
 
+class UserRoleAudit(Base):
+    __tablename__ = "user_role_audits"
+
+    id: Mapped[str] = mapped_column(String(32), primary_key=True, default=lambda: uuid4().hex)
+    user_id: Mapped[str] = mapped_column(String(32), ForeignKey("users.id", ondelete="CASCADE"), index=True)
+    old_role: Mapped[UserRole] = mapped_column(SqlEnum(UserRole, name="user_role"))
+    new_role: Mapped[UserRole] = mapped_column(SqlEnum(UserRole, name="user_role"))
+    changed_by_role: Mapped[UserRole] = mapped_column(SqlEnum(UserRole, name="user_role"), default=UserRole.admin)
+    changed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+
+
 class Guide(Base):
     __tablename__ = "guides"
 
