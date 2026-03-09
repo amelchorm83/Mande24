@@ -2855,6 +2855,31 @@ def backend_toggle_user(user_id: str, active: str = Form(...), request: Request 
     return _redirect("/ERPMande24/users", f"Usuario {user.email} actualizado a {'activo' if user.is_active else 'inactivo'}.")
 
 
+@router.post("/users/{user_id}/role")
+def backend_update_user_role(
+    user_id: str,
+    role: str = Form(...),
+    request: Request = None,
+    db: Session = Depends(get_db),
+) -> RedirectResponse:
+    forbidden = _require_manage(request, f"/ERPMande24/users/{user_id}", "editar rol de usuario")
+    if forbidden:
+        return forbidden
+
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        return _redirect("/ERPMande24/users", "Usuario no encontrado.", "error")
+
+    try:
+        role_value = UserRole(role)
+    except ValueError:
+        return _redirect(f"/ERPMande24/users/{user_id}", "Rol no valido.", "error")
+
+    user.role = role_value
+    db.commit()
+    return _redirect(f"/ERPMande24/users/{user_id}", f"Rol actualizado a {user.role.value}.")
+
+
 @router.post("/users/bulk-toggle")
 def backend_bulk_toggle_users(
     ids: list[str] = Form(default=[]),
@@ -2885,6 +2910,13 @@ def backend_user_detail(user_id: str, request: Request, db: Session = Depends(ge
     if rider:
         timeline_events.append((user.created_at.strftime("%Y-%m-%d %H:%M"), f"Rider vinculado: {rider.id}"))
 
+    role_options = "".join(
+        [
+            f'<option value="{item.value}" {"selected" if user.role == item else ""}>{item.value}</option>'
+            for item in UserRole
+        ]
+    )
+
     content = (
         f"{_tabs([('resumen', 'Resumen'), ('timeline', 'Timeline'), ('operacion', 'Operacion')])}"
         "<section id=\"resumen\" class=\"panel\"><h3>Ficha de Usuario</h3>"
@@ -2897,7 +2929,12 @@ def backend_user_detail(user_id: str, request: Request, db: Session = Depends(ge
         f"<article class=\"kpi\"><small>Rider Relacionado</small><strong>{escape(rider.id if rider else 'N/A')}</strong></article>"
         "</div></section>"
         f"<section id=\"timeline\" class=\"panel\"><h3>Timeline</h3>{_timeline(timeline_events)}</section>"
-        "<section id=\"operacion\" class=\"panel\"><h3>Operacion</h3><div class=\"actions\"><a class=\"btn\" href=\"/ERPMande24/users\">Volver a usuarios</a></div></section>"
+        "<section id=\"operacion\" class=\"panel\"><h3>Operacion</h3>"
+        f"<form class=\"grid\" method=\"post\" action=\"/ERPMande24/users/{escape(user.id)}/role\">"
+        f"<label>Rol del usuario<select name=\"role\">{role_options}</select></label>"
+        "<div class=\"actions\"><button class=\"primary\" type=\"submit\">Guardar rol</button>"
+        "<a class=\"btn\" href=\"/ERPMande24/users\">Volver a usuarios</a></div>"
+        "</form></section>"
     )
     return _render_layout("users", f"Usuario {user.email}", "Vista detalle tipo formulario.", content, msg, kind, request=request)
 
