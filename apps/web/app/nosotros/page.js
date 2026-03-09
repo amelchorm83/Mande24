@@ -27,6 +27,7 @@ export default function NosotrosPage() {
         <nav className="nav-pills">
           <a className="nav-link" href="/">Inicio</a>
           <a className="nav-link" href="/servicios">Servicios</a>
+          <a className="nav-link" href="/mandaditos">Mandaditos</a>
           <a className="nav-link" href="/cobertura">Cobertura</a>
           <a className="nav-link" href="/noticias">Noticias</a>
           <a className="nav-link active" href="/nosotros">Nosotros</a>

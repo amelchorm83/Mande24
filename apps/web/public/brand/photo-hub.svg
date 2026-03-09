@@ -1,12 +1,12 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 420" role="img" aria-label="Centro logistico Mande24">
-  <rect width="720" height="420" fill="#e8f5f3"/>
-  <rect x="0" y="290" width="720" height="130" fill="#d6e8d8"/>
+  <rect width="720" height="420" fill="#fff7ed"/>
+  <rect x="0" y="290" width="720" height="130" fill="#fed7aa"/>
   <rect x="60" y="110" width="290" height="190" rx="8" fill="#2f4b5c"/>
   <rect x="84" y="140" width="80" height="50" fill="#f8fafc"/>
   <rect x="182" y="140" width="80" height="50" fill="#f8fafc"/>
   <rect x="84" y="204" width="178" height="76" fill="#f8fafc"/>
-  <rect x="380" y="150" width="280" height="140" rx="8" fill="#0f766e"/>
-  <rect x="410" y="185" width="220" height="40" fill="#d1fae5"/>
+  <rect x="380" y="150" width="280" height="140" rx="8" fill="#ea580c"/>
+  <rect x="410" y="185" width="220" height="40" fill="#ffedd5"/>
   <rect x="495" y="247" width="105" height="43" fill="#334155"/>
-  <text x="421" y="212" font-family="Trebuchet MS, sans-serif" font-size="26" fill="#14532d">HUB TABASCO</text>
+  <text x="421" y="212" font-family="Trebuchet MS, sans-serif" font-size="26" fill="#9a3412">HUB TABASCO</text>
 </svg>

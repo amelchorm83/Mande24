@@ -1,11 +1,11 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 420" role="img" aria-label="Rider en ruta">
-  <rect width="720" height="420" fill="#e9f1fb"/>
-  <rect y="280" width="720" height="140" fill="#d9e6cf"/>
+  <rect width="720" height="420" fill="#fff7ed"/>
+  <rect y="280" width="720" height="140" fill="#fed7aa"/>
   <rect x="40" y="170" width="640" height="20" rx="10" fill="#94a3b8"/>
   <circle cx="190" cy="285" r="44" fill="#334155"/>
   <circle cx="460" cy="285" r="44" fill="#334155"/>
-  <rect x="160" y="248" width="320" height="30" rx="10" fill="#0f766e"/>
-  <rect x="285" y="188" width="108" height="70" rx="8" fill="#f59e0b"/>
+  <rect x="160" y="248" width="320" height="30" rx="10" fill="#ea580c"/>
+  <rect x="285" y="188" width="108" height="70" rx="8" fill="#fb923c"/>
   <circle cx="344" cy="154" r="28" fill="#f8fafc"/>
   <rect x="330" y="182" width="30" height="38" rx="12" fill="#f8fafc"/>
   <text x="255" y="236" font-family="Trebuchet MS, sans-serif" font-size="20" fill="#1f2937">RIDER ACTIVO</text>

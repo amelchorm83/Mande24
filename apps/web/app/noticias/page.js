@@ -1,5 +1,10 @@
 const posts = [
   {
+    title: "Lanzamos Mandaditos 24 para pendientes urgentes en zonas urbanas",
+    date: "09 Mar 2026",
+    excerpt: "El nuevo servicio atiende compras rapidas, entrega de documentos y articulos olvidados con seguimiento por etapa.",
+  },
+  {
     title: "Mande24 integra SEPOMEX para direccionamiento de alta precision",
     date: "08 Mar 2026",
     excerpt: "La captura de direccion opera con cascada Estado -> Municipio -> CP -> Colonia para disminuir incidencias y devoluciones.",
@@ -30,6 +35,7 @@ export default function NoticiasPage() {
         <nav className="nav-pills">
           <a className="nav-link" href="/">Inicio</a>
           <a className="nav-link" href="/servicios">Servicios</a>
+          <a className="nav-link" href="/mandaditos">Mandaditos</a>
           <a className="nav-link" href="/cobertura">Cobertura</a>
           <a className="nav-link active" href="/noticias">Noticias</a>
           <a className="nav-link" href="/nosotros">Nosotros</a>
@@ -61,6 +67,13 @@ export default function NoticiasPage() {
       <section className="panel">
         <h2>Galeria de Avances</h2>
         <div className="media-grid">
+          <article className="media-card">
+            <img src="/brand/photo-mandaditos.svg" alt="Lanzamiento del servicio de mandaditos" />
+            <div>
+              <h3>Mandaditos 24 en Operacion</h3>
+              <p className="hero-note">Cobertura de compras, documentos y urgencias con respuesta rapida y monitoreo digital.</p>
+            </div>
+          </article>
           <article className="media-card">
             <img src="/brand/photo-hub.svg" alt="Actualizacion en centro operativo" />
             <div>

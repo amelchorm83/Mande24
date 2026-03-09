@@ -75,16 +75,16 @@ def backend_legacy_redirect(request: Request, full_path: str = "") -> RedirectRe
 def _base_css() -> str:
     return """
 :root {
-    --bg: #edf3fb;
+        --bg: #fff7ed;
   --surface: #ffffff;
-    --surface-2: #f4f8ff;
-    --sidebar: #0f2f57;
-    --sidebar-line: #2b4d79;
+        --surface-2: #ffedd5;
+        --sidebar: #9a3412;
+        --sidebar-line: #c2410c;
     --ink: #17293f;
     --ink-soft: #58708e;
-    --line: #ccd9ea;
-    --brand: #0b5cab;
-    --brand-2: #0f3f74;
+        --line: #f0c6a6;
+        --brand: #ea580c;
+        --brand-2: #c2410c;
   --ok: #166534;
   --warn: #9a3412;
 }
@@ -96,8 +96,8 @@ body {
   color: var(--ink);
   font-family: "Avenir Next", "Trebuchet MS", sans-serif;
   background:
-        radial-gradient(circle at 0% 0%, #f9fbff 0%, transparent 30%),
-        radial-gradient(circle at 100% 0%, #dce8ff 0%, transparent 28%),
+        radial-gradient(circle at 0% 0%, #fff7ed 0%, transparent 30%),
+        radial-gradient(circle at 100% 0%, #fed7aa 0%, transparent 28%),
     var(--bg);
 }
 
@@ -108,7 +108,7 @@ body {
 }
 
 .sidebar {
-    background: linear-gradient(170deg, #0b2443 0%, var(--sidebar) 70%, #1d4775 100%);
+    background: linear-gradient(170deg, #7c2d12 0%, var(--sidebar) 70%, #c2410c 100%);
   color: #dbe7ff;
   padding: 1rem;
   border-right: 1px solid var(--sidebar-line);
@@ -124,7 +124,7 @@ body {
     width: 32px;
     height: 32px;
     border-radius: 10px;
-    box-shadow: 0 8px 14px rgba(15, 118, 110, 0.35);
+    box-shadow: 0 8px 14px rgba(194, 65, 12, 0.35);
 }
 
 .brand-row h2 {
@@ -138,7 +138,7 @@ body {
 }
 
 .brand-copy small {
-    color: #9fbed6;
+    color: #fed7aa;
     font-size: 0.72rem;
 }
 
@@ -148,8 +148,8 @@ body {
   font-size: 0.76rem;
   border-radius: 999px;
   padding: 0.16rem 0.52rem;
-    background: #113f74;
-    color: #dbeafe;
+    background: #7c2d12;
+    color: #ffedd5;
 }
 
 .menu {
@@ -169,7 +169,7 @@ body {
 }
 
 .menu a.active {
-    background: linear-gradient(120deg, var(--brand), #2563eb);
+        background: linear-gradient(120deg, var(--brand), #fb923c);
   border-color: transparent;
   color: #fff;
 }
@@ -222,7 +222,7 @@ h1 {
     grid-template-columns: 1.2fr 1fr;
     gap: 0.85rem;
     align-items: center;
-    background: linear-gradient(132deg, #eff7f5, #e8f0fb);
+    background: linear-gradient(132deg, #fff7ed, #ffedd5);
 }
 
 .hero-shell p {
@@ -235,12 +235,12 @@ h1 {
     border-radius: 999px;
     font-size: 0.75rem;
     padding: 0.16rem 0.5rem;
-    background: #0f766e;
+    background: #ea580c;
     color: #fff;
 }
 
 .hero-media {
-    border: 1px solid #c9d5df;
+    border: 1px solid #f0c6a6;
     border-radius: 12px;
     overflow: hidden;
     background: #fff;
@@ -260,7 +260,7 @@ h1 {
 .kpi {
   border: 1px solid #cdd8de;
   border-radius: 10px;
-    background: linear-gradient(180deg, #eef5ff, #ffffff);
+        background: linear-gradient(180deg, #fff7ed, #ffffff);
   padding: 0.55rem;
 }
 
@@ -458,7 +458,7 @@ def _role_switcher(current_role: str, return_to: str) -> str:
     )
     return (
         '<section style="margin-top:0.8rem;padding-top:0.8rem;border-top:1px solid #3b4959;">'
-        '<small style="color:#b6c8dc;display:block;margin-bottom:0.3rem;">Rol ERPMande24</small>'
+        '<small style="color:#ffedd5;display:block;margin-bottom:0.3rem;">Rol ERPMande24</small>'
         '<form method="post" action="/ERPMande24/role/select" style="display:grid;gap:0.35rem;">'
         f'<input type="hidden" name="return_to" value="{escape(return_to)}" />'
         f'<select name="role">{options}</select>'
@@ -552,21 +552,29 @@ def _render_layout(
         '<span class="hero-badge">ERPMande24</span>'
         '<h3>Operacion mas clara con identidad visual unificada</h3>'
         '<p>Administra guias, entregas, comisiones y catalogos en una interfaz mas amigable para el equipo operativo.</p>'
-        '<p><strong>Eslogan:</strong> Entrega segura. Ruta inteligente. Cliente informado.</p>'
+        '<p><strong>Servicios:</strong> Mensajeria | Paqueteria | Mandaditos</p>'
         '</div>'
         '<div class="hero-media">'
         '<svg viewBox="0 0 600 280" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Banner ERPMande24">'
-        '<defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#0f766e"/><stop offset="100%" stop-color="#155e75"/></linearGradient></defs>'
+        '<defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#fb923c"/><stop offset="100%" stop-color="#c2410c"/></linearGradient><linearGradient id="b" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#ffedd5"/><stop offset="100%" stop-color="#fdba74"/></linearGradient></defs>'
         '<rect width="600" height="280" fill="url(#g)"/>'
-        '<circle cx="88" cy="70" r="60" fill="#ffffff1e"/>'
-        '<rect x="34" y="122" width="312" height="118" rx="12" fill="#ffffff17"/>'
-        '<text x="56" y="168" font-family="Trebuchet MS, sans-serif" font-size="27" fill="#f8fafc">Mande24 Logistics</text>'
-        '<text x="56" y="198" font-family="Trebuchet MS, sans-serif" font-size="15" fill="#d1fae5">Entrega segura. Ruta inteligente.</text>'
-        '<rect x="380" y="70" width="180" height="130" rx="14" fill="#ffffff1b"/>'
-        '<path d="M405 185h130" stroke="#d1fae5" stroke-width="10" stroke-linecap="round"/>'
-        '<path d="M418 170c22-5 42-29 55-55 23 26 50 42 80 44" fill="none" stroke="#f8fafc" stroke-width="9" stroke-linecap="round"/>'
-        '<circle cx="420" cy="185" r="11" fill="#f59e0b"/>'
-        '<circle cx="530" cy="185" r="11" fill="#f59e0b"/>'
+        '<circle cx="116" cy="78" r="58" fill="#ffffff1d"/>'
+        '<rect x="26" y="84" width="300" height="168" rx="14" fill="#ffffff16" stroke="#ffffff22"/>'
+        '<text x="50" y="136" font-family="Trebuchet MS, sans-serif" font-size="34" font-weight="700" fill="#fff7ed">Mande24</text>'
+        '<text x="50" y="168" font-family="Trebuchet MS, sans-serif" font-size="16" font-weight="700" fill="#ffedd5">Mensajeria | Paqueteria | Mandaditos</text>'
+        '<text x="50" y="193" font-family="Trebuchet MS, sans-serif" font-size="14" fill="#fff7ed">Entrega local rapida con seguimiento claro.</text>'
+        '<rect x="50" y="206" width="246" height="30" rx="15" fill="#ffedd5"/>'
+        '<text x="66" y="226" font-family="Trebuchet MS, sans-serif" font-size="13" font-weight="700" fill="#7c2d12">Entrega segura. Ruta inteligente.</text>'
+        '<rect x="356" y="42" width="218" height="194" rx="18" fill="#ffffff19" stroke="#ffffff2a"/>'
+        '<circle cx="464" cy="140" r="60" fill="#ffffff1f"/>'
+        '<path d="M392 184c18-2 36-12 51-34 10 13 23 23 39 28" fill="none" stroke="#fff7ed" stroke-width="10" stroke-linecap="round"/>'
+        '<rect x="437" y="104" width="56" height="40" rx="8" fill="url(#b)" stroke="#9a3412" stroke-width="3"/>'
+        '<path d="M437 120h56" stroke="#9a3412" stroke-width="3"/>'
+        '<path d="M465 104v40" stroke="#9a3412" stroke-width="3"/>'
+        '<circle cx="408" cy="198" r="10" fill="#ffedd5"/>'
+        '<circle cx="517" cy="198" r="10" fill="#ffedd5"/>'
+        '<circle cx="525" cy="78" r="22" fill="#7c2d12"/>'
+        '<text x="525" y="85" text-anchor="middle" font-family="Trebuchet MS, sans-serif" font-size="16" font-weight="700" fill="#fff7ed">24</text>'
         '</svg>'
         '</div>'
         '</section>'
@@ -579,7 +587,7 @@ def _render_layout(
         f"<style>{_base_css()}</style></head><body>"
         "<div class=\"layout\">"
         "<aside class=\"sidebar\">"
-        "<div class=\"brand-row\"><img class=\"brand-logo\" src=\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 128 128'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0%25' stop-color='%230f766e'/%3E%3Cstop offset='100%25' stop-color='%23164e63'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect x='8' y='8' width='112' height='112' rx='28' fill='url(%23g)'/%3E%3Cpath d='M30 72c10-2 18-9 24-20 7 8 15 13 28 14' fill='none' stroke='%23e7f7f3' stroke-width='9' stroke-linecap='round'/%3E%3Ccircle cx='35' cy='87' r='8' fill='%23f59e0b'/%3E%3Ccircle cx='93' cy='87' r='8' fill='%23f59e0b'/%3E%3C/svg%3E\" alt=\"Icono Mande24\" /><div class=\"brand-copy\"><h2>ERPMande24</h2><small>Entrega segura. Ruta inteligente.</small></div></div>"
+        "<div class=\"brand-row\"><img class=\"brand-logo\" src=\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 128 128'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0%25' stop-color='%23f97316'/%3E%3Cstop offset='100%25' stop-color='%23c2410c'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect x='8' y='8' width='112' height='112' rx='28' fill='url(%23g)'/%3E%3Cpath d='M30 72c10-2 18-9 24-20 7 8 15 13 28 14' fill='none' stroke='%23fff7ed' stroke-width='9' stroke-linecap='round'/%3E%3Ccircle cx='35' cy='87' r='8' fill='%23fed7aa'/%3E%3Ccircle cx='93' cy='87' r='8' fill='%23fed7aa'/%3E%3C/svg%3E\" alt=\"Icono Mande24\" /><div class=\"brand-copy\"><h2>ERPMande24</h2><small>Entrega segura. Ruta inteligente.</small></div></div>"
         "<span class=\"tag\">ERPMande24 Admin</span>"
         f"<nav class=\"menu\">{_menu_html(active)}</nav>{_role_switcher(role_value, path_value)}</aside>"
         "<main class=\"content\">"
@@ -626,7 +634,7 @@ def _bar_chart(title: str, points: list[tuple[str, int]]) -> str:
         bars.append(
             "<div style=\"display:grid;grid-template-columns:130px 1fr 50px;gap:0.5rem;align-items:center;margin:0.35rem 0;\">"
             f"<small>{escape(label)}</small>"
-            f"<div style=\"height:12px;border-radius:99px;background:#e4edf1;overflow:hidden;\"><div style=\"height:100%;width:{width}%;background:linear-gradient(120deg,#0f766e,#0ea5a3);\"></div></div>"
+            f"<div style=\"height:12px;border-radius:99px;background:#f4ddd0;overflow:hidden;\"><div style=\"height:100%;width:{width}%;background:linear-gradient(120deg,#ea580c,#fb923c);\"></div></div>"
             f"<strong style=\"font-size:0.86rem;\">{value}</strong>"
             "</div>"
         )

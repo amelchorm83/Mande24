@@ -12,6 +12,7 @@ export default function ServiciosPage() {
         <nav className="nav-pills">
           <a className="nav-link" href="/">Inicio</a>
           <a className="nav-link active" href="/servicios">Servicios</a>
+          <a className="nav-link" href="/mandaditos">Mandaditos</a>
           <a className="nav-link" href="/cobertura">Cobertura</a>
           <a className="nav-link" href="/noticias">Noticias</a>
            <a className="nav-link" href="/nosotros">Nosotros</a>
@@ -24,9 +25,35 @@ export default function ServiciosPage() {
       </header>
 
       <span className="badge">Servicios</span>
-      <h1>Soluciones de ultima milla para operaciones comerciales exigentes.</h1>
-      <p className="hero-note">Diseñamos servicios escalables para entregas urgentes, programadas y recurrentes con control operativo en cada etapa.</p>
+      <h1>Mensajeria, paqueteria y mandaditos para resolver entregas urgentes todos los dias.</h1>
+      <p className="hero-note">Diseñamos servicios escalables para empresas y personas que necesitan rapidez, comunicacion clara y evidencia de entrega.</p>
       <img className="hero-banner" src="/brand/banner.svg" alt="Banner de servicios Mande24" />
+
+      <section className="panel" id="mandaditos">
+        <span className="badge">Mandaditos 24</span>
+        <h2>Servicio estrella para pendientes urgentes</h2>
+        <div className="contact-grid">
+          <div>
+            <p className="hero-note">Resolvemos compras rapidas, entrega de documentos, olvidos de llaves, cargadores, medicinas y articulos prioritarios con asignacion inmediata.</p>
+            <ul className="flow-list">
+              <li>Solicitud por contacto directo con datos de origen y destino.</li>
+              <li>Asignacion del rider disponible mas cercano.</li>
+              <li>Seguimiento por etapa y confirmacion de entrega.</li>
+            </ul>
+            <div className="inline-actions">
+              <a className="btn btn-primary" href="/contacto">Pedir Mandadito</a>
+              <a className="btn" href="/cobertura">Ver Cobertura</a>
+            </div>
+          </div>
+          <div className="media-card">
+            <img src="/brand/photo-mandaditos.svg" alt="Mandaditos para compras y documentos" />
+            <div>
+              <h3>Compras y Envio Express</h3>
+              <p className="hero-note">Ideal para imprevistos de oficina, hogar y negocio que no pueden esperar.</p>
+            </div>
+          </div>
+        </div>
+      </section>
 
       <section className="panel">
         <div className="grid">
@@ -34,6 +61,11 @@ export default function ServiciosPage() {
             <h3>Entrega Express</h3>
             <p>Recoleccion y entrega el mismo dia para pedidos de alta prioridad.</p>
             <small>Ideal para farmacias, refacciones, retail y comercio local.</small>
+          </article>
+          <article className="card">
+            <h3>Mandaditos Urbanos</h3>
+            <p>Atencion de pendientes puntuales en minutos para personas y negocios con necesidad inmediata.</p>
+            <small>Ideal para documentos, compras urgentes y articulos olvidados.</small>
           </article>
           <article className="card">
             <h3>Entrega Programada</h3>
@@ -67,6 +99,13 @@ export default function ServiciosPage() {
       <section className="panel">
         <h2>Casos Operativos</h2>
         <div className="media-grid">
+          <article className="media-card">
+            <img src="/brand/photo-mandaditos-app.svg" alt="Caso operativo de mandaditos con seguimiento digital" />
+            <div>
+              <h3>Mandaditos con Trazabilidad</h3>
+              <p className="hero-note">Desde la solicitud hasta la entrega final con evidencia y confirmacion en tiempo real.</p>
+            </div>
+          </article>
           <article className="media-card">
             <img src="/brand/photo-rider.svg" alt="Servicio express en ruta" />
             <div>

@@ -26,6 +26,7 @@ export default async function HomePage() {
         <nav className="nav-pills">
           <a className="nav-link active" href="/">Inicio</a>
           <a className="nav-link" href="/servicios">Servicios</a>
+          <a className="nav-link" href="/mandaditos">Mandaditos</a>
           <a className="nav-link" href="/cobertura">Cobertura</a>
           <a className="nav-link" href="/noticias">Noticias</a>
           <a className="nav-link" href="/nosotros">Nosotros</a>
@@ -38,20 +39,41 @@ export default async function HomePage() {
       </header>
 
       <span className="badge">Inicio</span>
-      <h1>La red logistica de Tabasco para empresas que necesitan cumplir a tiempo.</h1>
-      <p className="hero-note">Mande24 Logistics integra recoleccion, transporte, entrega y monitoreo digital en una operacion unica para negocios, estaciones y repartidores.</p>
+      <h1>La red logistica de Tabasco para empresas y familias que necesitan resolver entregas al instante.</h1>
+      <p className="hero-note">Mande24 Logistics integra mensajeria, paqueteria y mandaditos con monitoreo digital para una operacion rapida, confiable y cercana.</p>
       <img className="hero-banner" src="/brand/banner.svg" alt="Banner operativo Mande24 Logistics" />
 
       <section className="panel hero-strip">
         <div>
           <h2>Propuesta de valor</h2>
-          <p>Combinamos cobertura local, trazabilidad por guia y control operativo para convertir entregas en una ventaja competitiva.</p>
+          <p>Combinamos cobertura local, trazabilidad por guia y mandaditos express para convertir entregas urgentes en una ventaja competitiva.</p>
         </div>
         <div className="inline-actions">
           <a className="btn btn-primary" href="/servicios">Ver Servicios</a>
+          <a className="btn" href="/servicios#mandaditos">Mandaditos 24</a>
           <a className="btn" href="/cobertura">Cobertura Tabasco</a>
           <a className="btn" href="/noticias">Noticias</a>
           <a className="btn" href="/contacto">Solicitar cotizacion</a>
+        </div>
+      </section>
+
+      <section className="panel">
+        <h2>Mandaditos 24: Servicio Destacado</h2>
+        <div className="contact-grid">
+          <div>
+            <p className="hero-note">Atendemos compras de ultimo minuto, envio de documentos, olvidos en casa u oficina y entregas urgentes en zonas urbanas de Tabasco.</p>
+            <div className="inline-actions">
+              <a className="btn btn-primary" href="/contacto">Solicitar Mandadito</a>
+              <a className="btn" href="/servicios#mandaditos">Ver Cobertura y Tiempos</a>
+            </div>
+          </div>
+          <div className="media-card">
+            <img src="/brand/photo-mandaditos.svg" alt="Servicio de mandaditos de Mande24" />
+            <div>
+              <h3>Respuesta Rapida</h3>
+              <p className="hero-note">Asignacion de rider y seguimiento claro desde la solicitud hasta la entrega final.</p>
+            </div>
+          </div>
         </div>
       </section>
 
@@ -116,6 +138,13 @@ export default async function HomePage() {
             <div>
               <h3>Estacion y Comisiones</h3>
               <p className="hero-note">Monitoreo semanal con indicadores claros para decisiones operativas rapidas.</p>
+            </div>
+          </article>
+          <article className="media-card">
+            <img src="/brand/photo-mandaditos-app.svg" alt="Flujo digital del servicio de mandaditos" />
+            <div>
+              <h3>Mandaditos en Minutos</h3>
+              <p className="hero-note">Flujo agil para resolver pendientes urgentes con evidencia y confirmacion digital.</p>
             </div>
           </article>
         </div>

@@ -1,13 +1,13 @@
 :root {
-  --bg: #eef3f9;
+  --bg: #fff7ed;
   --surface: #ffffff;
-  --surface-soft: #f5f8fc;
+  --surface-soft: #fff4e6;
   --ink: #182433;
   --ink-soft: #4f647a;
-  --accent: #0b5cab;
-  --accent-2: #ea580c;
-  --accent-3: #0f3f74;
-  --line: #cfd9e6;
+  --accent: #ea580c;
+  --accent-2: #f97316;
+  --accent-3: #9a3412;
+  --line: #f0c6a6;
   --ok: #0a7d4f;
   --warn: #9a3c12;
 }
@@ -22,9 +22,9 @@ body {
   padding: 0;
   font-family: "Avenir Next", "Trebuchet MS", "Gill Sans", sans-serif;
   background:
-    radial-gradient(circle at 15% 10%, #f8fbff 0%, transparent 30%),
-    radial-gradient(circle at 90% 0%, #dfeaff 0%, transparent 35%),
-    linear-gradient(165deg, #edf3fb 0%, var(--bg) 100%);
+    radial-gradient(circle at 15% 10%, #fff7ed 0%, transparent 30%),
+    radial-gradient(circle at 90% 0%, #fed7aa 0%, transparent 35%),
+    linear-gradient(165deg, #ffedd5 0%, var(--bg) 100%);
   color: var(--ink);
 }
 
@@ -53,7 +53,7 @@ body {
   width: 42px;
   height: 42px;
   border-radius: 12px;
-  box-shadow: 0 10px 18px rgba(22, 78, 99, 0.25);
+  box-shadow: 0 10px 18px rgba(194, 65, 12, 0.28);
 }
 
 .brand h2 {
@@ -89,7 +89,7 @@ body {
 }
 
 .nav-link.active {
-  background: linear-gradient(130deg, var(--accent), #3b82f6);
+  background: linear-gradient(130deg, var(--accent), #fb923c);
   color: #fff;
   border-color: transparent;
 }
@@ -129,7 +129,7 @@ h3 {
 
 .badge {
   display: inline-block;
-  background: linear-gradient(130deg, var(--accent), #2563eb);
+  background: linear-gradient(130deg, var(--accent), #fb923c);
   color: #fff;
   border-radius: 999px;
   padding: 0.25rem 0.75rem;
@@ -165,7 +165,7 @@ small {
 }
 
 .btn-primary {
-  background: linear-gradient(135deg, var(--accent), #2563eb);
+  background: linear-gradient(135deg, var(--accent), #fb923c);
   color: #fff;
   border-color: transparent;
 }
@@ -210,10 +210,10 @@ textarea {
 
 .result-box {
   margin-top: 0.8rem;
-  border: 1px dashed #7aa4d6;
+  border: 1px dashed #f0a36b;
   border-radius: 10px;
   padding: 0.6rem;
-  background: #f3f8ff;
+  background: #fff7ed;
 }
 
 .status-line {
@@ -256,7 +256,7 @@ td {
 }
 
 th {
-  background: #edf4ff;
+  background: #ffedd5;
 }
 
 .flow-list {
@@ -280,13 +280,13 @@ th {
   align-items: center;
   gap: 1rem;
   flex-wrap: wrap;
-  background: linear-gradient(130deg, #eef5ff, #eaf2ff);
+  background: linear-gradient(130deg, #fff7ed, #ffedd5);
 }
 
 .hero-banner {
   width: 100%;
   border-radius: 14px;
-  border: 1px solid #cbd8d3;
+  border: 1px solid #f0c6a6;
   box-shadow: 0 10px 22px rgba(15, 23, 42, 0.14);
   margin-top: 0.7rem;
 }
@@ -335,15 +335,15 @@ th {
 .section-link.active {
   color: #fff;
   border-color: transparent;
-  background: linear-gradient(130deg, var(--accent), #2563eb);
+  background: linear-gradient(130deg, var(--accent), #fb923c);
 }
 
 .kpi {
   display: inline-flex;
   align-items: baseline;
   gap: 0.35rem;
-  background: #edf4ff;
-  border: 1px solid #bdd4f2;
+  background: #ffedd5;
+  border: 1px solid #fdba74;
   border-radius: 10px;
   padding: 0.35rem 0.6rem;
   font-size: 0.92rem;

@@ -19,6 +19,7 @@ export default function CoberturaPage() {
         <nav className="nav-pills">
           <a className="nav-link" href="/">Inicio</a>
           <a className="nav-link" href="/servicios">Servicios</a>
+          <a className="nav-link" href="/mandaditos">Mandaditos</a>
           <a className="nav-link active" href="/cobertura">Cobertura</a>
           <a className="nav-link" href="/noticias">Noticias</a>
           <a className="nav-link" href="/nosotros">Nosotros</a>

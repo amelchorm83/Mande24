@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 420" role="img" aria-label="Flujo digital de mandaditos Mande24">
+  <rect width="720" height="420" fill="#fff7ed"/>
+  <circle cx="130" cy="84" r="90" fill="#ffedd5"/>
+  <circle cx="610" cy="342" r="120" fill="#fed7aa"/>
+
+  <rect x="58" y="82" width="236" height="260" rx="22" fill="#1f2937"/>
+  <rect x="76" y="108" width="200" height="208" rx="14" fill="#ffffff"/>
+  <text x="94" y="136" font-family="Trebuchet MS, sans-serif" font-size="18" font-weight="700" fill="#9a3412">Mandadito en curso</text>
+  <rect x="94" y="148" width="160" height="14" rx="7" fill="#ffedd5"/>
+  <text x="94" y="184" font-family="Trebuchet MS, sans-serif" font-size="13" fill="#475569">1. Solicitud recibida</text>
+  <text x="94" y="206" font-family="Trebuchet MS, sans-serif" font-size="13" fill="#475569">2. Rider asignado</text>
+  <text x="94" y="228" font-family="Trebuchet MS, sans-serif" font-size="13" fill="#475569">3. Entrega confirmada</text>
+  <rect x="94" y="248" width="132" height="28" rx="14" fill="#ea580c"/>
+  <text x="106" y="267" font-family="Trebuchet MS, sans-serif" font-size="13" font-weight="700" fill="#fff7ed">Ver ubicacion</text>
+
+  <rect x="342" y="108" width="322" height="212" rx="20" fill="#ffffff" stroke="#f0c6a6"/>
+  <text x="368" y="144" font-family="Trebuchet MS, sans-serif" font-size="26" font-weight="700" fill="#9a3412">Mandaditos 24</text>
+  <text x="368" y="173" font-family="Trebuchet MS, sans-serif" font-size="16" fill="#475569">Seguimiento en tiempo real para urgencias</text>
+
+  <path d="M368 206h250" stroke="#fed7aa" stroke-width="14" stroke-linecap="round"/>
+  <circle cx="392" cy="206" r="13" fill="#fb923c"/>
+  <circle cx="492" cy="206" r="13" fill="#fb923c"/>
+  <circle cx="592" cy="206" r="13" fill="#fb923c"/>
+
+  <rect x="368" y="234" width="198" height="30" rx="15" fill="#ffedd5"/>
+  <text x="382" y="254" font-family="Trebuchet MS, sans-serif" font-size="14" font-weight="700" fill="#7c2d12">Compra, recoge y entrega</text>
+
+  <circle cx="644" cy="96" r="24" fill="#7c2d12"/>
+  <text x="644" y="104" text-anchor="middle" font-family="Trebuchet MS, sans-serif" font-size="16" font-weight="700" fill="#fff7ed">24</text>
+</svg>
