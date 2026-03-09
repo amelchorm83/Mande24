@@ -707,8 +707,31 @@ def _seed_demo_data(db: Session) -> dict[str, str]:
 
 
 @router.get("", response_class=HTMLResponse)
-def backend_dashboard(db: Session = Depends(get_db), msg: str = "", kind: str = "ok") -> str:
+def backend_dashboard(
+    request: Request,
+    db: Session = Depends(get_db),
+    msg: str = "",
+    kind: str = "ok",
+    period: str = "7d",
+) -> str:
     today = datetime.now(timezone.utc).date()
+    now_dt = datetime.now(timezone.utc)
+
+    allowed_periods = {"today", "7d", "30d", "all"}
+    safe_period = period if period in allowed_periods else "7d"
+    lead_filters = []
+    period_label = "Ultimos 7 dias"
+    if safe_period == "today":
+        lead_filters.append(func.date(ContactLead.created_at) == today)
+        period_label = "Hoy"
+    elif safe_period == "7d":
+        lead_filters.append(ContactLead.created_at >= now_dt - timedelta(days=7))
+        period_label = "Ultimos 7 dias"
+    elif safe_period == "30d":
+        lead_filters.append(ContactLead.created_at >= now_dt - timedelta(days=30))
+        period_label = "Ultimos 30 dias"
+    else:
+        period_label = "Historico completo"
 
     guides_total = db.query(func.count(Guide.id)).scalar() or 0
     deliveries_total = db.query(func.count(Delivery.id)).scalar() or 0
@@ -716,10 +739,10 @@ def backend_dashboard(db: Session = Depends(get_db), msg: str = "", kind: str = 
     services_total = db.query(func.count(Service.id)).scalar() or 0
     stations_total = db.query(func.count(Station.id)).scalar() or 0
     riders_total = db.query(func.count(Rider.id)).scalar() or 0
-    leads_total = db.query(func.count(ContactLead.id)).scalar() or 0
-    leads_new = db.query(func.count(ContactLead.id)).filter(ContactLead.status == "new").scalar() or 0
-    leads_contacted = db.query(func.count(ContactLead.id)).filter(ContactLead.status == "contacted").scalar() or 0
-    leads_closed = db.query(func.count(ContactLead.id)).filter(ContactLead.status == "closed").scalar() or 0
+    leads_total = db.query(func.count(ContactLead.id)).filter(*lead_filters).scalar() or 0
+    leads_new = db.query(func.count(ContactLead.id)).filter(*lead_filters, ContactLead.status == "new").scalar() or 0
+    leads_contacted = db.query(func.count(ContactLead.id)).filter(*lead_filters, ContactLead.status == "contacted").scalar() or 0
+    leads_closed = db.query(func.count(ContactLead.id)).filter(*lead_filters, ContactLead.status == "closed").scalar() or 0
     sepomex_sync = db.query(GeoCatalogSync).filter(GeoCatalogSync.key == "sepomex_last_sync").first()
     sepomex_catalog_date = db.query(GeoCatalogSync).filter(GeoCatalogSync.key == "sepomex_catalog_date").first()
 
@@ -753,12 +776,24 @@ def backend_dashboard(db: Session = Depends(get_db), msg: str = "", kind: str = 
     stage_chart = _bar_chart("Entregas Por Etapa", [(item[0].value, int(item[1])) for item in stage_rows])
     guides_7d_chart = _bar_chart("Guias Ultimos 7 Dias", seven_days)
     leads_chart = _bar_chart(
-        "Embudo de Leads",
+        f"Embudo de Leads ({period_label})",
         [
             ("new", int(leads_new)),
             ("contacted", int(leads_contacted)),
             ("closed", int(leads_closed)),
         ],
+    )
+
+    lead_period_form = (
+        '<form class="actions" method="get" action="/ERPMande24">'
+        '<label>Periodo Leads<select name="period">'
+        f'<option value="today" {"selected" if safe_period == "today" else ""}>Hoy</option>'
+        f'<option value="7d" {"selected" if safe_period == "7d" else ""}>Ultimos 7 dias</option>'
+        f'<option value="30d" {"selected" if safe_period == "30d" else ""}>Ultimos 30 dias</option>'
+        f'<option value="all" {"selected" if safe_period == "all" else ""}>Todo</option>'
+        '</select></label>'
+        '<button type="submit">Aplicar</button>'
+        '</form>'
     )
 
     guide_table = _table(
@@ -788,8 +823,9 @@ def backend_dashboard(db: Session = Depends(get_db), msg: str = "", kind: str = 
         f"<article class=\"kpi\"><small>Riders</small><strong>{riders_total}</strong></article>"
         "</div></section>"
         "<section class=\"panel\"><h3>Leads Comerciales</h3>"
+        f"{lead_period_form}"
         "<div class=\"kpi-grid\">"
-        f"<article class=\"kpi\"><small>Total Leads</small><strong>{leads_total}</strong></article>"
+        f"<article class=\"kpi\"><small>Total Leads ({period_label})</small><strong>{leads_total}</strong></article>"
         f"<article class=\"kpi\"><small>Leads Hoy</small><strong>{leads_today}</strong></article>"
         f"<article class=\"kpi\"><small>new</small><strong>{leads_new}</strong></article>"
         f"<article class=\"kpi\"><small>contacted</small><strong>{leads_contacted}</strong></article>"
@@ -814,7 +850,7 @@ def backend_dashboard(db: Session = Depends(get_db), msg: str = "", kind: str = 
         f"<section class=\"panel\"><h3>Ultimas Guias</h3>{guide_table}</section>"
     )
 
-    return _render_layout("dashboard", "Dashboard Operativo", "Panel administrativo general con estadisticas y monitoreo por modelo.", content, msg, kind)
+    return _render_layout("dashboard", "Dashboard Operativo", "Panel administrativo general con estadisticas y monitoreo por modelo.", content, msg, kind, request=request)
 
 
 @router.post("/geo/sync-sepomex")
