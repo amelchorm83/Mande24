@@ -1,34 +1,51 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 
-const zoneFactor = {
-  urbana: 1,
-  metropolitana: 1.18,
-  intermunicipal: 1.35,
-};
-
-const serviceFactor = {
-  express: 1.3,
-  programado: 1,
-  recurrente: 0.9,
-};
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
 export default function CotizadorPage() {
   const [distanceKm, setDistanceKm] = useState(8);
   const [stops, setStops] = useState(1);
   const [zoneType, setZoneType] = useState("urbana");
   const [serviceType, setServiceType] = useState("programado");
+  const [estimate, setEstimate] = useState(null);
+  const [statusMsg, setStatusMsg] = useState("Calculando cotizacion...");
+  const [isLoading, setIsLoading] = useState(false);
 
-  const estimate = useMemo(() => {
-    const base = 49;
-    const perKm = 7.5;
-    const stopExtra = Math.max(0, stops - 1) * 14;
-    const distanceCost = distanceKm * perKm;
-    const subtotal = (base + distanceCost + stopExtra) * zoneFactor[zoneType] * serviceFactor[serviceType];
-    const total = Math.round(subtotal);
-    const etaMin = Math.max(25, Math.round(distanceKm * 5 + stops * 8));
-    return { total, etaMin };
+  async function fetchQuote() {
+    setIsLoading(true);
+    setStatusMsg("Calculando cotizacion...");
+    try {
+      const res = await fetch(`${API_BASE}/api/v1/public/quote`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          distance_km: Number(distanceKm),
+          stops: Number(stops),
+          zone_type: zoneType,
+          service_type: serviceType,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setEstimate(null);
+        setStatusMsg(`No se pudo calcular: ${JSON.stringify(data)}`);
+        return;
+      }
+      setEstimate(data);
+      setStatusMsg(data.message || "Cotizacion calculada.");
+    } catch (error) {
+      setEstimate(null);
+      setStatusMsg(`Error de red: ${error.message}`);
+    } finally {
+      setIsLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    fetchQuote();
+    // Recalculate automatically when quote parameters change.
   }, [distanceKm, stops, zoneType, serviceType]);
 
   return (
@@ -47,6 +64,8 @@ export default function CotizadorPage() {
           <a className="nav-link" href="/cobertura">Cobertura</a>
           <a className="nav-link" href="/contacto">Contacto</a>
           <a className="nav-link active" href="/cotizador">Cotizador</a>
+          <a className="nav-link" href="/niveles-servicio">Niveles de Servicio</a>
+          <a className="nav-link" href="/industrias">Industrias</a>
         </nav>
       </header>
 
@@ -99,8 +118,10 @@ export default function CotizadorPage() {
 
         <article className="card">
           <h2>Resultado estimado</h2>
-          <p className="kpi">Total aproximado: <strong>${estimate.total} MXN</strong></p>
-          <p className="kpi">Tiempo estimado: <strong>{estimate.etaMin} min</strong></p>
+          <p className="kpi">Total aproximado: <strong>{estimate ? `$${estimate.total_estimate} ${estimate.currency}` : "--"}</strong></p>
+          <p className="kpi">Tiempo estimado: <strong>{estimate ? `${estimate.eta_minutes} min` : "--"}</strong></p>
+          <p className={`status-line ${statusMsg.includes("Error") || statusMsg.includes("No se pudo") ? "warn" : "ok"}`}>{statusMsg}</p>
+          <button className="btn" type="button" disabled={isLoading} onClick={fetchQuote}>{isLoading ? "Calculando..." : "Recalcular"}</button>
           <p className="field-hint">El precio final puede variar por horario, saturacion operativa, dimensiones del paquete y politicas vigentes.</p>
           <div className="inline-actions">
             <a className="btn btn-primary" href="/contacto">Solicitar propuesta formal</a>

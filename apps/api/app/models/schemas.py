@@ -257,3 +257,33 @@ class ContactLeadResponse(BaseModel):
     lead_id: str
     status: str
     message: str
+
+
+class PublicQuoteRequest(BaseModel):
+    distance_km: float = Field(gt=0, le=500)
+    stops: int = Field(ge=1, le=20)
+    zone_type: str = Field(default="urbana", max_length=40)
+    service_type: str = Field(default="programado", max_length=40)
+
+
+class PublicQuoteResponse(BaseModel):
+    status: str
+    currency: str
+    total_estimate: float
+    eta_minutes: int
+    breakdown: dict[str, float]
+    message: str
+
+
+class PublicTrackingResponse(BaseModel):
+    guide_code: str
+    customer_name: str
+    destination_name: str
+    stage: WorkflowStage
+    updated_at: datetime
+    created_at: datetime
+    sale_amount: float
+    currency: str
+    has_evidence: bool
+    has_signature: bool
+    note: str | None

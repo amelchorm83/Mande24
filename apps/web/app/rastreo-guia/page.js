@@ -1,22 +1,47 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useState } from "react";
 
-const statusByPrefix = {
-  REC: "Recibida en estacion",
-  RUT: "En ruta de entrega",
-  ENT: "Entregada con evidencia",
-  INC: "Incidencia registrada",
-};
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+
+function formatStage(stage) {
+  if (!stage) return "Sin estado";
+  return stage.replaceAll("_", " ");
+}
 
 export default function RastreoGuiaPage() {
   const [guideCode, setGuideCode] = useState("");
+  const [tracking, setTracking] = useState(null);
+  const [statusMsg, setStatusMsg] = useState("Ingresa un folio para consultar.");
+  const [isLoading, setIsLoading] = useState(false);
 
-  const status = useMemo(() => {
-    if (!guideCode) return "Ingresa un folio para consultar estado referencial.";
-    const prefix = guideCode.toUpperCase().slice(0, 3);
-    return statusByPrefix[prefix] || "Folio valido sin estado referencial. Consulta con soporte para detalle.";
-  }, [guideCode]);
+  async function onSearch() {
+    const normalized = guideCode.trim().toUpperCase();
+    if (!normalized) {
+      setStatusMsg("Ingresa un folio valido.");
+      setTracking(null);
+      return;
+    }
+
+    setIsLoading(true);
+    setStatusMsg("Consultando rastreo...");
+    try {
+      const res = await fetch(`${API_BASE}/api/v1/public/tracking/${encodeURIComponent(normalized)}`);
+      const data = await res.json();
+      if (!res.ok) {
+        setTracking(null);
+        setStatusMsg(data?.detail || "No se encontro informacion para este folio.");
+        return;
+      }
+      setTracking(data);
+      setStatusMsg("Estado actualizado desde API.");
+    } catch (error) {
+      setTracking(null);
+      setStatusMsg(`Error de red: ${error.message}`);
+    } finally {
+      setIsLoading(false);
+    }
+  }
 
   return (
     <main className="shell public-shell">
@@ -40,7 +65,7 @@ export default function RastreoGuiaPage() {
 
       <span className="badge">Rastreo de Guia</span>
       <h1>Consulta el estado de tu envio con tu folio.</h1>
-      <p className="hero-note">Herramienta referencial para consulta rapida. Para trazabilidad completa usa el Portal Cliente o soporte Mande24.</p>
+      <p className="hero-note">Consulta publica conectada a la API de Mande24 para validar etapa actual y datos clave del envio.</p>
 
       <section className="panel contact-grid">
         <article className="card">
@@ -50,15 +75,24 @@ export default function RastreoGuiaPage() {
             <input
               value={guideCode}
               onChange={(e) => setGuideCode(e.target.value)}
-              placeholder="Ejemplo: RUT-12034"
+              placeholder="Ejemplo: M24-20260309-ABC123"
             />
           </label>
-          <p className="field-hint">Prefijos de ejemplo: REC, RUT, ENT, INC.</p>
+          <div className="inline-actions">
+            <button className="btn btn-primary" type="button" disabled={isLoading} onClick={onSearch}>{isLoading ? "Consultando..." : "Buscar guia"}</button>
+          </div>
+          <p className={`status-line ${statusMsg.includes("Error") || statusMsg.includes("No se") ? "warn" : "ok"}`}>{statusMsg}</p>
         </article>
 
         <article className="card">
           <h2>Estado</h2>
-          <p className="kpi"><strong>{status}</strong></p>
+          <p className="kpi"><strong>{tracking ? formatStage(tracking.stage) : "Sin consulta"}</strong></p>
+          <p className="field-hint">Folio: {tracking?.guide_code || "--"}</p>
+          <p className="field-hint">Cliente origen: {tracking?.customer_name || "--"}</p>
+          <p className="field-hint">Destino: {tracking?.destination_name || "--"}</p>
+          <p className="field-hint">Ultima actualizacion: {tracking?.updated_at ? new Date(tracking.updated_at).toLocaleString() : "--"}</p>
+          <p className="field-hint">Evidencia: {tracking ? (tracking.has_evidence ? "Si" : "No") : "--"}</p>
+          <p className="field-hint">Firma: {tracking ? (tracking.has_signature ? "Si" : "No") : "--"}</p>
           <div className="inline-actions">
             <a className="btn" href="/contacto">Reportar incidencia</a>
             <a className="btn btn-primary" href="/auth">Ingresar al portal</a>
