@@ -16,36 +16,37 @@ export default function ServiciosPage() {
       </header>
 
       <span className="badge">Servicios</span>
-      <h1>Servicios de ultima milla para negocios en crecimiento.</h1>
-      <p className="hero-note">Diseño propuesto para una oferta clara por tipo de operacion: urgente, programada y recurrente.</p>
+      <h1>Soluciones de ultima milla para operaciones comerciales exigentes.</h1>
+      <p className="hero-note">Diseñamos servicios escalables para entregas urgentes, programadas y recurrentes con control operativo en cada etapa.</p>
 
       <section className="panel">
         <div className="grid">
           <article className="card">
             <h3>Entrega Express</h3>
-            <p>Recolecta y entrega el mismo dia en rutas urbanas de alta prioridad.</p>
-            <small>Ideal para farmacias, refacciones y retail local.</small>
+            <p>Recoleccion y entrega el mismo dia para pedidos de alta prioridad.</p>
+            <small>Ideal para farmacias, refacciones, retail y comercio local.</small>
           </article>
           <article className="card">
             <h3>Entrega Programada</h3>
-            <p>Ventanas de entrega por hora con control de incidencias y trazabilidad.</p>
-            <small>Ideal para e-commerce con promesas de horario.</small>
+            <p>Programacion por ventanas horarias con seguimiento de incidencias y confirmacion de entrega.</p>
+            <small>Ideal para e-commerce y operaciones con promesa de horario.</small>
           </article>
           <article className="card">
             <h3>Ruta Recurrente</h3>
-            <p>Rutas fijas para reparto semanal o diario con tablero de rendimiento.</p>
-            <small>Ideal para distribuidores y mayoristas.</small>
+            <p>Rutas fijas diarias o semanales para volumen constante con control de desempeno.</p>
+            <small>Ideal para distribuidores, mayoristas y cadenas comerciales.</small>
           </article>
           <article className="card">
             <h3>Evidencia Digital</h3>
-            <p>Entrega validada por evidencia y firma para reducir reclamaciones.</p>
-            <small>Integra historial por guia para auditoria.</small>
+            <p>Entrega validada con evidencia y firma para reducir reclamos y mejorar la confianza del cliente final.</p>
+            <small>Incluye historial por guia para auditoria y seguimiento.</small>
           </article>
         </div>
       </section>
 
       <section className="panel">
-        <h2>Portales Integrados</h2>
+        <h2>Operacion Unificada</h2>
+        <p className="hero-note">Nuestros portales conectan autenticacion, captura, reparto y comisiones en un mismo flujo digital.</p>
         <div className="inline-actions">
           <a className="btn" href="/auth">Auth</a>
           <a className="btn" href="/client">Cliente</a>

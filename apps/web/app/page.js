@@ -33,13 +33,13 @@ export default async function HomePage() {
       </header>
 
       <span className="badge">Inicio</span>
-      <h1>Logistica local pensada para Tabasco: rapida, trazable y transparente.</h1>
-      <p className="hero-note">Mande24 Logistics coordina recoleccion, ruta, entrega y seguimiento digital para negocios, estaciones y repartidores en una sola plataforma.</p>
+      <h1>La red logistica de Tabasco para empresas que necesitan cumplir a tiempo.</h1>
+      <p className="hero-note">Mande24 Logistics integra recoleccion, transporte, entrega y monitoreo digital en una operacion unica para negocios, estaciones y repartidores.</p>
 
       <section className="panel hero-strip">
         <div>
           <h2>Propuesta de valor</h2>
-          <p>Operamos ultima milla con trazabilidad por guia, etapas de entrega y paneles de comision para estaciones y riders.</p>
+          <p>Combinamos cobertura local, trazabilidad por guia y control operativo para convertir entregas en una ventaja competitiva.</p>
         </div>
         <div className="inline-actions">
           <a className="btn btn-primary" href="/servicios">Ver Servicios</a>
@@ -49,40 +49,40 @@ export default async function HomePage() {
       </section>
 
       <section className="panel">
-        <h2>Integracion de Portales</h2>
+        <h2>Portales Integrados</h2>
         <div className="inline-actions">
           <a className="btn btn-primary" href="/auth">Portal Auth</a>
           <a className="btn" href="/client">Portal Cliente</a>
           <a className="btn" href="/rider">Portal Rider</a>
           <a className="btn" href="/station">Portal Estacion</a>
         </div>
-        <p className="field-hint">Cada portal secciona sus flujos para evitar pantallas planas y mejorar la operacion por rol.</p>
+        <p className="field-hint">Cada portal organiza procesos por etapas para reducir errores, acelerar captura y facilitar la operacion por rol.</p>
       </section>
 
       <section className="panel">
         <h2>Estado del Sistema</h2>
         <p className="kpi">API: <strong>{status === "ok" ? "Conectada" : "Sin conexion"}</strong></p>
-        <small>NEXT_PUBLIC_API_URL: {process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"}</small>
+        <small>Endpoint operativo: {process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"}</small>
       </section>
 
       <section className="panel">
-        <h2>Resumen de Operacion</h2>
+        <h2>Capacidades Clave</h2>
         <div className="grid">
           <article className="card">
             <h3>Recoleccion y Guia</h3>
-            <p>Creacion de guia con cliente origen/destino, direccion completa y asignacion de estacion.</p>
+            <p>Generacion de guia con datos completos de origen y destino, direccion validada y asignacion operativa.</p>
           </article>
           <article className="card">
             <h3>Seguimiento en Ruta</h3>
-            <p>Actualizacion de etapas por rider con controles de evidencia y firma al entregar.</p>
+            <p>Monitoreo de etapas por rider con evidencia y firma en entrega para trazabilidad total.</p>
           </article>
           <article className="card">
             <h3>Control de Comisiones</h3>
-            <p>Monitoreo semanal de comisiones para riders y estaciones con cierre administrativo.</p>
+            <p>Concentrado semanal de comisiones para riders y estaciones con cierre administrativo controlado.</p>
           </article>
           <article className="card">
             <h3>Cobertura Tabasco</h3>
-            <p>Definicion de zonas y cobertura geografica por municipio, CP y colonia para automatizacion futura.</p>
+            <p>Segmentacion geografica por municipio, codigo postal y colonia para optimizar asignacion de zonas.</p>
           </article>
         </div>
       </section>

@@ -1,18 +1,18 @@
 const posts = [
   {
-    title: "Mande24 activa catalogo SEPOMEX para direccionamiento preciso",
+    title: "Mande24 integra SEPOMEX para direccionamiento de alta precision",
     date: "08 Mar 2026",
-    excerpt: "Ahora la captura de direccion usa cascada Estado -> Municipio -> CP -> Colonia para reducir errores de entrega.",
+    excerpt: "La captura de direccion opera con cascada Estado -> Municipio -> CP -> Colonia para disminuir incidencias y devoluciones.",
   },
   {
-    title: "Rediseño de portales por secciones",
+    title: "Portales rediseñados por etapas operativas",
     date: "08 Mar 2026",
-    excerpt: "Cliente, Rider y Estacion evolucionan de vista plana a navegacion por secciones operativas.",
+    excerpt: "Cliente, Rider y Estacion evolucionan de vista plana a navegacion por secciones para acelerar procesos clave.",
   },
   {
-    title: "Nueva capa de cobertura geográfica en zonas",
+    title: "Nueva capa de cobertura geografica para automatizacion de zonas",
     date: "08 Mar 2026",
-    excerpt: "Las zonas ahora pueden mapearse por estado, municipio, codigo postal y colonia para automatizaciones futuras.",
+    excerpt: "Las zonas ahora se definen por estado, municipio, codigo postal y colonia para una asignacion mas precisa.",
   },
 ];
 
@@ -34,8 +34,8 @@ export default function NoticiasPage() {
       </header>
 
       <span className="badge">Noticias</span>
-      <h1>Actualizaciones operativas y tecnológicas.</h1>
-      <p className="hero-note">Contenido propuesto para comunicar avances de producto, despliegues y cobertura en tiempo real.</p>
+      <h1>Actualizaciones de producto, operacion y cobertura.</h1>
+      <p className="hero-note">Publicamos avances clave para clientes, aliados y equipos operativos con enfoque en resultados medibles.</p>
 
       <section className="panel">
         <div className="grid">

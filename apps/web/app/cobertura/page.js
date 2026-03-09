@@ -23,11 +23,11 @@ export default function CoberturaPage() {
       </header>
 
       <span className="badge">Cobertura</span>
-      <h1>Cobertura activa: solo Tabasco.</h1>
-      <p className="hero-note">Propuesta de diseño con enfoque geográfico: cobertura por zonas operativas y expansión planificada.</p>
+      <h1>Cobertura activa en Tabasco con enfoque operativo por zonas.</h1>
+      <p className="hero-note">Nuestra operacion actual esta concentrada en Tabasco para asegurar tiempos confiables, control de ruta y calidad de servicio.</p>
 
       <section className="panel">
-        <h2>Zonas de Cobertura en Tabasco</h2>
+        <h2>Zonas Operativas</h2>
         <div className="grid">
           {tabascoCoverage.map((item) => (
             <article className="card" key={item.zone}>
@@ -39,11 +39,11 @@ export default function CoberturaPage() {
       </section>
 
       <section className="panel">
-        <h2>Modelo de expansion</h2>
+        <h2>Plan de Expansion</h2>
         <ol className="flow-list">
-          <li>Consolidar cobertura por colonia y codigo postal dentro de Tabasco.</li>
-          <li>Extender a municipios colindantes con demanda recurrente.</li>
-          <li>Integrar reglas automáticas de asignacion por zonas geo en el ERP.</li>
+          <li>Consolidar cobertura por colonia y codigo postal en los municipios activos de Tabasco.</li>
+          <li>Escalar a corredores regionales colindantes con demanda sostenida.</li>
+          <li>Automatizar asignacion por zonas geograficas dentro del ERP para mejorar tiempos de respuesta.</li>
         </ol>
       </section>
     </main>
