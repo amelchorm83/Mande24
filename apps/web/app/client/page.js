@@ -40,6 +40,7 @@ export default function ClientPortalPage() {
   const [sentGuides, setSentGuides] = useState([]);
   const [receivedGuides, setReceivedGuides] = useState([]);
   const [msg, setMsg] = useState("");
+  const [geoLoading, setGeoLoading] = useState(false);
 
   const headers = useMemo(
     () => ({ Authorization: `Bearer ${token}`, "Content-Type": "application/json" }),
@@ -52,6 +53,21 @@ export default function ClientPortalPage() {
     const email = localStorage.getItem("m24_email") || "";
     if (email) setRegisterEmail(email);
   }, []);
+
+  useEffect(() => {
+    if (!token) {
+      setStates([]);
+      setMunicipalities([]);
+      setPostalCodes([]);
+      setColonies([]);
+      setStateCode("");
+      setMunicipalityCode("");
+      setPostalCode("");
+      setColonyId("");
+      return;
+    }
+    loadGeoStates();
+  }, [token]);
 
   async function registerAndLoginClient(e) {
     e.preventDefault();
@@ -168,11 +184,17 @@ export default function ClientPortalPage() {
   }
 
   async function loadGeoStates() {
+    setGeoLoading(true);
     const res = await fetch(`${API_BASE}/api/v1/clients/geo/states`, { headers });
-    if (!res.ok) return;
+    if (!res.ok) {
+      setGeoLoading(false);
+      setMsg("No se pudo cargar Estados. Verifica token o sincronizacion geo.");
+      return;
+    }
     const rows = await res.json();
     setStates(rows);
     if (!stateCode && rows.length) setStateCode(rows[0].code);
+    setGeoLoading(false);
   }
 
   async function loadMunicipalities(code) {
@@ -388,25 +410,28 @@ export default function ClientPortalPage() {
           </label>
           <label>
             Estado
-            <select value={stateCode} onChange={(e) => setStateCode(e.target.value)}>
+            <select value={stateCode} onChange={(e) => setStateCode(e.target.value)} disabled={!token || geoLoading || states.length === 0}>
+              <option value="">{geoLoading ? "Cargando estados..." : (!token ? "Captura token primero" : "Selecciona estado")}</option>
               {states.map((item) => <option key={item.code} value={item.code}>{item.name}</option>)}
             </select>
           </label>
           <label>
             Municipio
-            <select value={municipalityCode} onChange={(e) => setMunicipalityCode(e.target.value)}>
+            <select value={municipalityCode} onChange={(e) => setMunicipalityCode(e.target.value)} disabled={!token || municipalities.length === 0}>
+              <option value="">{!token ? "Captura token primero" : "Selecciona municipio"}</option>
               {municipalities.map((item) => <option key={item.code} value={item.code}>{item.name}</option>)}
             </select>
           </label>
           <label>
             Codigo postal
-            <select value={postalCode} onChange={(e) => setPostalCode(e.target.value)}>
+            <select value={postalCode} onChange={(e) => setPostalCode(e.target.value)} disabled={!token || postalCodes.length === 0}>
+              <option value="">{!token ? "Captura token primero" : "Selecciona codigo postal"}</option>
               {postalCodes.map((item) => <option key={item.code} value={item.code}>{item.code}</option>)}
             </select>
           </label>
           <label>
             Colonia
-            <select value={colonyId} onChange={(e) => setColonyId(e.target.value)}>
+            <select value={colonyId} onChange={(e) => setColonyId(e.target.value)} disabled={!token || colonies.length === 0}>
               <option value="">Selecciona</option>
               {colonies.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
             </select>
