@@ -205,6 +205,8 @@ def create_client_profile(
         postal_code=postal_code.code,
         colony_id=colony.id if colony else None,
         address_line=payload.address_line.strip(),
+        landline_phone=payload.landline_phone.strip(),
+        whatsapp_phone=payload.whatsapp_phone.strip(),
         wants_invoice=payload.wants_invoice,
     )
     db.add(profile)
@@ -221,6 +223,8 @@ def create_client_profile(
         colony_id=profile.colony_id,
         colony_name=colony.name if colony else None,
         address_line=profile.address_line,
+        landline_phone=profile.landline_phone,
+        whatsapp_phone=profile.whatsapp_phone,
         wants_invoice=profile.wants_invoice,
         active=profile.active,
     )
@@ -259,6 +263,8 @@ def list_client_profiles(
             colony_id=item.colony_id,
             colony_name=colonies.get(item.colony_id) if item.colony_id else None,
             address_line=item.address_line,
+            landline_phone=item.landline_phone,
+            whatsapp_phone=item.whatsapp_phone,
             wants_invoice=item.wants_invoice,
             active=item.active,
         )

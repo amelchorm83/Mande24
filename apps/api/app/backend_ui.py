@@ -1201,11 +1201,51 @@ def backend_new_guide_page(db: Session = Depends(get_db), msg: str = "", kind: s
         .order_by(ClientProfile.display_name.asc())
         .all()
     )
+    riders = db.query(Rider).filter(Rider.active.is_(True)).order_by(Rider.id.desc()).limit(100).all()
+    users = {item.id: item for item in db.query(User).all()}
 
     service_options = "".join([f'<option value="{item.id}">{escape(item.name)} ({item.service_type.value})</option>' for item in services])
-    station_options = "".join([f'<option value="{item.id}">{escape(item.name)}</option>' for item in stations])
-    origin_client_options = "".join([f'<option value="{item.id}">{escape(item.display_name)}</option>' for item in origin_clients])
-    destination_client_options = "".join([f'<option value="{item.id}">{escape(item.display_name)}</option>' for item in destination_clients])
+    station_options = "".join(
+        [
+            (
+                f'<option value="{item.id}">{escape(item.name)} '
+                f'| Fijo: {escape(item.landline_phone or "-")} '
+                f'| WhatsApp: {escape(item.whatsapp_phone or "-")}</option>'
+            )
+            for item in stations
+        ]
+    )
+    origin_client_options = "".join(
+        [
+            (
+                f'<option value="{item.id}">{escape(item.display_name)} '
+                f'| Fijo: {escape(item.landline_phone or "-")} '
+                f'| WhatsApp: {escape(item.whatsapp_phone or "-")}</option>'
+            )
+            for item in origin_clients
+        ]
+    )
+    destination_client_options = "".join(
+        [
+            (
+                f'<option value="{item.id}">{escape(item.display_name)} '
+                f'| Fijo: {escape(item.landline_phone or "-")} '
+                f'| WhatsApp: {escape(item.whatsapp_phone or "-")}</option>'
+            )
+            for item in destination_clients
+        ]
+    )
+    rider_rows = []
+    for item in riders:
+        user = users.get(item.user_id)
+        rider_rows.append(
+            [
+                escape(item.id),
+                escape(user.full_name if user else "-"),
+                escape(item.landline_phone or "-"),
+                escape(item.whatsapp_phone or "-"),
+            ]
+        )
 
     catalog_hint = ""
     if not services or not stations:
@@ -1223,6 +1263,9 @@ def backend_new_guide_page(db: Session = Depends(get_db), msg: str = "", kind: s
         f"<label>Estacion<select name=\"station_id\" required><option value=\"\">Selecciona</option>{station_options}</select></label>"
         "<div class=\"full actions\"><button class=\"primary\" type=\"submit\">Generar Guia</button></div>"
         "</form>"
+        f"<p class=\"muted\">Las opciones de cliente y estacion incluyen telefonos para facilitar contacto operativo y validacion al capturar la guia.</p>"
+        "<h4>Contactos Operativos de Riders</h4>"
+        f"{_table(['Rider ID', 'Nombre', 'Telefono fijo', 'WhatsApp'], rider_rows)}"
         "<div class=\"actions\"><form method=\"post\" action=\"/ERPMande24/demo/seed/form\"><button type=\"submit\">Generar datos demo</button></form>"
         "<a class=\"btn\" href=\"/ERPMande24/guides\">Ver listado de guias</a></div>"
         f"{catalog_hint}</section>"
@@ -1377,6 +1420,13 @@ def backend_guide_detail(guide_code: str, request: Request, db: Session = Depend
         return _render_layout("guides", "Guia", "Detalle", '<section class="panel"><div class="empty">Guia no encontrada.</div></section>', msg, "error", request=request)
 
     deliveries = db.query(Delivery).filter(Delivery.guide_id == guide.id).order_by(Delivery.created_at.asc()).all()
+    party = db.query(GuideParty).filter(GuideParty.guide_id == guide.id).first()
+    origin_client = db.query(ClientProfile).filter(ClientProfile.id == party.origin_client_id).first() if party and party.origin_client_id else None
+    destination_client = db.query(ClientProfile).filter(ClientProfile.id == party.destination_client_id).first() if party and party.destination_client_id else None
+    station = db.query(Station).filter(Station.id == guide.station_id).first() if guide.station_id else None
+    latest_delivery = deliveries[-1] if deliveries else None
+    assigned_rider = db.query(Rider).filter(Rider.id == latest_delivery.rider_id).first() if latest_delivery and latest_delivery.rider_id else None
+    assigned_rider_user = db.query(User).filter(User.id == assigned_rider.user_id).first() if assigned_rider else None
     delivery_rows = [
         [
             f'<a href="/ERPMande24/deliveries/{escape(item.id)}">{escape(item.id)}</a>',
@@ -1395,8 +1445,35 @@ def backend_guide_detail(guide_code: str, request: Request, db: Session = Depend
             label = f"{label} (entregada)"
         timeline_events.append((item.updated_at.strftime("%Y-%m-%d %H:%M"), label))
 
+    contact_rows = [
+        [
+            "Cliente origen",
+            escape(origin_client.display_name if origin_client else guide.customer_name),
+            escape(origin_client.landline_phone if origin_client and origin_client.landline_phone else "-"),
+            escape(origin_client.whatsapp_phone if origin_client and origin_client.whatsapp_phone else "-"),
+        ],
+        [
+            "Cliente destino",
+            escape(destination_client.display_name if destination_client else guide.destination_name),
+            escape(destination_client.landline_phone if destination_client and destination_client.landline_phone else "-"),
+            escape(destination_client.whatsapp_phone if destination_client and destination_client.whatsapp_phone else "-"),
+        ],
+        [
+            "Estacion",
+            escape(station.name if station else "-"),
+            escape(station.landline_phone if station and station.landline_phone else "-"),
+            escape(station.whatsapp_phone if station and station.whatsapp_phone else "-"),
+        ],
+        [
+            "Rider asignado",
+            escape(assigned_rider_user.full_name if assigned_rider_user else "-"),
+            escape(assigned_rider.landline_phone if assigned_rider and assigned_rider.landline_phone else "-"),
+            escape(assigned_rider.whatsapp_phone if assigned_rider and assigned_rider.whatsapp_phone else "-"),
+        ],
+    ]
+
     details = (
-        f"{_tabs([('resumen', 'Resumen'), ('entregas', 'Entregas'), ('timeline', 'Timeline'), ('operacion', 'Operacion')])}"
+        f"{_tabs([('resumen', 'Resumen'), ('contactos', 'Contactos'), ('entregas', 'Entregas'), ('timeline', 'Timeline'), ('operacion', 'Operacion')])}"
         "<section id=\"resumen\" class=\"panel\"><h3>Ficha de Guia</h3>"
         "<div class=\"kpi-grid\">"
         f"<article class=\"kpi\"><small>Codigo</small><strong>{escape(guide.guide_code)}</strong></article>"
@@ -1404,7 +1481,11 @@ def backend_guide_detail(guide_code: str, request: Request, db: Session = Depend
         f"<article class=\"kpi\"><small>Destino</small><strong>{escape(guide.destination_name)}</strong></article>"
         f"<article class=\"kpi\"><small>Monto</small><strong>{guide.sale_amount:.2f} {escape(guide.currency)}</strong></article>"
         "</div></section>"
-        "<section id=\"operacion\" class=\"panel\"><h3>Operacion</h3><div class=\"actions\"><a class=\"btn\" href=\"/ERPMande24/guides\">Volver a listado</a><a class=\"btn\" href=\"/ERPMande24/guides/new\">Nueva Guia</a></div></section>"
+        "<section id=\"contactos\" class=\"panel\"><h3>Contactos Operativos</h3>"
+        f"{_table(['Rol', 'Nombre', 'Telefono fijo', 'WhatsApp'], contact_rows)}"
+        "</section>"
+        "<section id=\"operacion\" class=\"panel\"><h3>Operacion</h3><div class=\"actions\"><a class=\"btn\" href=\"/ERPMande24/guides\">Volver a listado</a><a class=\"btn\" href=\"/ERPMande24/guides/new\">Nueva Guia</a>"
+        f"<a class=\"btn\" href=\"/ERPMande24/guides/{escape(guide.guide_code)}/print\" target=\"_blank\">Imprimir / PDF</a></div></section>"
     )
     content = (
         details
@@ -1412,6 +1493,64 @@ def backend_guide_detail(guide_code: str, request: Request, db: Session = Depend
         + f"<section id=\"timeline\" class=\"panel\"><h3>Timeline</h3>{_timeline(timeline_events)}</section>"
     )
     return _render_layout("guides", f"Guia {guide.guide_code}", "Vista detalle tipo formulario.", content, msg, kind, request=request)
+
+
+@router.get("/guides/{guide_code}/print", response_class=HTMLResponse)
+def backend_guide_printable(guide_code: str, db: Session = Depends(get_db)) -> str:
+    guide = db.query(Guide).filter(Guide.guide_code == guide_code).first()
+    if not guide:
+        return "<html><body><h3>Guia no encontrada.</h3></body></html>"
+
+    party = db.query(GuideParty).filter(GuideParty.guide_id == guide.id).first()
+    origin_client = db.query(ClientProfile).filter(ClientProfile.id == party.origin_client_id).first() if party and party.origin_client_id else None
+    destination_client = db.query(ClientProfile).filter(ClientProfile.id == party.destination_client_id).first() if party and party.destination_client_id else None
+    station = db.query(Station).filter(Station.id == guide.station_id).first() if guide.station_id else None
+    latest_delivery = db.query(Delivery).filter(Delivery.guide_id == guide.id).order_by(Delivery.updated_at.desc()).first()
+    assigned_rider = db.query(Rider).filter(Rider.id == latest_delivery.rider_id).first() if latest_delivery and latest_delivery.rider_id else None
+    assigned_rider_user = db.query(User).filter(User.id == assigned_rider.user_id).first() if assigned_rider else None
+
+    contact_rows = "".join(
+        [
+            "<tr><td>Cliente origen</td>"
+            f"<td>{escape(origin_client.display_name if origin_client else guide.customer_name)}</td>"
+            f"<td>{escape(origin_client.landline_phone if origin_client and origin_client.landline_phone else '-')}</td>"
+            f"<td>{escape(origin_client.whatsapp_phone if origin_client and origin_client.whatsapp_phone else '-')}</td></tr>",
+            "<tr><td>Cliente destino</td>"
+            f"<td>{escape(destination_client.display_name if destination_client else guide.destination_name)}</td>"
+            f"<td>{escape(destination_client.landline_phone if destination_client and destination_client.landline_phone else '-')}</td>"
+            f"<td>{escape(destination_client.whatsapp_phone if destination_client and destination_client.whatsapp_phone else '-')}</td></tr>",
+            "<tr><td>Estacion</td>"
+            f"<td>{escape(station.name if station else '-')}</td>"
+            f"<td>{escape(station.landline_phone if station and station.landline_phone else '-')}</td>"
+            f"<td>{escape(station.whatsapp_phone if station and station.whatsapp_phone else '-')}</td></tr>",
+            "<tr><td>Rider asignado</td>"
+            f"<td>{escape(assigned_rider_user.full_name if assigned_rider_user else '-')}</td>"
+            f"<td>{escape(assigned_rider.landline_phone if assigned_rider and assigned_rider.landline_phone else '-')}</td>"
+            f"<td>{escape(assigned_rider.whatsapp_phone if assigned_rider and assigned_rider.whatsapp_phone else '-')}</td></tr>",
+        ]
+    )
+
+    stage_label = latest_delivery.stage.value if latest_delivery else "assigned"
+    html = (
+        "<!doctype html><html><head><meta charset='utf-8'><title>Guia "
+        f"{escape(guide.guide_code)}</title>"
+        "<style>body{font-family:Arial,sans-serif;margin:24px;color:#1f2937;}"
+        "h1{margin:0 0 10px 0;}h2{margin:18px 0 8px 0;font-size:18px;}"
+        "table{width:100%;border-collapse:collapse;margin-top:8px;}th,td{border:1px solid #d1d5db;padding:8px;text-align:left;font-size:13px;}"
+        ".grid{display:grid;grid-template-columns:repeat(2,minmax(220px,1fr));gap:10px;margin-top:10px;}"
+        ".card{border:1px solid #d1d5db;border-radius:8px;padding:10px;}"
+        "@media print{.no-print{display:none;}}</style></head><body>"
+        "<div class='no-print' style='margin-bottom:12px;'><button onclick='window.print()'>Imprimir / Guardar PDF</button></div>"
+        f"<h1>Guia {escape(guide.guide_code)}</h1>"
+        f"<div class='grid'><div class='card'><strong>Cliente:</strong> {escape(guide.customer_name)}<br><strong>Destino:</strong> {escape(guide.destination_name)}</div>"
+        f"<div class='card'><strong>Servicio:</strong> {escape(guide.service_type)}<br><strong>Monto:</strong> {guide.sale_amount:.2f} {escape(guide.currency)}<br><strong>Etapa:</strong> {escape(stage_label)}</div></div>"
+        "<h2>Contactos Operativos</h2>"
+        "<table><thead><tr><th>Rol</th><th>Nombre</th><th>Telefono fijo</th><th>WhatsApp</th></tr></thead><tbody>"
+        f"{contact_rows}</tbody></table>"
+        f"<p style='margin-top:14px;font-size:12px;color:#6b7280;'>Generada: {escape(guide.created_at.strftime('%Y-%m-%d %H:%M'))}</p>"
+        "</body></html>"
+    )
+    return html
 
 
 @router.get("/deliveries", response_class=HTMLResponse)
@@ -1987,6 +2126,8 @@ def backend_stations(db: Session = Depends(get_db), q: str = "", msg: str = "", 
                 escape(item.id),
                 f'<a href="/ERPMande24/catalogs/stations/{escape(item.id)}">{escape(item.name)}</a>',
                 escape(zone_label),
+                escape(item.landline_phone or "-"),
+                escape(item.whatsapp_phone or "-"),
                 "activo" if item.active else "inactivo",
                 (
                     f'<form class="inline-form" method="post" action="/ERPMande24/catalogs/stations/{escape(item.id)}/toggle">'
@@ -2001,11 +2142,13 @@ def backend_stations(db: Session = Depends(get_db), q: str = "", msg: str = "", 
         "<form class=\"grid\" method=\"post\" action=\"/ERPMande24/catalogs/stations/create\">"
         "<label>Nombre<input name=\"name\" required minlength=\"2\" maxlength=\"120\" /></label>"
         f"<label>Zona<select name=\"zone_id\" required><option value=\"\">Selecciona</option>{zone_options}</select></label>"
+        "<label>Telefono fijo<input name=\"landline_phone\" maxlength=\"40\" /></label>"
+        "<label>WhatsApp<input name=\"whatsapp_phone\" maxlength=\"40\" /></label>"
         "<div class=\"full actions\"><button class=\"primary\" type=\"submit\">Crear Estacion</button></div>"
         "</form></section>"
     )
 
-    content = form + f"<section class=\"panel\"><h3>Lista de Estaciones</h3>{_querybox('/ERPMande24/catalogs/stations', 'Buscar estacion por nombre', q)}<div class=\"actions\"><a class=\"btn\" href=\"/ERPMande24/export/stations.csv\">Exportar CSV</a></div>{_bulk_form('bulk-stations', '/ERPMande24/catalogs/stations/bulk-toggle', 'Aplicar cambios')}{_table(['Sel', 'ID', 'Nombre', 'Zona', 'Estado', 'Accion'], rows)}</section>"
+    content = form + f"<section class=\"panel\"><h3>Lista de Estaciones</h3>{_querybox('/ERPMande24/catalogs/stations', 'Buscar estacion por nombre', q)}<div class=\"actions\"><a class=\"btn\" href=\"/ERPMande24/export/stations.csv\">Exportar CSV</a></div>{_bulk_form('bulk-stations', '/ERPMande24/catalogs/stations/bulk-toggle', 'Aplicar cambios')}{_table(['Sel', 'ID', 'Nombre', 'Zona', 'Telefono fijo', 'WhatsApp', 'Estado', 'Accion'], rows)}</section>"
     return _render_layout("stations", "Catalogo de Estaciones", "Mantenimiento de estaciones por zona.", content, msg, kind)
 
 
@@ -2055,6 +2198,8 @@ def backend_station_detail(station_id: str, db: Session = Depends(get_db), msg: 
         f"<article class=\"kpi\"><small>ID</small><strong>{escape(station.id)}</strong></article>"
         f"<article class=\"kpi\"><small>Nombre</small><strong>{escape(station.name)}</strong></article>"
         f"<article class=\"kpi\"><small>Zona</small><strong>{escape(zone.name if zone else '-')}</strong></article>"
+        f"<article class=\"kpi\"><small>Telefono fijo</small><strong>{escape(station.landline_phone or '-')}</strong></article>"
+        f"<article class=\"kpi\"><small>WhatsApp</small><strong>{escape(station.whatsapp_phone or '-')}</strong></article>"
         f"<article class=\"kpi\"><small>Estado</small><strong>{'activa' if station.active else 'inactiva'}</strong></article>"
         "</div></section>"
     )
@@ -2063,7 +2208,14 @@ def backend_station_detail(station_id: str, db: Session = Depends(get_db), msg: 
 
 
 @router.post("/catalogs/stations/create")
-def backend_create_station(name: str = Form(...), zone_id: str = Form(...), request: Request = None, db: Session = Depends(get_db)) -> RedirectResponse:
+def backend_create_station(
+    name: str = Form(...),
+    zone_id: str = Form(...),
+    landline_phone: str = Form(""),
+    whatsapp_phone: str = Form(""),
+    request: Request = None,
+    db: Session = Depends(get_db),
+) -> RedirectResponse:
     forbidden = _require_manage(request, "/ERPMande24/catalogs/stations", "crear estacion")
     if forbidden:
         return forbidden
@@ -2073,7 +2225,13 @@ def backend_create_station(name: str = Form(...), zone_id: str = Form(...), requ
     if db.query(Station).filter(Station.name == name.strip()).first():
         return _redirect("/ERPMande24/catalogs/stations", "Ya existe una estacion con ese nombre.", "error")
 
-    station = Station(name=name.strip(), zone_id=zone_id, active=True)
+    station = Station(
+        name=name.strip(),
+        zone_id=zone_id,
+        landline_phone=landline_phone.strip(),
+        whatsapp_phone=whatsapp_phone.strip(),
+        active=True,
+    )
     db.add(station)
     db.commit()
     return _redirect("/ERPMande24/catalogs/stations", f"Estacion {station.name} creada.")
@@ -2103,6 +2261,8 @@ def backend_riders(db: Session = Depends(get_db), q: str = "", msg: str = "", ki
                 escape(user.full_name if user else "-"),
                 escape(user.email if user else "-"),
                 escape(zone.name if zone else "-"),
+                escape(item.landline_phone or "-"),
+                escape(item.whatsapp_phone or "-"),
                 escape(item.vehicle_type),
                 escape(item.state.value),
                 "activo" if item.active else "inactivo",
@@ -2121,11 +2281,13 @@ def backend_riders(db: Session = Depends(get_db), q: str = "", msg: str = "", ki
         "<label>Email<input name=\"email\" type=\"email\" required /></label>"
         "<label>Password<input name=\"password\" type=\"password\" required minlength=\"8\" /></label>"
         f"<label>Zona<select name=\"zone_id\"><option value=\"\">Sin zona</option>{zone_options}</select></label>"
+        "<label>Telefono fijo<input name=\"landline_phone\" maxlength=\"40\" /></label>"
+        "<label>WhatsApp<input name=\"whatsapp_phone\" maxlength=\"40\" /></label>"
         "<label>Vehiculo<input name=\"vehicle_type\" value=\"motorcycle\" minlength=\"2\" maxlength=\"30\" /></label>"
         "<div class=\"full actions\"><button class=\"primary\" type=\"submit\">Crear Rider</button></div>"
         "</form></section>"
     )
-    content = create_form + f"<section class=\"panel\"><h3>Lista de Riders</h3>{_querybox('/ERPMande24/catalogs/riders', 'Buscar rider por ID, nombre o email', q)}<div class=\"actions\"><a class=\"btn\" href=\"/ERPMande24/export/riders.csv\">Exportar CSV</a></div>{_bulk_form('bulk-riders', '/ERPMande24/catalogs/riders/bulk-toggle', 'Aplicar cambios')}{_table(['Sel', 'ID', 'Nombre', 'Email', 'Zona', 'Vehiculo', 'Estado', 'Activo', 'Accion'], rows)}</section>"
+    content = create_form + f"<section class=\"panel\"><h3>Lista de Riders</h3>{_querybox('/ERPMande24/catalogs/riders', 'Buscar rider por ID, nombre o email', q)}<div class=\"actions\"><a class=\"btn\" href=\"/ERPMande24/export/riders.csv\">Exportar CSV</a></div>{_bulk_form('bulk-riders', '/ERPMande24/catalogs/riders/bulk-toggle', 'Aplicar cambios')}{_table(['Sel', 'ID', 'Nombre', 'Email', 'Zona', 'Telefono fijo', 'WhatsApp', 'Vehiculo', 'Estado', 'Activo', 'Accion'], rows)}</section>"
     return _render_layout("riders", "Catalogo de Riders", "Vista de riders y su estado operativo.", content, msg, kind)
 
 
@@ -2135,6 +2297,8 @@ def backend_create_rider(
     email: str = Form(...),
     password: str = Form(...),
     zone_id: str = Form(""),
+    landline_phone: str = Form(""),
+    whatsapp_phone: str = Form(""),
     vehicle_type: str = Form("motorcycle"),
     request: Request = None,
     db: Session = Depends(get_db),
@@ -2162,6 +2326,8 @@ def backend_create_rider(
     rider = Rider(
         user_id=user.id,
         zone_id=zone_id.strip() or None,
+        landline_phone=landline_phone.strip(),
+        whatsapp_phone=whatsapp_phone.strip(),
         vehicle_type=vehicle_type.strip() or "motorcycle",
         active=True,
     )
@@ -2218,6 +2384,8 @@ def backend_rider_detail(rider_id: str, db: Session = Depends(get_db), msg: str 
         f"<article class=\"kpi\"><small>Nombre</small><strong>{escape(user.full_name if user else '-')}</strong></article>"
         f"<article class=\"kpi\"><small>Email</small><strong>{escape(user.email if user else '-')}</strong></article>"
         f"<article class=\"kpi\"><small>Zona</small><strong>{escape(zone.name if zone else '-')}</strong></article>"
+        f"<article class=\"kpi\"><small>Telefono fijo</small><strong>{escape(rider.landline_phone or '-')}</strong></article>"
+        f"<article class=\"kpi\"><small>WhatsApp</small><strong>{escape(rider.whatsapp_phone or '-')}</strong></article>"
         f"<article class=\"kpi\"><small>Vehiculo</small><strong>{escape(rider.vehicle_type)}</strong></article>"
         f"<article class=\"kpi\"><small>Estado</small><strong>{escape(rider.state.value)}</strong></article>"
         "</div></section>"
@@ -2346,6 +2514,8 @@ def backend_clients(
                 escape(postal_code.code if postal_code else item.postal_code),
                 escape(colony.name if colony else "-"),
                 escape(item.address_line or "-"),
+                escape(item.landline_phone or "-"),
+                escape(item.whatsapp_phone or "-"),
                 "si" if item.wants_invoice else "no",
                 escape(linked_user.email if linked_user else "sin acceso portal"),
                 "activo" if item.active else "inactivo",
@@ -2366,6 +2536,8 @@ def backend_clients(
         "<label>Codigo postal<select id=\"new-client-postal\" name=\"postal_code\" required><option value=\"\">Selecciona municipio</option></select></label>"
         "<label>Colonia<select id=\"new-client-colony\" name=\"colony_id\" required><option value=\"\">Selecciona codigo postal</option></select></label>"
         "<label>Direccion<input name=\"address_line\" maxlength=\"255\" /></label>"
+        "<label>Telefono fijo<input name=\"landline_phone\" maxlength=\"40\" /></label>"
+        "<label>WhatsApp<input name=\"whatsapp_phone\" maxlength=\"40\" /></label>"
         "<label>Facturar servicios origen<select name=\"wants_invoice\"><option value=\"false\">No</option><option value=\"true\">Si</option></select></label>"
         "<label>Crear acceso portal<select name=\"create_portal_access\"><option value=\"false\">No</option><option value=\"true\">Si</option></select></label>"
         "<label>Email portal (si aplica)<input type=\"email\" name=\"portal_email\" /></label>"
@@ -2435,7 +2607,7 @@ def backend_clients(
         "<a class=\"btn\" href=\"/ERPMande24/catalogs/clients\">Limpiar</a>"
         "</form>"
         f"<div class=\"actions\"><a class=\"btn primary\" href=\"/ERPMande24/catalogs/clients#nuevo-cliente\">Crear cliente nuevo</a><a class=\"btn\" href=\"{escape(export_url)}\">Exportar CSV</a><a class=\"btn\" href=\"/client\">Abrir Portal Cliente</a><a class=\"btn\" href=\"/station\">Abrir Portal Estacion</a></div>"
-        f"{_table(['ID', 'Nombre', 'Tipo', 'Estado', 'Municipio', 'CP', 'Colonia', 'Direccion', 'Factura Origen', 'Usuario Portal', 'Estado Registro', 'Accion'], rows)}"
+        f"{_table(['ID', 'Nombre', 'Tipo', 'Estado', 'Municipio', 'CP', 'Colonia', 'Direccion', 'Telefono fijo', 'WhatsApp', 'Factura Origen', 'Usuario Portal', 'Estado Registro', 'Accion'], rows)}"
         "</section>"
     )
     return _render_layout("clients", "Catalogo de Clientes", "Clientes origen y destino con direccion y facturacion.", create_form + content + cascade_script, msg, kind)
@@ -2450,6 +2622,8 @@ def backend_create_client(
     postal_code: str = Form(...),
     colony_id: str = Form(...),
     address_line: str = Form(""),
+    landline_phone: str = Form(""),
+    whatsapp_phone: str = Form(""),
     wants_invoice: str = Form("false"),
     create_portal_access: str = Form("false"),
     portal_email: str = Form(""),
@@ -2528,6 +2702,8 @@ def backend_create_client(
         postal_code=postal.code,
         colony_id=colony.id,
         address_line=address_line.strip(),
+        landline_phone=landline_phone.strip(),
+        whatsapp_phone=whatsapp_phone.strip(),
         wants_invoice=(wants_invoice == "true"),
         active=True,
     )
@@ -2579,6 +2755,8 @@ def backend_client_detail(client_id: str, db: Session = Depends(get_db), msg: st
         f"<article class=\"kpi\"><small>ID</small><strong>{escape(client.id)}</strong></article>"
         f"<article class=\"kpi\"><small>Nombre</small><strong>{escape(client.display_name)}</strong></article>"
         f"<article class=\"kpi\"><small>Tipo</small><strong>{escape(client.client_kind.value)}</strong></article>"
+        f"<article class=\"kpi\"><small>Telefono fijo</small><strong>{escape(client.landline_phone or '-')}</strong></article>"
+        f"<article class=\"kpi\"><small>WhatsApp</small><strong>{escape(client.whatsapp_phone or '-')}</strong></article>"
         f"<article class=\"kpi\"><small>Portal</small><strong>{escape(linked_user.email if linked_user else 'Sin acceso')}</strong></article>"
         "</div></section>"
         "<section id=\"editar\" class=\"panel\"><h3>Editar Cliente</h3>"
@@ -2594,6 +2772,8 @@ def backend_client_detail(client_id: str, db: Session = Depends(get_db), msg: st
         f"<label>Codigo postal<select id=\"edit-client-postal\" name=\"postal_code\" required>{postal_options}</select></label>"
         f"<label>Colonia<select id=\"edit-client-colony\" name=\"colony_id\" required>{colony_options}</select></label>"
         f"<label>Direccion<input name=\"address_line\" value=\"{escape(client.address_line or '')}\" maxlength=\"255\" /></label>"
+        f"<label>Telefono fijo<input name=\"landline_phone\" value=\"{escape(client.landline_phone or '')}\" maxlength=\"40\" /></label>"
+        f"<label>WhatsApp<input name=\"whatsapp_phone\" value=\"{escape(client.whatsapp_phone or '')}\" maxlength=\"40\" /></label>"
         f"<label>Facturar origen<select name=\"wants_invoice\"><option value=\"true\" {'selected' if client.wants_invoice else ''}>Si</option><option value=\"false\" {'selected' if not client.wants_invoice else ''}>No</option></select></label>"
         f"<label>Estado registro<select name=\"active\"><option value=\"true\" {'selected' if client.active else ''}>Activo</option><option value=\"false\" {'selected' if not client.active else ''}>Inactivo</option></select></label>"
         f"<label>Email portal<input type=\"email\" name=\"portal_email\" value=\"{escape(linked_user.email if linked_user else '')}\" /></label>"
@@ -2660,6 +2840,8 @@ def backend_update_client(
     postal_code: str = Form(...),
     colony_id: str = Form(...),
     address_line: str = Form(""),
+    landline_phone: str = Form(""),
+    whatsapp_phone: str = Form(""),
     wants_invoice: str = Form("false"),
     active: str = Form("true"),
     portal_email: str = Form(""),
@@ -2711,6 +2893,8 @@ def backend_update_client(
     client.postal_code = postal.code
     client.colony_id = colony.id
     client.address_line = address_line.strip()
+    client.landline_phone = landline_phone.strip()
+    client.whatsapp_phone = whatsapp_phone.strip()
     client.wants_invoice = wants_invoice == "true"
     client.active = active == "true"
 
@@ -3307,15 +3491,15 @@ def backend_export_zones_csv(db: Session = Depends(get_db)) -> Response:
 @router.get("/export/stations.csv")
 def backend_export_stations_csv(db: Session = Depends(get_db)) -> Response:
     stations = db.query(Station).order_by(Station.name.asc()).all()
-    rows = [[item.id, item.name, item.zone_id, str(item.active)] for item in stations]
-    return _csv_response("stations.csv", ["id", "name", "zone_id", "active"], rows)
+    rows = [[item.id, item.name, item.zone_id, item.landline_phone or "", item.whatsapp_phone or "", str(item.active)] for item in stations]
+    return _csv_response("stations.csv", ["id", "name", "zone_id", "landline_phone", "whatsapp_phone", "active"], rows)
 
 
 @router.get("/export/riders.csv")
 def backend_export_riders_csv(db: Session = Depends(get_db)) -> Response:
     riders = db.query(Rider).order_by(Rider.id.desc()).all()
-    rows = [[item.id, item.user_id, item.zone_id or "", item.vehicle_type, item.state.value, str(item.active)] for item in riders]
-    return _csv_response("riders.csv", ["id", "user_id", "zone_id", "vehicle_type", "state", "active"], rows)
+    rows = [[item.id, item.user_id, item.zone_id or "", item.landline_phone or "", item.whatsapp_phone or "", item.vehicle_type, item.state.value, str(item.active)] for item in riders]
+    return _csv_response("riders.csv", ["id", "user_id", "zone_id", "landline_phone", "whatsapp_phone", "vehicle_type", "state", "active"], rows)
 
 
 @router.get("/export/pricing-rules.csv")
@@ -3407,6 +3591,8 @@ def backend_export_clients_csv(
                 item.postal_code,
                 colony.name if colony else "",
                 item.address_line or "",
+                item.landline_phone or "",
+                item.whatsapp_phone or "",
                 str(item.wants_invoice),
                 item.user_id or "",
                 str(item.active),
@@ -3424,6 +3610,8 @@ def backend_export_clients_csv(
             "postal_code",
             "colony",
             "address_line",
+            "landline_phone",
+            "whatsapp_phone",
             "wants_invoice",
             "user_id",
             "active",

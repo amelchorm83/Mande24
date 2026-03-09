@@ -138,6 +138,8 @@ class Station(Base):
     id: Mapped[str] = mapped_column(String(32), primary_key=True, default=lambda: uuid4().hex)
     name: Mapped[str] = mapped_column(String(120), unique=True)
     zone_id: Mapped[str] = mapped_column(String(32), ForeignKey("zones.id"), index=True)
+    landline_phone: Mapped[str] = mapped_column(String(40), default="")
+    whatsapp_phone: Mapped[str] = mapped_column(String(40), default="")
     active: Mapped[bool] = mapped_column(Boolean, default=True)
 
 
@@ -148,6 +150,8 @@ class Rider(Base):
     user_id: Mapped[str] = mapped_column(String(32), ForeignKey("users.id"), unique=True, index=True)
     zone_id: Mapped[str | None] = mapped_column(String(32), ForeignKey("zones.id"), nullable=True)
     vehicle_type: Mapped[str] = mapped_column(String(30), default="motorcycle")
+    landline_phone: Mapped[str] = mapped_column(String(40), default="")
+    whatsapp_phone: Mapped[str] = mapped_column(String(40), default="")
     state: Mapped[RiderState] = mapped_column(SqlEnum(RiderState, name="rider_state"), default=RiderState.draft)
     active: Mapped[bool] = mapped_column(Boolean, default=True)
 
@@ -235,6 +239,8 @@ class ClientProfile(Base):
     postal_code: Mapped[str] = mapped_column(String(10), ForeignKey("geo_postal_codes.code"), index=True)
     colony_id: Mapped[str | None] = mapped_column(String(64), ForeignKey("geo_colonies.id"), nullable=True, index=True)
     address_line: Mapped[str] = mapped_column(String(255), default="")
+    landline_phone: Mapped[str] = mapped_column(String(40), default="")
+    whatsapp_phone: Mapped[str] = mapped_column(String(40), default="")
     wants_invoice: Mapped[bool] = mapped_column(Boolean, default=False)
     active: Mapped[bool] = mapped_column(Boolean, default=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))

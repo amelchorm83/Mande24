@@ -105,11 +105,23 @@ def create_station(
     if existing:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Station name already exists")
 
-    station = Station(name=payload.name.strip(), zone_id=payload.zone_id)
+    station = Station(
+        name=payload.name.strip(),
+        zone_id=payload.zone_id,
+        landline_phone=payload.landline_phone.strip(),
+        whatsapp_phone=payload.whatsapp_phone.strip(),
+    )
     db.add(station)
     db.commit()
     db.refresh(station)
-    return StationResponse(id=station.id, name=station.name, zone_id=station.zone_id, active=station.active)
+    return StationResponse(
+        id=station.id,
+        name=station.name,
+        zone_id=station.zone_id,
+        landline_phone=station.landline_phone,
+        whatsapp_phone=station.whatsapp_phone,
+        active=station.active,
+    )
 
 
 @router.get("/stations", response_model=list[StationResponse])
@@ -119,7 +131,14 @@ def list_stations(
 ) -> list[StationResponse]:
     stations = db.query(Station).order_by(Station.name.asc()).all()
     return [
-        StationResponse(id=item.id, name=item.name, zone_id=item.zone_id, active=item.active)
+        StationResponse(
+            id=item.id,
+            name=item.name,
+            zone_id=item.zone_id,
+            landline_phone=item.landline_phone,
+            whatsapp_phone=item.whatsapp_phone,
+            active=item.active,
+        )
         for item in stations
     ]
 
@@ -143,7 +162,13 @@ def create_rider(
         if not zone:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Zone not found")
 
-    rider = Rider(user_id=payload.user_id, zone_id=payload.zone_id, vehicle_type=payload.vehicle_type.strip())
+    rider = Rider(
+        user_id=payload.user_id,
+        zone_id=payload.zone_id,
+        vehicle_type=payload.vehicle_type.strip(),
+        landline_phone=payload.landline_phone.strip(),
+        whatsapp_phone=payload.whatsapp_phone.strip(),
+    )
     db.add(rider)
     db.commit()
     db.refresh(rider)
@@ -152,6 +177,8 @@ def create_rider(
         user_id=rider.user_id,
         zone_id=rider.zone_id,
         vehicle_type=rider.vehicle_type,
+        landline_phone=rider.landline_phone,
+        whatsapp_phone=rider.whatsapp_phone,
         state=rider.state,
         active=rider.active,
     )
@@ -169,6 +196,8 @@ def list_riders(
             user_id=item.user_id,
             zone_id=item.zone_id,
             vehicle_type=item.vehicle_type,
+            landline_phone=item.landline_phone,
+            whatsapp_phone=item.whatsapp_phone,
             state=item.state,
             active=item.active,
         )

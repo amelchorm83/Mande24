@@ -22,11 +22,29 @@ def _ensure_runtime_schema() -> None:
         return
 
     columns = {col["name"] for col in inspector.get_columns("client_profiles")}
-    if "colony_id" in columns:
-        pass
-    else:
-        with engine.begin() as conn:
+    with engine.begin() as conn:
+        if "colony_id" not in columns:
             conn.execute(text("ALTER TABLE client_profiles ADD COLUMN colony_id VARCHAR(64)"))
+        if "landline_phone" not in columns:
+            conn.execute(text("ALTER TABLE client_profiles ADD COLUMN landline_phone VARCHAR(40) DEFAULT ''"))
+        if "whatsapp_phone" not in columns:
+            conn.execute(text("ALTER TABLE client_profiles ADD COLUMN whatsapp_phone VARCHAR(40) DEFAULT ''"))
+
+    if "riders" in tables:
+        rider_columns = {col["name"] for col in inspector.get_columns("riders")}
+        with engine.begin() as conn:
+            if "landline_phone" not in rider_columns:
+                conn.execute(text("ALTER TABLE riders ADD COLUMN landline_phone VARCHAR(40) DEFAULT ''"))
+            if "whatsapp_phone" not in rider_columns:
+                conn.execute(text("ALTER TABLE riders ADD COLUMN whatsapp_phone VARCHAR(40) DEFAULT ''"))
+
+    if "stations" in tables:
+        station_columns = {col["name"] for col in inspector.get_columns("stations")}
+        with engine.begin() as conn:
+            if "landline_phone" not in station_columns:
+                conn.execute(text("ALTER TABLE stations ADD COLUMN landline_phone VARCHAR(40) DEFAULT ''"))
+            if "whatsapp_phone" not in station_columns:
+                conn.execute(text("ALTER TABLE stations ADD COLUMN whatsapp_phone VARCHAR(40) DEFAULT ''"))
 
     if "contact_leads" not in tables:
         return

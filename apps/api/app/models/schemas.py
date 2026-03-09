@@ -57,12 +57,16 @@ class ZoneResponse(BaseModel):
 class StationCreate(BaseModel):
     name: str = Field(min_length=2, max_length=120)
     zone_id: str
+    landline_phone: str = Field(default="", max_length=40)
+    whatsapp_phone: str = Field(default="", max_length=40)
 
 
 class StationResponse(BaseModel):
     id: str
     name: str
     zone_id: str
+    landline_phone: str
+    whatsapp_phone: str
     active: bool
 
 
@@ -70,6 +74,8 @@ class RiderCreate(BaseModel):
     user_id: str
     zone_id: str | None = None
     vehicle_type: str = Field(default="motorcycle", min_length=2, max_length=30)
+    landline_phone: str = Field(default="", max_length=40)
+    whatsapp_phone: str = Field(default="", max_length=40)
 
 
 class RiderResponse(BaseModel):
@@ -77,6 +83,8 @@ class RiderResponse(BaseModel):
     user_id: str
     zone_id: str | None
     vehicle_type: str
+    landline_phone: str
+    whatsapp_phone: str
     state: RiderState
     active: bool
 
@@ -209,6 +217,8 @@ class ClientProfileCreate(BaseModel):
     postal_code: str = Field(min_length=3, max_length=10)
     colony_id: str | None = Field(default=None, max_length=64)
     address_line: str = Field(default="", max_length=255)
+    landline_phone: str = Field(default="", max_length=40)
+    whatsapp_phone: str = Field(default="", max_length=40)
     wants_invoice: bool = False
     create_portal_access: bool = False
     email: str | None = None
@@ -226,6 +236,8 @@ class ClientProfileResponse(BaseModel):
     colony_id: str | None
     colony_name: str | None
     address_line: str
+    landline_phone: str
+    whatsapp_phone: str
     wants_invoice: bool
     active: bool
 
