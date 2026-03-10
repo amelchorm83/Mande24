@@ -5,7 +5,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_current_user, require_roles
-from app.db.models import ClientProfile, Delivery, Guide, GuideParty, PricingRule, Rider, RouteLeg, Service, ServiceType, Station, WorkflowStage
+from app.db.models import ClientProfile, Delivery, GeoColony, Guide, GuideParty, PricingRule, Rider, RouteLeg, Service, ServiceType, Station, WorkflowStage
 from app.db.models import User, UserRole
 from app.db.session import get_db
 from app.models.schemas import (
@@ -350,6 +350,77 @@ def create_guide(
         if not destination_client:
             raise HTTPException(status_code=404, detail="Destination client not found or inactive")
 
+    origin_user = None
+    destination_user = None
+    if origin_client and origin_client.user_id:
+        origin_user = db.query(User).filter(User.id == origin_client.user_id).first()
+    if destination_client and destination_client.user_id:
+        destination_user = db.query(User).filter(User.id == destination_client.user_id).first()
+
+    origin_landline_clean = (payload.origin_landline_phone or "").strip() or (origin_client.landline_phone if origin_client else "") or ""
+    origin_whatsapp_clean = payload.origin_whatsapp_phone.strip() or (origin_client.whatsapp_phone if origin_client else "") or ""
+    origin_email_clean = payload.origin_email.strip() or (origin_user.email if origin_user else "") or ""
+    origin_state_clean = payload.origin_state_code.strip().upper() or (origin_client.state_code if origin_client else "") or ""
+    origin_municipality_clean = payload.origin_municipality_code.strip().upper() or (origin_client.municipality_code if origin_client else "") or ""
+    origin_postal_clean = payload.origin_postal_code.strip() or (origin_client.postal_code if origin_client else "") or ""
+    origin_colony_clean = payload.origin_colony_id.strip() or (origin_client.colony_id if origin_client else "") or ""
+    origin_address_clean = payload.origin_address_line.strip() or (origin_client.address_line if origin_client else "") or ""
+
+    destination_landline_clean = (payload.destination_landline_phone or "").strip() or (destination_client.landline_phone if destination_client else "") or ""
+    destination_whatsapp_clean = payload.destination_whatsapp_phone.strip() or (destination_client.whatsapp_phone if destination_client else "") or ""
+    destination_email_clean = payload.destination_email.strip() or (destination_user.email if destination_user else "") or ""
+    destination_state_clean = payload.destination_state_code.strip().upper() or (destination_client.state_code if destination_client else "") or ""
+    destination_municipality_clean = payload.destination_municipality_code.strip().upper() or (destination_client.municipality_code if destination_client else "") or ""
+    destination_postal_clean = payload.destination_postal_code.strip() or (destination_client.postal_code if destination_client else "") or ""
+    destination_colony_clean = payload.destination_colony_id.strip() or (destination_client.colony_id if destination_client else "") or ""
+    destination_address_clean = payload.destination_address_line.strip() or (destination_client.address_line if destination_client else "") or ""
+
+    required_fields = [
+        (origin_whatsapp_clean, "Origin WhatsApp is required"),
+        (origin_email_clean, "Origin email is required"),
+        (origin_state_clean, "Origin state is required"),
+        (origin_municipality_clean, "Origin municipality is required"),
+        (origin_postal_clean, "Origin postal code is required"),
+        (origin_colony_clean, "Origin colony is required"),
+        (origin_address_clean, "Origin address is required"),
+        (destination_whatsapp_clean, "Destination WhatsApp is required"),
+        (destination_email_clean, "Destination email is required"),
+        (destination_state_clean, "Destination state is required"),
+        (destination_municipality_clean, "Destination municipality is required"),
+        (destination_postal_clean, "Destination postal code is required"),
+        (destination_colony_clean, "Destination colony is required"),
+        (destination_address_clean, "Destination address is required"),
+    ]
+    for value, message in required_fields:
+        if not value:
+            raise HTTPException(status_code=400, detail=message)
+
+    origin_geo_valid = (
+        db.query(GeoColony)
+        .filter(
+            GeoColony.id == origin_colony_clean,
+            GeoColony.state_code == origin_state_clean,
+            GeoColony.municipality_code == origin_municipality_clean,
+            GeoColony.postal_code == origin_postal_clean,
+        )
+        .first()
+    )
+    if not origin_geo_valid:
+        raise HTTPException(status_code=400, detail="Origin geo combination is invalid")
+
+    destination_geo_valid = (
+        db.query(GeoColony)
+        .filter(
+            GeoColony.id == destination_colony_clean,
+            GeoColony.state_code == destination_state_clean,
+            GeoColony.municipality_code == destination_municipality_clean,
+            GeoColony.postal_code == destination_postal_clean,
+        )
+        .first()
+    )
+    if not destination_geo_valid:
+        raise HTTPException(status_code=400, detail="Destination geo combination is invalid")
+
     if _is_errand_service(service_kind):
         if requester_role_clean == "origin" and not origin_client:
             raise HTTPException(status_code=400, detail="Errand requester=origin requires origin client")
@@ -395,6 +466,22 @@ def create_guide(
         guide_id=guide.id,
         origin_client_id=origin_client.id if origin_client else None,
         destination_client_id=destination_client.id if destination_client else None,
+        origin_landline_phone=origin_landline_clean,
+        origin_whatsapp_phone=origin_whatsapp_clean,
+        origin_email=origin_email_clean,
+        origin_state_code=origin_state_clean,
+        origin_municipality_code=origin_municipality_clean,
+        origin_postal_code=origin_postal_clean,
+        origin_colony_id=origin_colony_clean,
+        origin_address_line=origin_address_clean,
+        destination_landline_phone=destination_landline_clean,
+        destination_whatsapp_phone=destination_whatsapp_clean,
+        destination_email=destination_email_clean,
+        destination_state_code=destination_state_clean,
+        destination_municipality_code=destination_municipality_clean,
+        destination_postal_code=destination_postal_clean,
+        destination_colony_id=destination_colony_clean,
+        destination_address_line=destination_address_clean,
         origin_wants_invoice=(
             payload.origin_wants_invoice
             if payload.origin_wants_invoice is not None

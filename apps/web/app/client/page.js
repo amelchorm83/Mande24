@@ -23,6 +23,32 @@ export default function ClientPortalPage() {
   const [destinationName, setDestinationName] = useState("Cliente Destino");
   const [originClientId, setOriginClientId] = useState("");
   const [destinationClientId, setDestinationClientId] = useState("");
+  const [originLandlinePhone, setOriginLandlinePhone] = useState("");
+  const [originWhatsappPhone, setOriginWhatsappPhone] = useState("");
+  const [originEmail, setOriginEmail] = useState("");
+  const [originStateCode, setOriginStateCode] = useState("");
+  const [originMunicipalities, setOriginMunicipalities] = useState([]);
+  const [originMunicipalityCode, setOriginMunicipalityCode] = useState("");
+  const [originPostalCodes, setOriginPostalCodes] = useState([]);
+  const [originPostalCode, setOriginPostalCode] = useState("");
+  const [originColonies, setOriginColonies] = useState([]);
+  const [originColonyId, setOriginColonyId] = useState("");
+  const [originAddressLine, setOriginAddressLine] = useState("");
+  const [destinationLandlinePhone, setDestinationLandlinePhone] = useState("");
+  const [destinationWhatsappPhone, setDestinationWhatsappPhone] = useState("");
+  const [destinationEmail, setDestinationEmail] = useState("");
+  const [destinationStateCode, setDestinationStateCode] = useState("");
+  const [destinationMunicipalities, setDestinationMunicipalities] = useState([]);
+  const [destinationMunicipalityCode, setDestinationMunicipalityCode] = useState("");
+  const [destinationPostalCodes, setDestinationPostalCodes] = useState([]);
+  const [destinationPostalCode, setDestinationPostalCode] = useState("");
+  const [destinationColonies, setDestinationColonies] = useState([]);
+  const [destinationColonyId, setDestinationColonyId] = useState("");
+  const [destinationAddressLine, setDestinationAddressLine] = useState("");
+  const [originZoneSuggest, setOriginZoneSuggest] = useState("-");
+  const [originStationSuggest, setOriginStationSuggest] = useState("-");
+  const [destinationZoneSuggest, setDestinationZoneSuggest] = useState("-");
+  const [destinationStationSuggest, setDestinationStationSuggest] = useState("-");
   const [requesterRole, setRequesterRole] = useState("origin");
   const [originWantsInvoice, setOriginWantsInvoice] = useState(false);
   const [serviceId, setServiceId] = useState("");
@@ -57,7 +83,10 @@ export default function ClientPortalPage() {
     const saved = localStorage.getItem("m24_token") || "";
     setToken(saved);
     const email = localStorage.getItem("m24_email") || "";
-    if (email) setRegisterEmail(email);
+    if (email) {
+      setRegisterEmail(email);
+      setOriginEmail(email);
+    }
   }, []);
 
   useEffect(() => {
@@ -70,6 +99,14 @@ export default function ClientPortalPage() {
       setMunicipalityCode("");
       setPostalCode("");
       setColonyId("");
+      setOriginStateCode("");
+      setOriginMunicipalityCode("");
+      setOriginPostalCode("");
+      setOriginColonyId("");
+      setDestinationStateCode("");
+      setDestinationMunicipalityCode("");
+      setDestinationPostalCode("");
+      setDestinationColonyId("");
       return;
     }
     loadGeoStates();
@@ -138,6 +175,46 @@ export default function ClientPortalPage() {
     loadColonies(stateCode, municipalityCode, postalCode);
   }, [token, stateCode, municipalityCode, postalCode]);
 
+  useEffect(() => {
+    if (!token || !originStateCode) return;
+    loadGuideMunicipalities("origin", originStateCode);
+  }, [token, originStateCode]);
+
+  useEffect(() => {
+    if (!token || !originMunicipalityCode) return;
+    loadGuidePostalCodes("origin", originMunicipalityCode);
+  }, [token, originMunicipalityCode]);
+
+  useEffect(() => {
+    if (!token || !originStateCode || !originMunicipalityCode || !originPostalCode) return;
+    loadGuideColonies("origin", originStateCode, originMunicipalityCode, originPostalCode);
+  }, [token, originStateCode, originMunicipalityCode, originPostalCode]);
+
+  useEffect(() => {
+    if (!token || !destinationStateCode) return;
+    loadGuideMunicipalities("destination", destinationStateCode);
+  }, [token, destinationStateCode]);
+
+  useEffect(() => {
+    if (!token || !destinationMunicipalityCode) return;
+    loadGuidePostalCodes("destination", destinationMunicipalityCode);
+  }, [token, destinationMunicipalityCode]);
+
+  useEffect(() => {
+    if (!token || !destinationStateCode || !destinationMunicipalityCode || !destinationPostalCode) return;
+    loadGuideColonies("destination", destinationStateCode, destinationMunicipalityCode, destinationPostalCode);
+  }, [token, destinationStateCode, destinationMunicipalityCode, destinationPostalCode]);
+
+  useEffect(() => {
+    if (!token || !originStateCode || !originMunicipalityCode || !originPostalCode) return;
+    resolveCoverage("origin", originStateCode, originMunicipalityCode, originPostalCode, originColonyId);
+  }, [token, originStateCode, originMunicipalityCode, originPostalCode, originColonyId]);
+
+  useEffect(() => {
+    if (!token || !destinationStateCode || !destinationMunicipalityCode || !destinationPostalCode) return;
+    resolveCoverage("destination", destinationStateCode, destinationMunicipalityCode, destinationPostalCode, destinationColonyId);
+  }, [token, destinationStateCode, destinationMunicipalityCode, destinationPostalCode, destinationColonyId]);
+
   async function loadCatalogs() {
     if (!token) {
       setMsg("Necesitas token. Ve primero a /auth.");
@@ -177,6 +254,13 @@ export default function ClientPortalPage() {
         setOriginClientId(rows[0].id);
         setCustomerName(rows[0].display_name);
         setOriginWantsInvoice(Boolean(rows[0].wants_invoice));
+        setOriginLandlinePhone(rows[0].landline_phone || "");
+        setOriginWhatsappPhone(rows[0].whatsapp_phone || "");
+        setOriginStateCode(rows[0].state_code || "");
+        setOriginMunicipalityCode(rows[0].municipality_code || "");
+        setOriginPostalCode(rows[0].postal_code || "");
+        setOriginColonyId(rows[0].colony_id || "");
+        setOriginAddressLine(rows[0].address_line || "");
       }
     }
     if (destRes.ok) {
@@ -185,6 +269,13 @@ export default function ClientPortalPage() {
       if (!destinationClientId && rows.length) {
         setDestinationClientId(rows[0].id);
         setDestinationName(rows[0].display_name);
+        setDestinationLandlinePhone(rows[0].landline_phone || "");
+        setDestinationWhatsappPhone(rows[0].whatsapp_phone || "");
+        setDestinationStateCode(rows[0].state_code || "");
+        setDestinationMunicipalityCode(rows[0].municipality_code || "");
+        setDestinationPostalCode(rows[0].postal_code || "");
+        setDestinationColonyId(rows[0].colony_id || "");
+        setDestinationAddressLine(rows[0].address_line || "");
       }
     }
   }
@@ -200,7 +291,87 @@ export default function ClientPortalPage() {
     const rows = await res.json();
     setStates(rows);
     if (!stateCode && rows.length) setStateCode(rows[0].code);
+    if (!originStateCode && rows.length) setOriginStateCode(rows[0].code);
+    if (!destinationStateCode && rows.length) setDestinationStateCode(rows[0].code);
     setGeoLoading(false);
+  }
+
+  async function loadGuideMunicipalities(side, code) {
+    const res = await fetch(`${API_BASE}/api/v1/clients/geo/municipalities?state_code=${encodeURIComponent(code)}`, { headers });
+    if (!res.ok) return;
+    const rows = await res.json();
+    if (side === "origin") {
+      setOriginMunicipalities(rows);
+      setOriginMunicipalityCode(rows.length ? rows[0].code : "");
+      setOriginPostalCodes([]);
+      setOriginPostalCode("");
+      setOriginColonies([]);
+      setOriginColonyId("");
+      return;
+    }
+    setDestinationMunicipalities(rows);
+    setDestinationMunicipalityCode(rows.length ? rows[0].code : "");
+    setDestinationPostalCodes([]);
+    setDestinationPostalCode("");
+    setDestinationColonies([]);
+    setDestinationColonyId("");
+  }
+
+  async function loadGuidePostalCodes(side, code) {
+    const res = await fetch(`${API_BASE}/api/v1/clients/geo/postal-codes?municipality_code=${encodeURIComponent(code)}`, { headers });
+    if (!res.ok) return;
+    const rows = await res.json();
+    if (side === "origin") {
+      setOriginPostalCodes(rows);
+      setOriginPostalCode(rows.length ? rows[0].code : "");
+      setOriginColonies([]);
+      setOriginColonyId("");
+      return;
+    }
+    setDestinationPostalCodes(rows);
+    setDestinationPostalCode(rows.length ? rows[0].code : "");
+    setDestinationColonies([]);
+    setDestinationColonyId("");
+  }
+
+  async function loadGuideColonies(side, state, municipality, postal) {
+    const q = new URLSearchParams({
+      state_code: state,
+      municipality_code: municipality,
+      postal_code: postal,
+    });
+    const res = await fetch(`${API_BASE}/api/v1/clients/geo/colonies?${q.toString()}`, { headers });
+    if (!res.ok) return;
+    const rows = await res.json();
+    if (side === "origin") {
+      setOriginColonies(rows);
+      setOriginColonyId(rows.length ? rows[0].id : "");
+      return;
+    }
+    setDestinationColonies(rows);
+    setDestinationColonyId(rows.length ? rows[0].id : "");
+  }
+
+  async function resolveCoverage(side, state, municipality, postal, colony) {
+    const q = new URLSearchParams({
+      state_code: state,
+      municipality_code: municipality,
+      postal_code: postal,
+      colony_id: colony || "",
+    });
+    const res = await fetch(`${API_BASE}/api/v1/clients/geo/service-coverage?${q.toString()}`, { headers });
+    if (!res.ok) return;
+    const data = await res.json();
+
+    if (side === "origin") {
+      setOriginZoneSuggest(data.zone_name || "-");
+      setOriginStationSuggest(data.station_name || "-");
+      if (!stationId && data.station_id) setStationId(data.station_id);
+      return;
+    }
+
+    setDestinationZoneSuggest(data.zone_name || "-");
+    setDestinationStationSuggest(data.station_name || "-");
   }
 
   async function loadMunicipalities(code) {
@@ -294,6 +465,13 @@ export default function ClientPortalPage() {
       setMsg("Selecciona servicio y estación.");
       return;
     }
+    if (
+      !originWhatsappPhone || !originEmail || !originStateCode || !originMunicipalityCode || !originPostalCode || !originColonyId || !originAddressLine ||
+      !destinationWhatsappPhone || !destinationEmail || !destinationStateCode || !destinationMunicipalityCode || !destinationPostalCode || !destinationColonyId || !destinationAddressLine
+    ) {
+      setMsg("Completa WhatsApp, email y direccion georeferenciada de origen y destino.");
+      return;
+    }
     try {
       const res = await fetch(`${API_BASE}/api/v1/guides`, {
         method: "POST",
@@ -303,6 +481,22 @@ export default function ClientPortalPage() {
           destination_name: destinationName,
           origin_client_id: originClientId || null,
           destination_client_id: destinationClientId || null,
+          origin_landline_phone: originLandlinePhone || null,
+          origin_whatsapp_phone: originWhatsappPhone,
+          origin_email: originEmail,
+          origin_state_code: originStateCode,
+          origin_municipality_code: originMunicipalityCode,
+          origin_postal_code: originPostalCode,
+          origin_colony_id: originColonyId,
+          origin_address_line: originAddressLine,
+          destination_landline_phone: destinationLandlinePhone || null,
+          destination_whatsapp_phone: destinationWhatsappPhone,
+          destination_email: destinationEmail,
+          destination_state_code: destinationStateCode,
+          destination_municipality_code: destinationMunicipalityCode,
+          destination_postal_code: destinationPostalCode,
+          destination_colony_id: destinationColonyId,
+          destination_address_line: destinationAddressLine,
           requester_role: requesterRole,
           origin_wants_invoice: originWantsInvoice,
           service_id: serviceId,
@@ -359,13 +553,29 @@ export default function ClientPortalPage() {
     if (profile) {
       setCustomerName(profile.display_name);
       setOriginWantsInvoice(Boolean(profile.wants_invoice));
+      setOriginLandlinePhone(profile.landline_phone || "");
+      setOriginWhatsappPhone(profile.whatsapp_phone || "");
+      setOriginStateCode(profile.state_code || "");
+      setOriginMunicipalityCode(profile.municipality_code || "");
+      setOriginPostalCode(profile.postal_code || "");
+      setOriginColonyId(profile.colony_id || "");
+      setOriginAddressLine(profile.address_line || "");
     }
   }
 
   function onSelectDestinationProfile(profileId) {
     setDestinationClientId(profileId);
     const profile = destinationProfiles.find((item) => item.id === profileId);
-    if (profile) setDestinationName(profile.display_name);
+    if (profile) {
+      setDestinationName(profile.display_name);
+      setDestinationLandlinePhone(profile.landline_phone || "");
+      setDestinationWhatsappPhone(profile.whatsapp_phone || "");
+      setDestinationStateCode(profile.state_code || "");
+      setDestinationMunicipalityCode(profile.municipality_code || "");
+      setDestinationPostalCode(profile.postal_code || "");
+      setDestinationColonyId(profile.colony_id || "");
+      setDestinationAddressLine(profile.address_line || "");
+    }
   }
 
   function profileLabel(item) {
@@ -584,6 +794,94 @@ export default function ClientPortalPage() {
             </select>
           </label>
           <label>
+            Origen teléfono fijo (opcional)
+            <input value={originLandlinePhone} onChange={(e) => setOriginLandlinePhone(e.target.value)} />
+          </label>
+          <label>
+            Origen WhatsApp (obligatorio)
+            <input value={originWhatsappPhone} onChange={(e) => setOriginWhatsappPhone(e.target.value)} required />
+          </label>
+          <label>
+            Origen email (obligatorio)
+            <input type="email" value={originEmail} onChange={(e) => setOriginEmail(e.target.value)} required />
+          </label>
+          <label>
+            Origen estado
+            <select value={originStateCode} onChange={(e) => setOriginStateCode(e.target.value)}>
+              <option value="">Selecciona</option>
+              {states.map((item) => <option key={`o-st-${item.code}`} value={item.code}>{item.name}</option>)}
+            </select>
+          </label>
+          <label>
+            Origen municipio
+            <select value={originMunicipalityCode} onChange={(e) => setOriginMunicipalityCode(e.target.value)}>
+              <option value="">Selecciona</option>
+              {originMunicipalities.map((item) => <option key={`o-mn-${item.code}`} value={item.code}>{item.name}</option>)}
+            </select>
+          </label>
+          <label>
+            Origen código postal
+            <select value={originPostalCode} onChange={(e) => setOriginPostalCode(e.target.value)}>
+              <option value="">Selecciona</option>
+              {originPostalCodes.map((item) => <option key={`o-cp-${item.code}`} value={item.code}>{item.code}</option>)}
+            </select>
+          </label>
+          <label>
+            Origen colonia
+            <select value={originColonyId} onChange={(e) => setOriginColonyId(e.target.value)}>
+              <option value="">Selecciona</option>
+              {originColonies.map((item) => <option key={`o-col-${item.id}`} value={item.id}>{item.name}</option>)}
+            </select>
+          </label>
+          <label>
+            Origen dirección (solo guía)
+            <input value={originAddressLine} onChange={(e) => setOriginAddressLine(e.target.value)} required />
+          </label>
+          <label>
+            Destino teléfono fijo (opcional)
+            <input value={destinationLandlinePhone} onChange={(e) => setDestinationLandlinePhone(e.target.value)} />
+          </label>
+          <label>
+            Destino WhatsApp (obligatorio)
+            <input value={destinationWhatsappPhone} onChange={(e) => setDestinationWhatsappPhone(e.target.value)} required />
+          </label>
+          <label>
+            Destino email (obligatorio)
+            <input type="email" value={destinationEmail} onChange={(e) => setDestinationEmail(e.target.value)} required />
+          </label>
+          <label>
+            Destino estado
+            <select value={destinationStateCode} onChange={(e) => setDestinationStateCode(e.target.value)}>
+              <option value="">Selecciona</option>
+              {states.map((item) => <option key={`d-st-${item.code}`} value={item.code}>{item.name}</option>)}
+            </select>
+          </label>
+          <label>
+            Destino municipio
+            <select value={destinationMunicipalityCode} onChange={(e) => setDestinationMunicipalityCode(e.target.value)}>
+              <option value="">Selecciona</option>
+              {destinationMunicipalities.map((item) => <option key={`d-mn-${item.code}`} value={item.code}>{item.name}</option>)}
+            </select>
+          </label>
+          <label>
+            Destino código postal
+            <select value={destinationPostalCode} onChange={(e) => setDestinationPostalCode(e.target.value)}>
+              <option value="">Selecciona</option>
+              {destinationPostalCodes.map((item) => <option key={`d-cp-${item.code}`} value={item.code}>{item.code}</option>)}
+            </select>
+          </label>
+          <label>
+            Destino colonia
+            <select value={destinationColonyId} onChange={(e) => setDestinationColonyId(e.target.value)}>
+              <option value="">Selecciona</option>
+              {destinationColonies.map((item) => <option key={`d-col-${item.id}`} value={item.id}>{item.name}</option>)}
+            </select>
+          </label>
+          <label>
+            Destino dirección (solo guía)
+            <input value={destinationAddressLine} onChange={(e) => setDestinationAddressLine(e.target.value)} required />
+          </label>
+          <label>
             Solicitante del servicio
             <select value={requesterRole} onChange={(e) => setRequesterRole(e.target.value)}>
               <option value="origin">Cliente origen</option>
@@ -608,6 +906,22 @@ export default function ClientPortalPage() {
                 <option key={item.id} value={item.id}>{stationLabel(item)}</option>
               ))}
             </select>
+          </label>
+          <label>
+            Zona sugerida origen
+            <input value={originZoneSuggest} readOnly />
+          </label>
+          <label>
+            Estación sugerida origen
+            <input value={originStationSuggest} readOnly />
+          </label>
+          <label>
+            Zona sugerida destino
+            <input value={destinationZoneSuggest} readOnly />
+          </label>
+          <label>
+            Estación sugerida destino
+            <input value={destinationStationSuggest} readOnly />
           </label>
           <button className="btn btn-primary" type="submit">Crear guía</button>
         </form>

@@ -93,16 +93,76 @@ describe("portal interactions", () => {
   it("client page warns when trying to load catalogs without token", () => {
     render(<ClientPortalPage />);
 
-    fireEvent.click(screen.getByRole("button", { name: "Cargar catalogos" }));
+    fireEvent.click(screen.getByRole("button", { name: "Cargar catálogos" }));
 
     expect(screen.getByText("Necesitas token. Ve primero a /auth.")).toBeInTheDocument();
   });
 
   it("client page loads catalogs and creates guide with delivery id", async () => {
     localStorage.setItem("m24_token", "token-client");
+    localStorage.setItem("m24_email", "client@test.local");
 
     const fetchSpy = vi.spyOn(globalThis, "fetch").mockImplementation(async (url, options) => {
       const requestUrl = String(url);
+
+      if (requestUrl.includes("/api/v1/clients/geo/states")) {
+        return { ok: true, json: async () => [{ code: "TAB", name: "Tabasco" }] };
+      }
+
+      if (requestUrl.includes("/api/v1/clients/geo/municipalities")) {
+        return { ok: true, json: async () => [{ code: "CEN", name: "Centro" }] };
+      }
+
+      if (requestUrl.includes("/api/v1/clients/geo/postal-codes")) {
+        return { ok: true, json: async () => [{ code: "86000" }] };
+      }
+
+      if (requestUrl.includes("/api/v1/clients/geo/colonies")) {
+        return { ok: true, json: async () => [{ id: "COL-1", name: "Centro" }] };
+      }
+
+      if (requestUrl.includes("/api/v1/clients/geo/service-coverage")) {
+        return { ok: true, json: async () => ({ zone_name: "Zona Centro", station_name: "Estacion Centro", station_id: "st-1" }) };
+      }
+
+      if (requestUrl.includes("/api/v1/clients/profiles?client_kind=origin")) {
+        return {
+          ok: true,
+          json: async () => [{
+            id: "orig-1",
+            display_name: "Cliente Origen",
+            wants_invoice: false,
+            landline_phone: "",
+            whatsapp_phone: "5511111111",
+            state_code: "TAB",
+            municipality_code: "CEN",
+            postal_code: "86000",
+            colony_id: "COL-1",
+            address_line: "Calle 1",
+          }],
+        };
+      }
+
+      if (requestUrl.includes("/api/v1/clients/profiles?client_kind=destination")) {
+        return {
+          ok: true,
+          json: async () => [{
+            id: "dest-1",
+            display_name: "Cliente Destino",
+            landline_phone: "",
+            whatsapp_phone: "5522222222",
+            state_code: "TAB",
+            municipality_code: "CEN",
+            postal_code: "86000",
+            colony_id: "COL-1",
+            address_line: "Calle 2",
+          }],
+        };
+      }
+
+      if (requestUrl.includes("/api/v1/clients/shipments/my")) {
+        return { ok: true, json: async () => ({ sent: [], received: [] }) };
+      }
 
       if (requestUrl.includes("/api/v1/catalogs/services")) {
         return {
@@ -137,13 +197,15 @@ describe("portal interactions", () => {
 
     render(<ClientPortalPage />);
 
-    fireEvent.click(screen.getByRole("button", { name: "Cargar catalogos" }));
+    fireEvent.click(screen.getByRole("button", { name: "Cargar catálogos" }));
 
     await waitFor(() => {
       expect(screen.getByText("Catalogos cargados.")).toBeInTheDocument();
     });
 
-    fireEvent.click(screen.getByRole("button", { name: "Crear guia" }));
+    fireEvent.change(screen.getByLabelText("Origen email (obligatorio)"), { target: { value: "origen@test.local" } });
+    fireEvent.change(screen.getByLabelText("Destino email (obligatorio)"), { target: { value: "destino@test.local" } });
+    fireEvent.click(screen.getByRole("button", { name: "Crear guía" }));
 
     await waitFor(() => {
       expect(screen.getByText("Guia creada correctamente.")).toBeInTheDocument();
@@ -162,13 +224,23 @@ describe("portal interactions", () => {
       Authorization: "Bearer token-client",
       "Content-Type": "application/json",
     });
-    expect(JSON.parse(guideOptions.body)).toEqual({
-      customer_name: "Cliente Portal",
-      destination_name: "Destino Portal",
-      requester_role: "origin",
-      service_id: "svc-1",
-      station_id: "st-1",
-    });
+    const body = JSON.parse(guideOptions.body);
+    expect(body.service_id).toBe("svc-1");
+    expect(body.station_id).toBe("st-1");
+    expect(body.origin_whatsapp_phone).toBeTruthy();
+    expect(body.origin_email).toBe("origen@test.local");
+    expect(body.origin_state_code).toBeTruthy();
+    expect(body.origin_municipality_code).toBeTruthy();
+    expect(body.origin_postal_code).toBeTruthy();
+    expect(body.origin_colony_id).toBeTruthy();
+    expect(body.origin_address_line).toBeTruthy();
+    expect(body.destination_whatsapp_phone).toBeTruthy();
+    expect(body.destination_email).toBe("destino@test.local");
+    expect(body.destination_state_code).toBeTruthy();
+    expect(body.destination_municipality_code).toBeTruthy();
+    expect(body.destination_postal_code).toBeTruthy();
+    expect(body.destination_colony_id).toBeTruthy();
+    expect(body.destination_address_line).toBeTruthy();
   });
 
   it("rider page validates empty delivery id", () => {

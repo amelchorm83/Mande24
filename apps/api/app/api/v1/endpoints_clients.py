@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, Query, status
+from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_current_user, require_roles
@@ -15,8 +16,11 @@ from app.db.models import (
     GeoState,
     Guide,
     GuideParty,
+    Station,
     User,
     UserRole,
+    Zone,
+    ZoneGeoRule,
 )
 from app.db.session import get_db
 from app.models.schemas import (
@@ -125,6 +129,64 @@ def list_geo_colonies(
         )
         for item in rows
     ]
+
+
+@router.get("/geo/service-coverage")
+def resolve_geo_service_coverage(
+    state_code: str = Query(..., min_length=2, max_length=10),
+    municipality_code: str = Query(..., min_length=2, max_length=20),
+    postal_code: str = Query(..., min_length=3, max_length=10),
+    colony_id: str = Query(default="", max_length=64),
+    db: Session = Depends(get_db),
+    _user: User = Depends(get_current_user),
+) -> dict[str, str | None]:
+    state_clean = state_code.strip().upper()
+    municipality_clean = municipality_code.strip().upper()
+    postal_clean = postal_code.strip()
+    colony_clean = colony_id.strip()
+
+    candidates = (
+        db.query(ZoneGeoRule)
+        .filter(
+            ZoneGeoRule.active.is_(True),
+            ZoneGeoRule.state_code == state_clean,
+            or_(ZoneGeoRule.municipality_code.is_(None), ZoneGeoRule.municipality_code == municipality_clean),
+            or_(ZoneGeoRule.postal_code.is_(None), ZoneGeoRule.postal_code == postal_clean),
+            or_(ZoneGeoRule.colony_id.is_(None), ZoneGeoRule.colony_id == colony_clean),
+        )
+        .all()
+    )
+
+    def _score(rule: ZoneGeoRule) -> tuple[int, int, int, int]:
+        return (
+            1 if rule.colony_id else 0,
+            1 if rule.postal_code else 0,
+            1 if rule.municipality_code else 0,
+            1 if rule.state_code else 0,
+        )
+
+    if not candidates:
+        return {"zone_id": None, "zone_name": None, "station_id": None, "station_name": None}
+
+    candidates.sort(key=_score, reverse=True)
+    best_rule = candidates[0]
+    zone = db.query(Zone).filter(Zone.id == best_rule.zone_id, Zone.active.is_(True)).first()
+    if not zone:
+        return {"zone_id": None, "zone_name": None, "station_id": None, "station_name": None}
+
+    station = (
+        db.query(Station)
+        .filter(Station.zone_id == zone.id, Station.active.is_(True))
+        .order_by(Station.name.asc())
+        .first()
+    )
+
+    return {
+        "zone_id": zone.id,
+        "zone_name": zone.name,
+        "station_id": station.id if station else None,
+        "station_name": station.name if station else None,
+    }
 
 
 @router.post("/profiles", response_model=ClientProfileResponse)
