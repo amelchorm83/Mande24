@@ -1772,15 +1772,22 @@ def backend_routes(
     db: Session = Depends(get_db),
     guide_code: str = "",
     status: str = "",
+    page: int = 1,
+    page_size: int = 25,
     msg: str = "",
     kind: str = "ok",
 ) -> str:
+    safe_page = max(1, page)
+    safe_page_size = max(10, min(page_size, 100))
     rows = db.query(RouteLeg, Guide).join(Guide, Guide.id == RouteLeg.guide_id)
     if guide_code.strip():
         rows = rows.filter(Guide.guide_code.ilike(f"%{guide_code.strip()}%"))
     if status.strip():
         rows = rows.filter(RouteLeg.status == status.strip())
-    route_pairs = rows.order_by(RouteLeg.updated_at.desc()).limit(300).all()
+
+    total = rows.count()
+    offset = (safe_page - 1) * safe_page_size
+    route_pairs = rows.order_by(RouteLeg.updated_at.desc()).offset(offset).limit(safe_page_size).all()
 
     riders = db.query(Rider).filter(Rider.active.is_(True)).order_by(Rider.id.desc()).all()
     rider_options = "".join([f'<option value="{item.id}">{escape(item.id)} | user:{escape(item.user_id)}</option>' for item in riders])
@@ -1803,11 +1810,19 @@ def backend_routes(
         [f'<option value="{item}" {"selected" if status == item else ""}>{item}</option>' for item in sorted(BACKEND_ROUTE_STATUSES)]
     )
 
+    pager_params: dict[str, str] = {}
+    if guide_code.strip():
+        pager_params["guide_code"] = guide_code.strip()
+    if status.strip():
+        pager_params["status"] = status.strip()
+    pager = _pagination("/ERPMande24/routes", safe_page, safe_page_size, total, query_params=pager_params or None)
+
     content = (
         "<section class=\"panel\"><h3>Filtros de Rutas</h3>"
         "<form class=\"actions\" method=\"get\" action=\"/ERPMande24/routes\">"
         f'<input name="guide_code" value="{escape(guide_code)}" placeholder="Buscar por codigo de guia" />'
         f'<select name="status"><option value="">Todos los estados</option>{status_options}</select>'
+        f'<select name="page_size"><option value="10" {"selected" if safe_page_size == 10 else ""}>10</option><option value="25" {"selected" if safe_page_size == 25 else ""}>25</option><option value="50" {"selected" if safe_page_size == 50 else ""}>50</option><option value="100" {"selected" if safe_page_size == 100 else ""}>100</option></select>'
         "<button type=\"submit\">Aplicar</button><a class=\"btn\" href=\"/ERPMande24/routes\">Limpiar</a>"
         "</form></section>"
         "<section class=\"panel\"><h3>Actualizar Tramo</h3>"
@@ -1821,7 +1836,7 @@ def backend_routes(
         "<input name=\"route_leg_id\" placeholder=\"Route Leg ID para sugerir\" required />"
         "<button type=\"submit\">Sugerir y asignar rider por zona</button></form>"
         "</section>"
-        f"<section class=\"panel\"><h3>Tramos de Ruta</h3>{_table(['Guia', 'Seq', 'Tipo', 'Estado', 'Rider', 'Route Leg ID', 'Actualizado'], table_rows)}</section>"
+        f"<section class=\"panel\"><h3>Tramos de Ruta</h3>{pager}{_table(['Guia', 'Seq', 'Tipo', 'Estado', 'Rider', 'Route Leg ID', 'Actualizado'], table_rows)}{pager}</section>"
     )
     return _render_layout("routes", "Rutas", "Alta y operacion de tramos por guia en ERPMande24.", content, msg, kind, request=request)
 
