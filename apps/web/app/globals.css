@@ -361,6 +361,131 @@ th {
   border-color: transparent;
 }
 
+.site-footer {
+  border-top: 1px solid #f0c6a6;
+  background:
+    radial-gradient(circle at 10% 0%, #ffedd5 0%, transparent 32%),
+    radial-gradient(circle at 90% 100%, #fed7aa 0%, transparent 28%),
+    #fff7ed;
+  margin-top: 2.2rem;
+}
+
+.site-footer-inner {
+  max-width: 1120px;
+  margin: 0 auto;
+  padding: 1.3rem 1rem 1.1rem;
+  display: grid;
+  grid-template-columns: 1.5fr 1fr 1fr 1.2fr;
+  gap: 0.9rem;
+}
+
+.site-footer-brand,
+.site-footer-col,
+.site-footer-contact,
+.site-footer-bottom {
+  border: 1px solid #f0c6a6;
+  background: rgba(255, 255, 255, 0.9);
+  border-radius: 14px;
+  padding: 0.85rem;
+}
+
+.site-footer-kicker {
+  margin: 0;
+  color: #9a3412;
+  font-weight: 700;
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.site-footer-title {
+  margin: 0.25rem 0 0.5rem;
+  font-size: 1.1rem;
+}
+
+.site-footer-copy {
+  margin: 0;
+  color: var(--ink-soft);
+  line-height: 1.4;
+  font-size: 0.92rem;
+}
+
+.site-footer-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-top: 0.65rem;
+}
+
+.site-footer-pills span {
+  display: inline-block;
+  border: 1px solid #fdba74;
+  border-radius: 999px;
+  padding: 0.22rem 0.55rem;
+  font-size: 0.8rem;
+  background: #fff7ed;
+  color: #9a3412;
+}
+
+.site-footer-col {
+  display: grid;
+  align-content: start;
+  gap: 0.32rem;
+}
+
+.site-footer-col-title {
+  margin: 0 0 0.2rem;
+  font-weight: 700;
+  color: #9a3412;
+}
+
+.site-footer-col a,
+.site-footer-legal-links a {
+  text-decoration: none;
+  color: var(--ink);
+  font-size: 0.9rem;
+}
+
+.site-footer-col a:hover,
+.site-footer-legal-links a:hover {
+  color: var(--accent-3);
+}
+
+.site-footer-contact p {
+  margin: 0.2rem 0;
+  font-size: 0.9rem;
+  color: var(--ink);
+}
+
+.site-footer-wa {
+  margin-top: 0.55rem;
+  width: 100%;
+  text-align: center;
+}
+
+.site-footer-bottom {
+  grid-column: 1 / -1;
+  display: grid;
+  gap: 0.35rem;
+}
+
+.site-footer-legal-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.65rem;
+}
+
+.site-footer-meta,
+.site-footer-revision {
+  margin: 0;
+  font-size: 0.82rem;
+  color: var(--ink-soft);
+}
+
+.site-footer-revision {
+  color: #9a3412;
+}
+
 @media (max-width: 700px) {
   .shell {
     padding: 1.2rem 0.8rem 2rem;
@@ -376,5 +501,14 @@ th {
 
   .contact-grid {
     grid-template-columns: 1fr;
+  }
+
+  .site-footer-inner {
+    grid-template-columns: 1fr;
+    padding: 1rem 0.8rem;
+  }
+
+  .site-footer-bottom {
+    grid-column: auto;
   }
 }
