@@ -503,9 +503,9 @@ th {
 
 .site-footer-bottom {
   display: grid;
-  grid-template-columns: 1fr auto;
+  grid-template-columns: minmax(0, 1fr) auto;
   gap: 0.6rem 1rem;
-  align-items: center;
+  align-items: start;
 }
 
 .site-footer-bottom .site-footer-metrics {
@@ -524,6 +524,7 @@ th {
   display: grid;
   grid-template-columns: repeat(4, auto);
   gap: 0.65rem;
+  align-items: start;
 }
 
 .site-footer-meta,
@@ -532,6 +533,8 @@ th {
   font-size: 0.82rem;
   color: var(--ink-soft);
   justify-self: end;
+  max-width: 42ch;
+  text-align: right;
 }
 
 .site-footer-revision {
@@ -558,6 +561,8 @@ th {
   .site-footer-meta,
   .site-footer-revision {
     justify-self: start;
+    max-width: none;
+    text-align: left;
   }
 }
 
