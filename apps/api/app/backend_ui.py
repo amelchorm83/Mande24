@@ -1772,6 +1772,8 @@ def backend_routes(
     db: Session = Depends(get_db),
     guide_code: str = "",
     status: str = "",
+    sort_by: str = "updated_at",
+    sort_dir: str = "desc",
     page: int = 1,
     page_size: int = 25,
     msg: str = "",
@@ -1785,9 +1787,25 @@ def backend_routes(
     if status.strip():
         rows = rows.filter(RouteLeg.status == status.strip())
 
+    allowed_sort_columns = {
+        "guide": Guide.guide_code,
+        "sequence": RouteLeg.sequence,
+        "type": RouteLeg.leg_type,
+        "status": RouteLeg.status,
+        "updated_at": RouteLeg.updated_at,
+    }
+    safe_sort_by = sort_by.strip().lower() if sort_by.strip().lower() in allowed_sort_columns else "updated_at"
+    safe_sort_dir = "asc" if sort_dir.strip().lower() == "asc" else "desc"
+    sort_column = allowed_sort_columns[safe_sort_by]
+
+    if safe_sort_dir == "asc":
+        rows = rows.order_by(sort_column.asc(), RouteLeg.updated_at.desc())
+    else:
+        rows = rows.order_by(sort_column.desc(), RouteLeg.updated_at.desc())
+
     total = rows.count()
     offset = (safe_page - 1) * safe_page_size
-    route_pairs = rows.order_by(RouteLeg.updated_at.desc()).offset(offset).limit(safe_page_size).all()
+    route_pairs = rows.offset(offset).limit(safe_page_size).all()
 
     riders = db.query(Rider).filter(Rider.active.is_(True)).order_by(Rider.id.desc()).all()
     rider_options = "".join([f'<option value="{item.id}">{escape(item.id)} | user:{escape(item.user_id)}</option>' for item in riders])
@@ -1815,13 +1833,33 @@ def backend_routes(
         pager_params["guide_code"] = guide_code.strip()
     if status.strip():
         pager_params["status"] = status.strip()
+    pager_params["sort_by"] = safe_sort_by
+    pager_params["sort_dir"] = safe_sort_dir
     pager = _pagination("/ERPMande24/routes", safe_page, safe_page_size, total, query_params=pager_params or None)
+
+    sort_by_options = "".join(
+        [
+            f'<option value="guide" {"selected" if safe_sort_by == "guide" else ""}>Guia</option>',
+            f'<option value="sequence" {"selected" if safe_sort_by == "sequence" else ""}>Secuencia</option>',
+            f'<option value="type" {"selected" if safe_sort_by == "type" else ""}>Tipo</option>',
+            f'<option value="status" {"selected" if safe_sort_by == "status" else ""}>Estado</option>',
+            f'<option value="updated_at" {"selected" if safe_sort_by == "updated_at" else ""}>Actualizado</option>',
+        ]
+    )
+    sort_dir_options = "".join(
+        [
+            f'<option value="asc" {"selected" if safe_sort_dir == "asc" else ""}>Ascendente</option>',
+            f'<option value="desc" {"selected" if safe_sort_dir == "desc" else ""}>Descendente</option>',
+        ]
+    )
 
     content = (
         "<section class=\"panel\"><h3>Filtros de Rutas</h3>"
         "<form class=\"actions\" method=\"get\" action=\"/ERPMande24/routes\">"
         f'<input name="guide_code" value="{escape(guide_code)}" placeholder="Buscar por codigo de guia" />'
         f'<select name="status"><option value="">Todos los estados</option>{status_options}</select>'
+        f'<select name="sort_by">{sort_by_options}</select>'
+        f'<select name="sort_dir">{sort_dir_options}</select>'
         f'<select name="page_size"><option value="10" {"selected" if safe_page_size == 10 else ""}>10</option><option value="25" {"selected" if safe_page_size == 25 else ""}>25</option><option value="50" {"selected" if safe_page_size == 50 else ""}>50</option><option value="100" {"selected" if safe_page_size == 100 else ""}>100</option></select>'
         "<button type=\"submit\">Aplicar</button><a class=\"btn\" href=\"/ERPMande24/routes\">Limpiar</a>"
         "</form></section>"
