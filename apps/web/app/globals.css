@@ -386,11 +386,16 @@ th {
   padding: 1.3rem 1rem 1.1rem;
   display: grid;
   grid-template-columns: repeat(12, minmax(0, 1fr));
+  grid-template-areas:
+    "brand brand brand brand nav1 nav1 nav1 nav2 nav2 nav2 intel intel"
+    "contact contact contact contact contact contact intel intel intel intel intel intel"
+    "bottom bottom bottom bottom bottom bottom bottom bottom bottom bottom bottom bottom";
   gap: 0.9rem;
 }
 
 .site-footer-brand,
 .site-footer-col,
+.site-footer-intel,
 .site-footer-contact,
 .site-footer-bottom {
   border: 1px solid #f0c6a6;
@@ -401,15 +406,27 @@ th {
 }
 
 .site-footer-brand {
-  grid-column: span 4;
+  grid-area: brand;
 }
 
 .site-footer-col {
   grid-column: span 3;
 }
 
+.site-footer-inner .site-footer-col:nth-of-type(2) {
+  grid-area: nav1;
+}
+
+.site-footer-inner .site-footer-col:nth-of-type(3) {
+  grid-area: nav2;
+}
+
+.site-footer-intel {
+  grid-area: intel;
+}
+
 .site-footer-contact {
-  grid-column: span 5;
+  grid-area: contact;
 }
 
 .site-footer-kicker {
@@ -482,6 +499,16 @@ th {
   color: var(--ink);
 }
 
+.site-footer-metrics {
+  margin: 0;
+  padding-left: 1rem;
+  display: grid;
+  gap: 0.3rem;
+  color: var(--ink);
+  font-size: 0.9rem;
+  line-height: 1.35;
+}
+
 .site-footer-wa {
   margin-top: 0.55rem;
   width: 100%;
@@ -514,10 +541,17 @@ th {
 @media (max-width: 1100px) {
   .site-footer-inner {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-areas:
+      "brand brand"
+      "nav1 nav2"
+      "intel intel"
+      "contact contact"
+      "bottom bottom";
   }
 
   .site-footer-brand,
   .site-footer-col,
+  .site-footer-intel,
   .site-footer-contact {
     grid-column: auto;
   }
@@ -542,6 +576,13 @@ th {
 
   .site-footer-inner {
     grid-template-columns: 1fr;
+    grid-template-areas:
+      "brand"
+      "nav1"
+      "nav2"
+      "intel"
+      "contact"
+      "bottom";
     padding: 1rem 0.8rem;
   }
 
