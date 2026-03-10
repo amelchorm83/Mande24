@@ -63,7 +63,8 @@ MENU = [
     ("comm_station", "Comisiones Estacion", "/ERPMande24/commissions/stations"),
 ]
 
-ROLE_OPTIONS = ["admin", "station", "rider", "client"]
+ROLE_OPTIONS = ["admin", "station", "rider"]
+BLOCKED_ERP_ROLES = {"client"}
 
 MODULE_ICON_SVG = {
     "dashboard": "<rect x='3' y='3' width='18' height='18' rx='4'/><path d='M7.5 15.5v-3.5M12 15.5V8.5M16.5 15.5v-5.5'/>",
@@ -181,6 +182,7 @@ body {
   min-height: 100vh;
   display: grid;
   grid-template-columns: 270px 1fr;
+    transition: grid-template-columns 180ms ease;
 }
 
 .sidebar {
@@ -188,6 +190,7 @@ body {
   color: #dbe7ff;
   padding: 1rem;
   border-right: 1px solid var(--sidebar-line);
+    transition: padding 180ms ease;
 }
 
 .brand-row {
@@ -246,6 +249,45 @@ body {
     grid-template-columns: 34px 1fr;
     align-items: center;
     gap: 0.45rem;
+}
+
+.sidebar-toggle {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 34px;
+    height: 34px;
+    border: 1px solid #f2b183;
+    border-radius: 8px;
+    background: #fff7ed;
+    color: #7c2d12;
+    font-size: 1rem;
+    line-height: 1;
+}
+
+body.sidebar-collapsed .layout {
+    grid-template-columns: 78px 1fr;
+}
+
+body.sidebar-collapsed .sidebar {
+    padding: 0.85rem 0.55rem;
+}
+
+body.sidebar-collapsed .brand-copy,
+body.sidebar-collapsed .tag,
+body.sidebar-collapsed .sidebar-extra,
+body.sidebar-collapsed .menu a .mod-label {
+    display: none;
+}
+
+body.sidebar-collapsed .brand-row {
+    justify-content: center;
+}
+
+body.sidebar-collapsed .menu a {
+    grid-template-columns: 1fr;
+    justify-items: center;
+    padding: 0.35rem;
 }
 
 .menu a .mod-ico {
@@ -639,6 +681,13 @@ th {
 @media (max-width: 1040px) {
   .layout { grid-template-columns: 1fr; }
   .sidebar { border-right: 0; border-bottom: 1px solid var(--sidebar-line); }
+    body.sidebar-collapsed .layout { grid-template-columns: 1fr; }
+    body.sidebar-collapsed .brand-copy,
+    body.sidebar-collapsed .tag,
+    body.sidebar-collapsed .sidebar-extra,
+    body.sidebar-collapsed .menu a .mod-label {
+        display: revert;
+    }
 }
 
 @media (max-width: 760px) {
@@ -668,7 +717,7 @@ def _menu_html(active: str, role: str) -> str:
         cls = "active" if key == active else ""
         group = MODULE_GROUP.get(key, "Modulo")
         rows.append(
-            f'<a href="{href}" class="{cls}">{_module_icon_svg(key)}<span class="mod-label">{label}<small>{group}</small></span></a>'
+            f'<a href="{href}" class="{cls}" title="{escape(label)}">{_module_icon_svg(key)}<span class="mod-label">{label}<small>{group}</small></span></a>'
         )
     if role == "admin":
         rows.append(f'<a href="/docs">{_module_icon_svg("swagger")}<span class="mod-label">Swagger API<small>Integracion</small></span></a>')
@@ -678,6 +727,8 @@ def _menu_html(active: str, role: str) -> str:
 def _role_from_request(request: Request) -> str:
     role_cookie = request.cookies.get("m24_erpmande24_role") or request.cookies.get("m24_backend_role") or "admin"
     role = role_cookie.strip().lower()
+    if role in BLOCKED_ERP_ROLES:
+        return role
     return role if role in ROLE_OPTIONS else "admin"
 
 
@@ -808,6 +859,19 @@ def _render_layout(
     path_value = current_path or (str(request.url.path) if request else "/ERPMande24")
     operator_label = _current_operator_label(request)
 
+    if role_value in BLOCKED_ERP_ROLES:
+        return (
+            "<!doctype html><html lang=\"es\"><head><meta charset=\"utf-8\" />"
+            "<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\" />"
+            "<title>ERPMande24 | Acceso restringido</title>"
+            f"<style>{_base_css()}</style></head><body>"
+            '<main class="content" style="max-width:860px;margin:0 auto;padding-top:2rem;">'
+            '<section class="panel"><h1>Acceso restringido</h1>'
+            '<p class="subtitle">El rol cliente no tiene acceso a ERPMande24. Usa el portal de cliente para consultar tus guias.</p>'
+            '<div class="actions"><a class="btn primary" href="/client">Ir a Portal Cliente</a></div>'
+            '</section></main></body></html>'
+        )
+
     msg_html = ""
     if msg:
         css = "msg error" if kind == "error" else "msg"
@@ -820,6 +884,24 @@ def _render_layout(
         "  var message = form.getAttribute('data-confirm');"
         "  if (message && !window.confirm(message)) { ev.preventDefault(); }"
         "});"
+        "(function(){"
+        "  var key='m24_erp_sidebar_collapsed';"
+        "  try { if (localStorage.getItem(key) === '1') document.body.classList.add('sidebar-collapsed'); } catch (e) {}"
+        "  var btn = document.getElementById('sidebar-toggle');"
+        "  if (!btn) return;"
+        "  btn.addEventListener('click', function(){"
+        "    document.body.classList.toggle('sidebar-collapsed');"
+        "    var collapsed = document.body.classList.contains('sidebar-collapsed');"
+        "    btn.setAttribute('aria-expanded', collapsed ? 'false' : 'true');"
+        "    btn.setAttribute('title', collapsed ? 'Mostrar menu' : 'Ocultar menu');"
+        "    btn.textContent = collapsed ? '>' : '<';"
+        "    try { localStorage.setItem(key, collapsed ? '1' : '0'); } catch (e) {}"
+        "  });"
+        "  var collapsed = document.body.classList.contains('sidebar-collapsed');"
+        "  btn.setAttribute('aria-expanded', collapsed ? 'false' : 'true');"
+        "  btn.setAttribute('title', collapsed ? 'Mostrar menu' : 'Ocultar menu');"
+        "  btn.textContent = collapsed ? '>' : '<';"
+        "})();"
         "</script>"
     )
 
@@ -895,8 +977,9 @@ def _render_layout(
         "<div class=\"layout\">"
         "<aside class=\"sidebar\">"
         "<div class=\"brand-row\"><img class=\"brand-logo\" src=\"/ERPMande24/icon.svg?v=2\" alt=\"Icono ERPMande24\" /><div class=\"brand-copy\"><h2>ERPMande24</h2><small>Entrega segura. Ruta inteligente.</small></div></div>"
-        "<span class=\"tag\">ERPMande24 Admin</span>"
-        f"<nav class=\"menu\">{_menu_html(active, role_value)}</nav>{_role_switcher(role_value, path_value)}{_operator_switcher(request, path_value)}</aside>"
+        "<button id=\"sidebar-toggle\" class=\"sidebar-toggle\" type=\"button\" title=\"Ocultar menu\" aria-label=\"Ocultar o mostrar menu lateral\" aria-expanded=\"true\"><</button>"
+        f"<span class=\"tag\">ERPMande24 {escape(role_value.title())}</span>"
+        f"<nav class=\"menu\">{_menu_html(active, role_value)}</nav><div class=\"sidebar-extra\">{_role_switcher(role_value, path_value)}{_operator_switcher(request, path_value)}</div></aside>"
         "<main class=\"content\">"
         f"<header class=\"header\"><div><h1>{escape(title)}</h1><p class=\"subtitle\">{escape(subtitle)}</p></div>"
         f"<div class=\"top-actions\"><span class=\"tag\">Operador: {escape(operator_label)}</span><a class=\"btn\" href=\"/ERPMande24\">Dashboard</a><a class=\"btn primary\" href=\"/ERPMande24/guides/new\">Nueva Guia</a></div></header>"
