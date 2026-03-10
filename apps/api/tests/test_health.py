@@ -153,15 +153,51 @@ def test_weekly_commissions() -> None:
             )
             assert create_rider_response.status_code in (200, 409)
 
+            rider = users_db.query(Rider).filter(Rider.user_id == rider_user.id).first()
+            assert rider is not None
+
         guide_code = create_response.json()["guide_code"]
         guide_fetch = client.get(f"/api/v1/guides/{guide_code}", headers=client_headers)
         assert guide_fetch.status_code == 200
 
+        route_legs_response = client.get(f"/api/v1/guides/{guide_code}/route-legs", headers=admin_headers)
+        assert route_legs_response.status_code == 200
+        route_legs = route_legs_response.json()
+        assert len(route_legs) >= 1
+
+        for leg in route_legs:
+            assign_response = client.patch(
+                f"/api/v1/guides/route-legs/{leg['id']}/assign",
+                json={"rider_id": rider.id, "status": "assigned"},
+                headers=admin_headers,
+            )
+            assert assign_response.status_code == 200
+
+        rider_route_legs = client.get("/api/v1/guides/route-legs/my", headers=rider_headers)
+        assert rider_route_legs.status_code == 200
+        my_guide_legs = sorted(
+            [item for item in rider_route_legs.json() if item["guide_code"] == guide_code],
+            key=lambda item: item["sequence"],
+        )
+        assert len(my_guide_legs) == len(route_legs)
+
+        for leg in my_guide_legs:
+            in_progress_response = client.patch(
+                f"/api/v1/guides/route-legs/{leg['id']}/assign",
+                json={"status": "in_progress"},
+                headers=rider_headers,
+            )
+            assert in_progress_response.status_code == 200
+
+            completed_response = client.patch(
+                f"/api/v1/guides/route-legs/{leg['id']}/assign",
+                json={"status": "completed"},
+                headers=rider_headers,
+            )
+            assert completed_response.status_code == 200
+
         delivery = users_db.query(Delivery).order_by(Delivery.created_at.desc()).first()
         assert delivery is not None
-
-        rider = users_db.query(Rider).filter(Rider.user_id == rider_user.id).first()
-        assert rider is not None
         delivery.rider_id = rider.id
         delivery.commission_amount = 35.0
         users_db.commit()
@@ -180,6 +216,12 @@ def test_weekly_commissions() -> None:
     assert rider_commissions.status_code == 200
     assert len(rider_commissions.json()["rows"]) >= 1
 
+    rider_by_leg = client.get("/api/v1/commissions/riders/weekly/by-leg", headers=admin_headers)
+    assert rider_by_leg.status_code == 200
+    rider_by_leg_rows = rider_by_leg.json()["rows"]
+    assert len(rider_by_leg_rows) >= 1
+    assert any(row["leg_count"] >= 1 for row in rider_by_leg_rows)
+
     close_rider_1 = client.post("/api/v1/commissions/riders/weekly/close", headers=admin_headers)
     assert close_rider_1.status_code == 200
     close_rider_2 = client.post("/api/v1/commissions/riders/weekly/close", headers=admin_headers)
@@ -188,6 +230,12 @@ def test_weekly_commissions() -> None:
     station_commissions = client.get("/api/v1/commissions/stations/weekly", headers=admin_headers)
     assert station_commissions.status_code == 200
     assert len(station_commissions.json()["rows"]) >= 1
+
+    station_by_leg = client.get("/api/v1/commissions/stations/weekly/by-leg", headers=admin_headers)
+    assert station_by_leg.status_code == 200
+    station_by_leg_rows = station_by_leg.json()["rows"]
+    assert len(station_by_leg_rows) >= 1
+    assert any(row["leg_count"] >= 1 for row in station_by_leg_rows)
 
     close_station_1 = client.post("/api/v1/commissions/stations/weekly/close", headers=admin_headers)
     assert close_station_1.status_code == 200

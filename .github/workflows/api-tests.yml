@@ -34,4 +34,4 @@ jobs:
           pip install pytest
 
       - name: Run API tests
-        run: pytest -q tests/test_health.py
+        run: pytest -q tests
