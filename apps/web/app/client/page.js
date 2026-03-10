@@ -23,6 +23,7 @@ export default function ClientPortalPage() {
   const [destinationName, setDestinationName] = useState("Cliente Destino");
   const [originClientId, setOriginClientId] = useState("");
   const [destinationClientId, setDestinationClientId] = useState("");
+  const [requesterRole, setRequesterRole] = useState("origin");
   const [originWantsInvoice, setOriginWantsInvoice] = useState(false);
   const [serviceId, setServiceId] = useState("");
   const [stationId, setStationId] = useState("");
@@ -302,6 +303,7 @@ export default function ClientPortalPage() {
           destination_name: destinationName,
           origin_client_id: originClientId || null,
           destination_client_id: destinationClientId || null,
+          requester_role: requesterRole,
           origin_wants_invoice: originWantsInvoice,
           service_id: serviceId,
           station_id: stationId,
@@ -579,6 +581,14 @@ export default function ClientPortalPage() {
             <select value={originWantsInvoice ? "true" : "false"} onChange={(e) => setOriginWantsInvoice(e.target.value === "true")}>
               <option value="true">Sí</option>
               <option value="false">No</option>
+            </select>
+          </label>
+          <label>
+            Solicitante del servicio
+            <select value={requesterRole} onChange={(e) => setRequesterRole(e.target.value)}>
+              <option value="origin">Cliente origen</option>
+              <option value="destination">Cliente destino</option>
+              <option value="external">Tercero / externo</option>
             </select>
           </label>
           <label>

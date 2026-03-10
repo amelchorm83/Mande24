@@ -165,6 +165,7 @@ describe("portal interactions", () => {
     expect(JSON.parse(guideOptions.body)).toEqual({
       customer_name: "Cliente Portal",
       destination_name: "Destino Portal",
+      requester_role: "origin",
       service_id: "svc-1",
       station_id: "st-1",
     });

@@ -119,6 +119,7 @@ class GuideCreate(BaseModel):
     origin_client_id: str | None = None
     destination_client_id: str | None = None
     origin_wants_invoice: bool | None = None
+    requester_role: str = Field(default="origin", pattern="^(origin|destination|external)$")
     service_id: str
     station_id: str
     destination_station_id: str | None = None

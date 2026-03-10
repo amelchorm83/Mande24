@@ -5,7 +5,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_current_user, require_roles
-from app.db.models import ClientProfile, Delivery, Guide, GuideParty, PricingRule, Rider, RouteLeg, Service, Station, WorkflowStage
+from app.db.models import ClientProfile, Delivery, Guide, GuideParty, PricingRule, Rider, RouteLeg, Service, ServiceType, Station, WorkflowStage
 from app.db.models import User, UserRole
 from app.db.session import get_db
 from app.models.schemas import (
@@ -22,6 +22,21 @@ router = APIRouter(prefix="/guides", tags=["guides"])
 
 VALID_ROUTE_LEG_STATUSES = {"planned", "assigned", "in_progress", "completed", "failed", "cancelled"}
 ROUTE_LEG_MUTATING_STATUSES = {"in_progress", "completed", "failed"}
+REQUESTER_ROLE_OPTIONS = {"origin", "destination", "external"}
+
+
+def _service_type_value(service_type: object) -> str:
+    raw = getattr(service_type, "value", service_type)
+    return str(raw or "").strip().lower()
+
+
+def _is_errand_service(service_type: object) -> bool:
+    return _service_type_value(service_type) == ServiceType.errand.value
+
+
+def _sanitize_requester_role(requester_role: str) -> str:
+    value = requester_role.strip().lower()
+    return value if value in REQUESTER_ROLE_OPTIONS else "origin"
 
 
 def _to_guide_response(guide: Guide) -> GuideResponse:
@@ -76,8 +91,9 @@ def _build_route_legs(
     use_station_handoff: bool,
 ) -> list[RouteLeg]:
     route_legs: list[RouteLeg] = []
+    service_kind = _service_type_value(service_type)
 
-    if service_type in {"messaging", "package"}:
+    if service_kind in {"messaging", "package"}:
         route_legs.append(
             RouteLeg(
                 guide_id=guide.id,
@@ -278,6 +294,16 @@ def _suggest_riders_for_route_leg(db: Session, route_leg: RouteLeg) -> list[Rout
     return rows
 
 
+def _assigned_rider_for_guide(db: Session, guide_id: str) -> str | None:
+    assigned = (
+        db.query(RouteLeg.assigned_rider_id)
+        .filter(RouteLeg.guide_id == guide_id, RouteLeg.assigned_rider_id.isnot(None))
+        .order_by(RouteLeg.sequence.asc())
+        .first()
+    )
+    return assigned[0] if assigned and assigned[0] else None
+
+
 @router.post("", response_model=GuideResponse)
 def create_guide(
     payload: GuideCreate,
@@ -309,6 +335,9 @@ def create_guide(
     if not pricing_rule:
         raise HTTPException(status_code=400, detail="No active pricing rule for service and station")
 
+    service_kind = _service_type_value(service.service_type)
+    requester_role_clean = _sanitize_requester_role(payload.requester_role)
+
     origin_client = None
     destination_client = None
     if payload.origin_client_id:
@@ -321,6 +350,12 @@ def create_guide(
         if not destination_client:
             raise HTTPException(status_code=404, detail="Destination client not found or inactive")
 
+    if _is_errand_service(service_kind):
+        if requester_role_clean == "origin" and not origin_client:
+            raise HTTPException(status_code=400, detail="Errand requester=origin requires origin client")
+        if requester_role_clean == "destination" and not destination_client:
+            raise HTTPException(status_code=400, detail="Errand requester=destination requires destination client")
+
     customer_name = payload.customer_name.strip()
     destination_name = payload.destination_name.strip()
     if origin_client:
@@ -328,12 +363,18 @@ def create_guide(
     if destination_client:
         destination_name = destination_client.display_name
 
+    if _is_errand_service(service_kind):
+        if requester_role_clean == "destination" and destination_client:
+            customer_name = destination_client.display_name
+        elif requester_role_clean == "origin" and origin_client:
+            customer_name = origin_client.display_name
+
     guide_code = f"M24-{datetime.now(timezone.utc).strftime('%Y%m%d')}-{uuid4().hex[:6].upper()}"
     guide = Guide(
         guide_code=guide_code,
         customer_name=customer_name,
         destination_name=destination_name,
-        service_type=service.service_type.value,
+        service_type=service_kind,
         service_id=service.id,
         station_id=station.id,
         destination_station_id=destination_station.id,
@@ -346,6 +387,7 @@ def create_guide(
     delivery = Delivery(
         guide_id=guide.id,
         stage=WorkflowStage.assigned,
+        note=(f"requester_role:{requester_role_clean}" if _is_errand_service(service_kind) else None),
     )
     db.add(delivery)
 
@@ -364,7 +406,7 @@ def create_guide(
     for leg in _build_route_legs(
         guide=guide,
         pricing_rule=pricing_rule,
-        service_type=service.service_type.value,
+        service_type=service_kind,
         station_id=station.id,
         destination_station_id=destination_station.id,
         use_station_handoff=payload.use_station_handoff,
@@ -459,9 +501,17 @@ def assign_route_leg(
         rider = db.query(Rider).filter(Rider.id == payload.rider_id, Rider.active.is_(True)).first()
         if not rider:
             raise HTTPException(status_code=404, detail="Rider not found or inactive")
-        route_leg.assigned_rider_id = rider.id
-        if route_leg.status == "planned":
-            route_leg.status = "assigned"
+        guide = db.query(Guide).filter(Guide.id == route_leg.guide_id).first()
+        if guide and _is_errand_service(guide.service_type):
+            legs = db.query(RouteLeg).filter(RouteLeg.guide_id == route_leg.guide_id).all()
+            for leg_item in legs:
+                leg_item.assigned_rider_id = rider.id
+                if leg_item.status == "planned":
+                    leg_item.status = "assigned"
+        else:
+            route_leg.assigned_rider_id = rider.id
+            if route_leg.status == "planned":
+                route_leg.status = "assigned"
 
     if payload.status:
         new_status = payload.status.strip().lower()
@@ -489,6 +539,22 @@ def suggest_riders_for_route_leg(
     route_leg = db.query(RouteLeg).filter(RouteLeg.id == route_leg_id).first()
     if not route_leg:
         raise HTTPException(status_code=404, detail="Route leg not found")
+    guide = db.query(Guide).filter(Guide.id == route_leg.guide_id).first()
+    if guide and _is_errand_service(guide.service_type):
+        existing_rider_id = _assigned_rider_for_guide(db, route_leg.guide_id)
+        if existing_rider_id:
+            rider = db.query(Rider).filter(Rider.id == existing_rider_id, Rider.active.is_(True)).first()
+            if rider:
+                return [
+                    RouteLegRiderSuggestionResponse(
+                        rider_id=rider.id,
+                        user_id=rider.user_id,
+                        zone_id=rider.zone_id,
+                        vehicle_type=rider.vehicle_type,
+                        score=0,
+                        reason="errand_unified_rider",
+                    )
+                ]
     return _suggest_riders_for_route_leg(db, route_leg)
 
 
