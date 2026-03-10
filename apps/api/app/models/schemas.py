@@ -93,6 +93,10 @@ class PricingRuleCreate(BaseModel):
     service_id: str
     station_id: str
     price: float = Field(gt=0)
+    pickup_fee: float = Field(default=0.0, ge=0)
+    delivery_fee: float = Field(default=0.0, ge=0)
+    transfer_fee: float = Field(default=0.0, ge=0)
+    station_fee: float = Field(default=0.0, ge=0)
     currency: str = Field(default="MXN", min_length=3, max_length=10)
 
 
@@ -101,6 +105,10 @@ class PricingRuleResponse(BaseModel):
     service_id: str
     station_id: str
     price: float
+    pickup_fee: float
+    delivery_fee: float
+    transfer_fee: float
+    station_fee: float
     currency: str
     active: bool
 
@@ -113,6 +121,8 @@ class GuideCreate(BaseModel):
     origin_wants_invoice: bool | None = None
     service_id: str
     station_id: str
+    destination_station_id: str | None = None
+    use_station_handoff: bool = False
 
 
 class GuideResponse(BaseModel):
@@ -122,9 +132,41 @@ class GuideResponse(BaseModel):
     service_type: str
     service_id: str | None
     station_id: str | None
+    destination_station_id: str | None
     sale_amount: float
     currency: str
     created_at: datetime
+
+
+class RouteLegResponse(BaseModel):
+    id: str
+    guide_code: str
+    sequence: int
+    leg_type: str
+    from_node_type: str
+    to_node_type: str
+    origin_station_id: str | None
+    destination_station_id: str | None
+    assigned_rider_id: str | None
+    rider_fee_amount: float
+    station_fee_amount: float
+    currency: str
+    status: str
+    updated_at: datetime
+
+
+class RouteLegAssignRequest(BaseModel):
+    rider_id: str | None = None
+    status: str | None = None
+
+
+class RouteLegRiderSuggestionResponse(BaseModel):
+    rider_id: str
+    user_id: str
+    zone_id: str | None
+    vehicle_type: str
+    score: int
+    reason: str
 
 
 class DeliveryStageUpdate(BaseModel):
@@ -160,10 +202,36 @@ class RiderWeeklyCommissionResponse(BaseModel):
     rows: list[RiderWeeklyCommissionRow]
 
 
+class RiderLegTypeWeeklyCommissionRow(BaseModel):
+    rider_id: str
+    leg_type: str
+    leg_count: int
+    total_amount: float
+
+
+class RiderLegTypeWeeklyCommissionResponse(BaseModel):
+    week_start: str
+    week_end: str
+    rows: list[RiderLegTypeWeeklyCommissionRow]
+
+
 class StationWeeklyCommissionResponse(BaseModel):
     week_start: str
     week_end: str
     rows: list[StationWeeklyCommissionRow]
+
+
+class StationLegTypeWeeklyCommissionRow(BaseModel):
+    station_id: str
+    leg_type: str
+    leg_count: int
+    total_amount: float
+
+
+class StationLegTypeWeeklyCommissionResponse(BaseModel):
+    week_start: str
+    week_end: str
+    rows: list[StationLegTypeWeeklyCommissionRow]
 
 
 class RiderCommissionHistoryRow(BaseModel):

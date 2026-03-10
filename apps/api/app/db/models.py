@@ -78,12 +78,14 @@ class Guide(Base):
     service_type: Mapped[str] = mapped_column(String(50), default="messaging")
     service_id: Mapped[str | None] = mapped_column(String(32), ForeignKey("services.id"), nullable=True)
     station_id: Mapped[str | None] = mapped_column(String(32), ForeignKey("stations.id"), nullable=True)
+    destination_station_id: Mapped[str | None] = mapped_column(String(32), ForeignKey("stations.id"), nullable=True)
     sale_amount: Mapped[float] = mapped_column(Float, default=0.0)
     currency: Mapped[str] = mapped_column(String(10), default="MXN")
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
 
     deliveries: Mapped[list["Delivery"]] = relationship(back_populates="guide", cascade="all, delete-orphan")
     parties: Mapped[list["GuideParty"]] = relationship(back_populates="guide", cascade="all, delete-orphan")
+    route_legs: Mapped[list["RouteLeg"]] = relationship(back_populates="guide", cascade="all, delete-orphan")
 
 
 class Delivery(Base):
@@ -163,6 +165,10 @@ class PricingRule(Base):
     service_id: Mapped[str] = mapped_column(String(32), ForeignKey("services.id"), index=True)
     station_id: Mapped[str] = mapped_column(String(32), ForeignKey("stations.id"), index=True)
     price: Mapped[float] = mapped_column(Float, default=0.0)
+    pickup_fee: Mapped[float] = mapped_column(Float, default=0.0)
+    delivery_fee: Mapped[float] = mapped_column(Float, default=0.0)
+    transfer_fee: Mapped[float] = mapped_column(Float, default=0.0)
+    station_fee: Mapped[float] = mapped_column(Float, default=0.0)
     currency: Mapped[str] = mapped_column(String(10), default="MXN")
     active: Mapped[bool] = mapped_column(Boolean, default=True)
 
@@ -257,6 +263,32 @@ class GuideParty(Base):
     origin_wants_invoice: Mapped[bool] = mapped_column(Boolean, default=False)
 
     guide: Mapped[Guide] = relationship(back_populates="parties")
+
+
+class RouteLeg(Base):
+    __tablename__ = "route_legs"
+
+    id: Mapped[str] = mapped_column(String(32), primary_key=True, default=lambda: uuid4().hex)
+    guide_id: Mapped[str] = mapped_column(String(32), ForeignKey("guides.id", ondelete="CASCADE"), index=True)
+    sequence: Mapped[int] = mapped_column(default=1)
+    leg_type: Mapped[str] = mapped_column(String(40), default="pickup_to_station")
+    from_node_type: Mapped[str] = mapped_column(String(40), default="client_origin")
+    to_node_type: Mapped[str] = mapped_column(String(40), default="station")
+    origin_station_id: Mapped[str | None] = mapped_column(String(32), ForeignKey("stations.id"), nullable=True, index=True)
+    destination_station_id: Mapped[str | None] = mapped_column(String(32), ForeignKey("stations.id"), nullable=True, index=True)
+    assigned_rider_id: Mapped[str | None] = mapped_column(String(32), ForeignKey("riders.id"), nullable=True, index=True)
+    rider_fee_amount: Mapped[float] = mapped_column(Float, default=0.0)
+    station_fee_amount: Mapped[float] = mapped_column(Float, default=0.0)
+    currency: Mapped[str] = mapped_column(String(10), default="MXN")
+    status: Mapped[str] = mapped_column(String(20), default="planned")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
+    )
+
+    guide: Mapped[Guide] = relationship(back_populates="route_legs")
 
 
 class ZoneGeoRule(Base):

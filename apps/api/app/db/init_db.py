@@ -19,7 +19,17 @@ def _ensure_runtime_schema() -> None:
                 conn.execute(text("ALTER TABLE user_role_audits ADD COLUMN changed_by_email VARCHAR(190)"))
 
     if "client_profiles" not in tables:
+        guide_columns = {col["name"] for col in inspector.get_columns("guides")} if "guides" in tables else set()
+        with engine.begin() as conn:
+            if "guides" in tables and "destination_station_id" not in guide_columns:
+                conn.execute(text("ALTER TABLE guides ADD COLUMN destination_station_id VARCHAR(32)"))
         return
+
+    if "guides" in tables:
+        guide_columns = {col["name"] for col in inspector.get_columns("guides")}
+        with engine.begin() as conn:
+            if "destination_station_id" not in guide_columns:
+                conn.execute(text("ALTER TABLE guides ADD COLUMN destination_station_id VARCHAR(32)"))
 
     columns = {col["name"] for col in inspector.get_columns("client_profiles")}
     with engine.begin() as conn:
@@ -45,6 +55,28 @@ def _ensure_runtime_schema() -> None:
                 conn.execute(text("ALTER TABLE stations ADD COLUMN landline_phone VARCHAR(40) DEFAULT ''"))
             if "whatsapp_phone" not in station_columns:
                 conn.execute(text("ALTER TABLE stations ADD COLUMN whatsapp_phone VARCHAR(40) DEFAULT ''"))
+
+    if "pricing_rules" in tables:
+        pricing_columns = {col["name"] for col in inspector.get_columns("pricing_rules")}
+        with engine.begin() as conn:
+            if "pickup_fee" not in pricing_columns:
+                conn.execute(text("ALTER TABLE pricing_rules ADD COLUMN pickup_fee FLOAT DEFAULT 0"))
+            if "delivery_fee" not in pricing_columns:
+                conn.execute(text("ALTER TABLE pricing_rules ADD COLUMN delivery_fee FLOAT DEFAULT 0"))
+            if "transfer_fee" not in pricing_columns:
+                conn.execute(text("ALTER TABLE pricing_rules ADD COLUMN transfer_fee FLOAT DEFAULT 0"))
+            if "station_fee" not in pricing_columns:
+                conn.execute(text("ALTER TABLE pricing_rules ADD COLUMN station_fee FLOAT DEFAULT 0"))
+
+    if "route_legs" in tables:
+        route_columns = {col["name"] for col in inspector.get_columns("route_legs")}
+        with engine.begin() as conn:
+            if "rider_fee_amount" not in route_columns:
+                conn.execute(text("ALTER TABLE route_legs ADD COLUMN rider_fee_amount FLOAT DEFAULT 0"))
+            if "station_fee_amount" not in route_columns:
+                conn.execute(text("ALTER TABLE route_legs ADD COLUMN station_fee_amount FLOAT DEFAULT 0"))
+            if "currency" not in route_columns:
+                conn.execute(text("ALTER TABLE route_legs ADD COLUMN currency VARCHAR(10) DEFAULT 'MXN'"))
 
     if "contact_leads" not in tables:
         return

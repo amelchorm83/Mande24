@@ -7,9 +7,13 @@ from app.api.deps import require_roles
 from app.db.models import RiderCommission, StationCommission, User, UserRole
 from app.db.session import get_db
 from app.models.schemas import (
+    RiderLegTypeWeeklyCommissionResponse,
+    RiderLegTypeWeeklyCommissionRow,
     RiderCommissionHistoryRow,
     RiderWeeklyCommissionResponse,
     RiderWeeklyCommissionRow,
+    StationLegTypeWeeklyCommissionResponse,
+    StationLegTypeWeeklyCommissionRow,
     StationCommissionHistoryRow,
     StationWeeklyCommissionResponse,
     StationWeeklyCommissionRow,
@@ -17,7 +21,9 @@ from app.models.schemas import (
 from app.services.commissions import (
     close_rider_week,
     close_station_week,
+    compute_rider_leg_type_rows,
     compute_rider_rows,
+    compute_station_leg_type_rows,
     compute_station_rows,
     resolve_week_window,
 )
@@ -38,6 +44,30 @@ def rider_weekly_commissions(
         for rider_id, count, total in tuples
     ]
     return RiderWeeklyCommissionResponse(
+        week_start=monday.isoformat(),
+        week_end=(monday + timedelta(days=6)).isoformat(),
+        rows=rows,
+    )
+
+
+@router.get("/riders/weekly/by-leg", response_model=RiderLegTypeWeeklyCommissionResponse)
+def rider_weekly_commissions_by_leg(
+    week_start: str | None = None,
+    db: Session = Depends(get_db),
+    _user: User = Depends(require_roles(UserRole.admin, UserRole.station)),
+) -> RiderLegTypeWeeklyCommissionResponse:
+    start_dt, end_dt, monday = resolve_week_window(week_start)
+    tuples = compute_rider_leg_type_rows(db, start_dt, end_dt)
+    rows = [
+        RiderLegTypeWeeklyCommissionRow(
+            rider_id=rider_id,
+            leg_type=leg_type,
+            leg_count=count,
+            total_amount=total,
+        )
+        for rider_id, leg_type, count, total in tuples
+    ]
+    return RiderLegTypeWeeklyCommissionResponse(
         week_start=monday.isoformat(),
         week_end=(monday + timedelta(days=6)).isoformat(),
         rows=rows,
@@ -100,6 +130,30 @@ def station_weekly_commissions(
         for station_id, count, total in tuples
     ]
     return StationWeeklyCommissionResponse(
+        week_start=monday.isoformat(),
+        week_end=(monday + timedelta(days=6)).isoformat(),
+        rows=rows,
+    )
+
+
+@router.get("/stations/weekly/by-leg", response_model=StationLegTypeWeeklyCommissionResponse)
+def station_weekly_commissions_by_leg(
+    week_start: str | None = None,
+    db: Session = Depends(get_db),
+    _user: User = Depends(require_roles(UserRole.admin, UserRole.station)),
+) -> StationLegTypeWeeklyCommissionResponse:
+    start_dt, end_dt, monday = resolve_week_window(week_start)
+    tuples = compute_station_leg_type_rows(db, start_dt, end_dt)
+    rows = [
+        StationLegTypeWeeklyCommissionRow(
+            station_id=station_id,
+            leg_type=leg_type,
+            leg_count=count,
+            total_amount=total,
+        )
+        for station_id, leg_type, count, total in tuples
+    ]
+    return StationLegTypeWeeklyCommissionResponse(
         week_start=monday.isoformat(),
         week_end=(monday + timedelta(days=6)).isoformat(),
         rows=rows,

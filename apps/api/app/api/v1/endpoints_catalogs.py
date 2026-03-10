@@ -231,6 +231,10 @@ def create_pricing_rule(
         service_id=payload.service_id,
         station_id=payload.station_id,
         price=payload.price,
+        pickup_fee=payload.pickup_fee,
+        delivery_fee=payload.delivery_fee,
+        transfer_fee=payload.transfer_fee,
+        station_fee=payload.station_fee,
         currency=payload.currency.strip().upper(),
     )
     db.add(rule)
@@ -241,6 +245,10 @@ def create_pricing_rule(
         service_id=rule.service_id,
         station_id=rule.station_id,
         price=rule.price,
+        pickup_fee=rule.pickup_fee,
+        delivery_fee=rule.delivery_fee,
+        transfer_fee=rule.transfer_fee,
+        station_fee=rule.station_fee,
         currency=rule.currency,
         active=rule.active,
     )
@@ -258,6 +266,10 @@ def list_pricing_rules(
             service_id=item.service_id,
             station_id=item.station_id,
             price=item.price,
+            pickup_fee=item.pickup_fee,
+            delivery_fee=item.delivery_fee,
+            transfer_fee=item.transfer_fee,
+            station_fee=item.station_fee,
             currency=item.currency,
             active=item.active,
         )

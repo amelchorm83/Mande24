@@ -8,6 +8,11 @@ export default function RiderPortalPage() {
   const [section, setSection] = useState("actualizar");
   const [token, setToken] = useState("");
   const [deliveryId, setDeliveryId] = useState("");
+  const [routeGuideCode, setRouteGuideCode] = useState("");
+  const [routeLegRows, setRouteLegRows] = useState([]);
+  const [myRouteLegRows, setMyRouteLegRows] = useState([]);
+  const [selectedRouteLegId, setSelectedRouteLegId] = useState("");
+  const [routeStatus, setRouteStatus] = useState("in_progress");
   const [stage, setStage] = useState("in_transit");
   const [hasEvidence, setHasEvidence] = useState(false);
   const [hasSignature, setHasSignature] = useState(false);
@@ -36,6 +41,75 @@ export default function RiderPortalPage() {
         return;
       }
       setMsg(`Entrega actualizada: ${data.stage}`);
+    } catch (error) {
+      setMsg(`Error de red: ${error.message}`);
+    }
+  }
+
+  async function loadMyRouteLegs() {
+    if (!token) {
+      setMsg("Necesitas token para consultar tramos.");
+      return;
+    }
+    try {
+      const res = await fetch(`${API_BASE}/api/v1/guides/route-legs/my`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setMsg(`Error cargando tramos: ${JSON.stringify(data)}`);
+        return;
+      }
+      setMyRouteLegRows(data);
+      setMsg(`Tramos asignados cargados: ${data.length}`);
+    } catch (error) {
+      setMsg(`Error de red: ${error.message}`);
+    }
+  }
+
+  async function loadGuideRouteLegs() {
+    if (!token || !routeGuideCode) {
+      setMsg("Captura guía y token para consultar ruta.");
+      return;
+    }
+    try {
+      const code = encodeURIComponent(routeGuideCode.trim().toUpperCase());
+      const res = await fetch(`${API_BASE}/api/v1/guides/${code}/route-legs`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setMsg(`Error ruta: ${JSON.stringify(data)}`);
+        return;
+      }
+      setRouteLegRows(data);
+      setSelectedRouteLegId(data.length ? data[0].id : "");
+      setMsg(`Ruta cargada: ${data.length} tramos.`);
+    } catch (error) {
+      setMsg(`Error de red: ${error.message}`);
+    }
+  }
+
+  async function updateRouteLegStatus(e) {
+    e.preventDefault();
+    if (!token || !selectedRouteLegId) {
+      setMsg("Selecciona un tramo y token valido.");
+      return;
+    }
+    try {
+      const res = await fetch(`${API_BASE}/api/v1/guides/route-legs/${selectedRouteLegId}/assign`, {
+        method: "PATCH",
+        headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ status: routeStatus }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setMsg(`Error tramo: ${JSON.stringify(data)}`);
+        return;
+      }
+      setMsg(`Tramo ${data.sequence} actualizado a ${data.status}`);
+      await loadGuideRouteLegs();
+      await loadMyRouteLegs();
     } catch (error) {
       setMsg(`Error de red: ${error.message}`);
     }
@@ -87,6 +161,7 @@ export default function RiderPortalPage() {
 
       <nav className="section-nav">
         <button className={section === "actualizar" ? "section-link active" : "section-link"} onClick={() => setSection("actualizar")}>Actualizar Etapa</button>
+        <button className={section === "rutas" ? "section-link active" : "section-link"} onClick={() => setSection("rutas")}>Rutas Asignadas</button>
         <button className={section === "guia" ? "section-link active" : "section-link"} onClick={() => setSection("guia")}>Guía Rápida</button>
       </nav>
 
@@ -123,6 +198,75 @@ export default function RiderPortalPage() {
           </label>
           <button className="btn btn-primary" type="submit">Actualizar etapa</button>
         </form>
+        <p className={`status-line ${msg.includes("Error") ? "warn" : "ok"}`}>{msg}</p>
+      </section>}
+
+      {section === "rutas" && <section className="panel">
+        <h2>Ejecución de Tramos de Ruta</h2>
+        <div className="form-grid">
+          <label>
+            Token Bearer
+            <textarea value={token} onChange={(e) => setToken(e.target.value)} rows={4} className="mono-box" />
+          </label>
+          <label>
+            Código de guía
+            <input value={routeGuideCode} onChange={(e) => setRouteGuideCode(e.target.value)} placeholder="M24-20260310-XXXXXX" />
+          </label>
+        </div>
+        <div className="inline-actions">
+          <button className="btn btn-ghost" type="button" onClick={loadMyRouteLegs}>Ver mis tramos</button>
+          <button className="btn" type="button" onClick={loadGuideRouteLegs}>Cargar ruta de guía</button>
+        </div>
+
+        <form className="form-grid" onSubmit={updateRouteLegStatus}>
+          <label>
+            Tramo
+            <select value={selectedRouteLegId} onChange={(e) => setSelectedRouteLegId(e.target.value)}>
+              <option value="">Selecciona tramo</option>
+              {routeLegRows.map((item) => (
+                <option key={item.id} value={item.id}>
+                  #{item.sequence} {item.leg_type} | {item.status}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label>
+            Nuevo estado de tramo
+            <select value={routeStatus} onChange={(e) => setRouteStatus(e.target.value)}>
+              <option value="in_progress">En progreso</option>
+              <option value="completed">Completado</option>
+              <option value="failed">Fallido</option>
+            </select>
+          </label>
+          <button className="btn btn-primary" type="submit">Actualizar tramo</button>
+        </form>
+
+        <h3>Tramos de la guía</h3>
+        <div className="table-wrap">
+          <table>
+            <thead><tr><th>Seq</th><th>Tipo</th><th>Estado</th><th>Rider</th><th>Origen est.</th><th>Destino est.</th></tr></thead>
+            <tbody>
+              {routeLegRows.map((item) => (
+                <tr key={item.id}>
+                  <td>{item.sequence}</td><td>{item.leg_type}</td><td>{item.status}</td><td>{item.assigned_rider_id || "-"}</td><td>{item.origin_station_id || "-"}</td><td>{item.destination_station_id || "-"}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+
+        <h3>Mis tramos asignados</h3>
+        <div className="table-wrap">
+          <table>
+            <thead><tr><th>Guía</th><th>Seq</th><th>Tipo</th><th>Estado</th><th>Actualizado</th></tr></thead>
+            <tbody>
+              {myRouteLegRows.map((item) => (
+                <tr key={item.id}><td>{item.guide_code}</td><td>{item.sequence}</td><td>{item.leg_type}</td><td>{item.status}</td><td>{new Date(item.updated_at).toLocaleString()}</td></tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+
         <p className={`status-line ${msg.includes("Error") ? "warn" : "ok"}`}>{msg}</p>
       </section>}
 

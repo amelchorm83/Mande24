@@ -9,6 +9,8 @@ export default function StationPortalPage() {
   const [token, setToken] = useState("");
   const [riderRows, setRiderRows] = useState([]);
   const [stationRows, setStationRows] = useState([]);
+  const [riderLegRows, setRiderLegRows] = useState([]);
+  const [stationLegRows, setStationLegRows] = useState([]);
   const [states, setStates] = useState([]);
   const [municipalities, setMunicipalities] = useState([]);
   const [postalCodes, setPostalCodes] = useState([]);
@@ -41,6 +43,11 @@ export default function StationPortalPage() {
   const [newStationWhatsapp, setNewStationWhatsapp] = useState("");
   const [riderCatalogRows, setRiderCatalogRows] = useState([]);
   const [stationCatalogRows, setStationCatalogRows] = useState([]);
+  const [routeGuideCode, setRouteGuideCode] = useState("");
+  const [routeLegRows, setRouteLegRows] = useState([]);
+  const [routeLegId, setRouteLegId] = useState("");
+  const [routeLegRiderId, setRouteLegRiderId] = useState("");
+  const [routeLegStatus, setRouteLegStatus] = useState("assigned");
   const [msg, setMsg] = useState("");
 
   useEffect(() => {
@@ -279,18 +286,24 @@ export default function StationPortalPage() {
   async function fetchCommissions() {
     try {
       const headers = { Authorization: `Bearer ${token}` };
-      const [ridersRes, stationsRes] = await Promise.all([
+      const [ridersRes, stationsRes, riderLegRes, stationLegRes] = await Promise.all([
         fetch(`${API_BASE}/api/v1/commissions/riders/weekly`, { headers }),
         fetch(`${API_BASE}/api/v1/commissions/stations/weekly`, { headers }),
+        fetch(`${API_BASE}/api/v1/commissions/riders/weekly/by-leg`, { headers }),
+        fetch(`${API_BASE}/api/v1/commissions/stations/weekly/by-leg`, { headers }),
       ]);
-      if (!ridersRes.ok || !stationsRes.ok) {
+      if (!ridersRes.ok || !stationsRes.ok || !riderLegRes.ok || !stationLegRes.ok) {
         setMsg("No se pudieron obtener comisiones. Revisa rol/token.");
         return;
       }
       const riders = await ridersRes.json();
       const stations = await stationsRes.json();
+      const ridersByLeg = await riderLegRes.json();
+      const stationsByLeg = await stationLegRes.json();
       setRiderRows(riders.rows || []);
       setStationRows(stations.rows || []);
+      setRiderLegRows(ridersByLeg.rows || []);
+      setStationLegRows(stationsByLeg.rows || []);
       setMsg("Comisiones cargadas.");
     } catch (error) {
       setMsg(`Error: ${error.message}`);
@@ -312,6 +325,83 @@ export default function StationPortalPage() {
       await fetchCommissions();
     } catch (error) {
       setMsg(`Error cierre: ${error.message}`);
+    }
+  }
+
+  async function loadRouteLegs() {
+    if (!token || !routeGuideCode) {
+      setMsg("Captura token y código de guía para consultar ruta.");
+      return;
+    }
+    try {
+      const code = encodeURIComponent(routeGuideCode.trim().toUpperCase());
+      const res = await fetch(`${API_BASE}/api/v1/guides/${code}/route-legs`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setMsg(`Error consultando ruta: ${JSON.stringify(data)}`);
+        return;
+      }
+      setRouteLegRows(data);
+      setRouteLegId(data.length ? data[0].id : "");
+      setRouteLegRiderId(data.length && data[0].assigned_rider_id ? data[0].assigned_rider_id : "");
+      setMsg(`Ruta cargada: ${data.length} tramos.`);
+    } catch (error) {
+      setMsg(`Error de red: ${error.message}`);
+    }
+  }
+
+  async function updateRouteLeg(e) {
+    e.preventDefault();
+    if (!token || !routeLegId) {
+      setMsg("Selecciona tramo y token valido.");
+      return;
+    }
+    try {
+      const payload = {
+        status: routeLegStatus,
+        rider_id: routeLegRiderId || null,
+      };
+      const res = await fetch(`${API_BASE}/api/v1/guides/route-legs/${routeLegId}/assign`, {
+        method: "PATCH",
+        headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setMsg(`Error actualizando tramo: ${JSON.stringify(data)}`);
+        return;
+      }
+      setMsg(`Tramo ${data.sequence} actualizado a ${data.status}`);
+      await loadRouteLegs();
+    } catch (error) {
+      setMsg(`Error de red: ${error.message}`);
+    }
+  }
+
+  async function suggestRiderForRouteLeg() {
+    if (!token || !routeLegId) {
+      setMsg("Selecciona tramo y token valido para sugerir rider.");
+      return;
+    }
+    try {
+      const res = await fetch(`${API_BASE}/api/v1/guides/route-legs/${routeLegId}/suggest-riders`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setMsg(`Error sugiriendo rider: ${JSON.stringify(data)}`);
+        return;
+      }
+      if (!data.length) {
+        setMsg("No hay riders activos para sugerir.");
+        return;
+      }
+      setRouteLegRiderId(data[0].rider_id);
+      setMsg(`Sugerido rider ${data[0].rider_id} (${data[0].reason}).`);
+    } catch (error) {
+      setMsg(`Error de red: ${error.message}`);
     }
   }
 
@@ -363,6 +453,7 @@ export default function StationPortalPage() {
         <button className={section === "clientes" ? "section-link active" : "section-link"} onClick={() => setSection("clientes")}>Alta de Clientes</button>
         <button className={section === "riders" ? "section-link active" : "section-link"} onClick={() => setSection("riders")}>Alta de Repartidores</button>
         <button className={section === "estaciones" ? "section-link active" : "section-link"} onClick={() => setSection("estaciones")}>Alta de Estaciones</button>
+        <button className={section === "rutas" ? "section-link active" : "section-link"} onClick={() => setSection("rutas")}>Rutas</button>
         <button className={section === "comisiones" ? "section-link active" : "section-link"} onClick={() => setSection("comisiones")}>Comisiones</button>
         <button className={section === "resultados" ? "section-link active" : "section-link"} onClick={() => setSection("resultados")}>Resultados</button>
       </nav>
@@ -513,6 +604,69 @@ export default function StationPortalPage() {
         </form>
       </section>}
 
+      {section === "rutas" && <section className="panel">
+        <h2>Asignación Operativa de Rutas</h2>
+        <div className="form-grid">
+          <label>
+            Token Bearer
+            <textarea value={token} onChange={(e) => setToken(e.target.value)} rows={4} className="mono-box" />
+          </label>
+          <label>
+            Código de guía
+            <input value={routeGuideCode} onChange={(e) => setRouteGuideCode(e.target.value)} placeholder="M24-20260310-XXXXXX" />
+          </label>
+        </div>
+        <div className="inline-actions">
+          <button className="btn btn-ghost" onClick={loadRouteLegs}>Cargar ruta</button>
+          <button className="btn" onClick={suggestRiderForRouteLeg}>Sugerir rider por zona</button>
+        </div>
+
+        <form className="form-grid" onSubmit={updateRouteLeg}>
+          <label>
+            Tramo
+            <select value={routeLegId} onChange={(e) => setRouteLegId(e.target.value)}>
+              <option value="">Selecciona tramo</option>
+              {routeLegRows.map((row) => (
+                <option key={row.id} value={row.id}>#{row.sequence} {row.leg_type} | {row.status}</option>
+              ))}
+            </select>
+          </label>
+          <label>
+            Rider asignado
+            <select value={routeLegRiderId} onChange={(e) => setRouteLegRiderId(e.target.value)}>
+              <option value="">Sin asignar</option>
+              {riderCatalogRows.filter((row) => row.active).map((row) => (
+                <option key={row.id} value={row.id}>{row.id} | user:{row.user_id}</option>
+              ))}
+            </select>
+          </label>
+          <label>
+            Estado tramo
+            <select value={routeLegStatus} onChange={(e) => setRouteLegStatus(e.target.value)}>
+              <option value="assigned">Asignado</option>
+              <option value="in_progress">En progreso</option>
+              <option value="completed">Completado</option>
+              <option value="failed">Fallido</option>
+              <option value="cancelled">Cancelado</option>
+            </select>
+          </label>
+          <button className="btn btn-primary" type="submit">Actualizar tramo</button>
+        </form>
+
+        <div className="table-wrap">
+          <table>
+            <thead><tr><th>Seq</th><th>Tipo</th><th>Estado</th><th>Rider</th><th>Origen est.</th><th>Destino est.</th></tr></thead>
+            <tbody>
+              {routeLegRows.map((row) => (
+                <tr key={row.id}><td>{row.sequence}</td><td>{row.leg_type}</td><td>{row.status}</td><td>{row.assigned_rider_id || "-"}</td><td>{row.origin_station_id || "-"}</td><td>{row.destination_station_id || "-"}</td></tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+
+        <p className={`status-line ${msg.includes("Error") || msg.includes("No se pudo") ? "warn" : "ok"}`}>{msg}</p>
+      </section>}
+
       {section === "comisiones" && <section className="panel">
         <h2>Acciones de Comisión</h2>
         <label>
@@ -527,6 +681,8 @@ export default function StationPortalPage() {
         <div className="inline-actions">
           <span className="kpi">Riders: <strong>{riderRows.length}</strong></span>
           <span className="kpi">Estaciones: <strong>{stationRows.length}</strong></span>
+          <span className="kpi">Riders por tramo: <strong>{riderLegRows.length}</strong></span>
+          <span className="kpi">Estaciones por tramo: <strong>{stationLegRows.length}</strong></span>
         </div>
       </section>}
 
@@ -556,6 +712,38 @@ export default function StationPortalPage() {
             <tbody>
               {stationRows.map((row) => (
                 <tr key={row.station_id}><td>{row.station_id}</td><td>{row.sold_guide_count}</td><td>{row.sold_guide_amount}</td><td>{row.total_amount}</td></tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </section>}
+
+      {section === "resultados" && <section className="panel">
+        <h2>Comisión Rider por Tipo de Tramo</h2>
+        <div className="table-wrap">
+          <table>
+            <thead>
+              <tr><th>Rider ID</th><th>Tipo tramo</th><th>Cantidad</th><th>Total</th></tr>
+            </thead>
+            <tbody>
+              {riderLegRows.map((row, idx) => (
+                <tr key={`${row.rider_id}-${row.leg_type}-${idx}`}><td>{row.rider_id}</td><td>{row.leg_type}</td><td>{row.leg_count}</td><td>{row.total_amount}</td></tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </section>}
+
+      {section === "resultados" && <section className="panel">
+        <h2>Comisión Estación por Tipo de Tramo</h2>
+        <div className="table-wrap">
+          <table>
+            <thead>
+              <tr><th>Station ID</th><th>Tipo tramo</th><th>Cantidad</th><th>Total</th></tr>
+            </thead>
+            <tbody>
+              {stationLegRows.map((row, idx) => (
+                <tr key={`${row.station_id}-${row.leg_type}-${idx}`}><td>{row.station_id}</td><td>{row.leg_type}</td><td>{row.leg_count}</td><td>{row.total_amount}</td></tr>
               ))}
             </tbody>
           </table>

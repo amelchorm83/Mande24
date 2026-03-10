@@ -40,6 +40,8 @@ export default function ClientPortalPage() {
   const [portalPassword, setPortalPassword] = useState("");
   const [guideResult, setGuideResult] = useState(null);
   const [deliveryId, setDeliveryId] = useState("");
+  const [routeLegRows, setRouteLegRows] = useState([]);
+  const [trackingGuideCode, setTrackingGuideCode] = useState("");
   const [sentGuides, setSentGuides] = useState([]);
   const [receivedGuides, setReceivedGuides] = useState([]);
   const [msg, setMsg] = useState("");
@@ -320,10 +322,32 @@ export default function ClientPortalPage() {
       }
 
       setGuideResult(data);
+      setTrackingGuideCode(data.guide_code || "");
       setMsg("Guía creada correctamente.");
+      await loadRouteLegs(data.guide_code);
       await loadShipments();
     } catch (error) {
       setMsg(`Error creando guía: ${error.message}`);
+    }
+  }
+
+  async function loadRouteLegs(guideCodeInput = trackingGuideCode) {
+    const safeGuideCode = (guideCodeInput || "").trim().toUpperCase();
+    if (!safeGuideCode) {
+      setMsg("Ingresa código de guía para consultar tramos.");
+      return;
+    }
+    try {
+      const res = await fetch(`${API_BASE}/api/v1/guides/${encodeURIComponent(safeGuideCode)}/route-legs`, { headers });
+      const data = await res.json();
+      if (!res.ok) {
+        setMsg(`Error consultando ruta: ${JSON.stringify(data)}`);
+        return;
+      }
+      setRouteLegRows(data);
+      setMsg(`Ruta cargada para ${safeGuideCode}: ${data.length} tramos.`);
+    } catch (error) {
+      setMsg(`Error consultando ruta: ${error.message}`);
     }
   }
 
@@ -586,6 +610,24 @@ export default function ClientPortalPage() {
             {deliveryId && <p className="field-hint">Siguiente paso: abre `Rider` y utiliza este Delivery ID para actualizar etapas.</p>}
           </div>
         )}
+
+        <h3>Tracking de ruta por tramos</h3>
+        <div className="inline-actions">
+          <input value={trackingGuideCode} onChange={(e) => setTrackingGuideCode(e.target.value)} placeholder="Código de guía" />
+          <button className="btn btn-ghost" type="button" onClick={() => loadRouteLegs()}>Consultar tramos</button>
+        </div>
+        <div className="table-wrap">
+          <table>
+            <thead><tr><th>Seq</th><th>Tipo</th><th>Estado</th><th>Rider</th><th>Tarifa rider</th><th>Tarifa estación</th></tr></thead>
+            <tbody>
+              {routeLegRows.map((row) => (
+                <tr key={row.id}>
+                  <td>{row.sequence}</td><td>{row.leg_type}</td><td>{row.status}</td><td>{row.assigned_rider_id || "-"}</td><td>{row.rider_fee_amount} {row.currency}</td><td>{row.station_fee_amount} {row.currency}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
         <p className={`status-line ${msg.includes("Error") ? "warn" : "ok"}`}>{msg}</p>
       </section>}
 
