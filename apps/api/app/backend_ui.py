@@ -25,6 +25,7 @@ from app.db.models import (
     PricingRule,
     Rider,
     RiderCommission,
+    RouteLeg,
     Service,
     ServiceType,
     Station,
@@ -48,6 +49,7 @@ MENU = [
     ("dashboard", "Dashboard", "/ERPMande24"),
     ("guides_new", "Generar Guia", "/ERPMande24/guides/new"),
     ("guides", "Guias", "/ERPMande24/guides"),
+    ("routes", "Rutas", "/ERPMande24/routes"),
     ("deliveries", "Entregas", "/ERPMande24/deliveries"),
     ("services", "Servicios", "/ERPMande24/catalogs/services"),
     ("zones", "Zonas", "/ERPMande24/catalogs/zones"),
@@ -67,6 +69,7 @@ MODULE_ICON_SVG = {
     "dashboard": "<rect x='3' y='3' width='18' height='18' rx='4'/><path d='M7.5 15.5v-3.5M12 15.5V8.5M16.5 15.5v-5.5'/>",
     "guides_new": "<path d='M7 4h7l4 4v12H7z'/><path d='M14 4v4h4'/><path d='M12 11v6M9 14h6'/>",
     "guides": "<path d='M7 4h7l4 4v12H7z'/><path d='M14 4v4h4'/><path d='M9 12h6M9 15h6'/>",
+    "routes": "<circle cx='6' cy='12' r='2'/><circle cx='12' cy='12' r='2'/><circle cx='18' cy='12' r='2'/><path d='M8 12h2.5M13.5 12H16'/>",
     "deliveries": "<path d='M3 9h11v7H3z'/><path d='M14 11h3l4 4v1h-7z'/><circle cx='7.5' cy='18' r='1.5'/><circle cx='17.5' cy='18' r='1.5'/>",
     "services": "<path d='M6 4h12l2 4-8 4-8-4z'/><path d='M4 8v8l8 4 8-4V8'/>",
     "zones": "<path d='M12 21s6-5.8 6-10.1a6 6 0 1 0-12 0C6 15.2 12 21 12 21z'/><circle cx='12' cy='11' r='2.2'/>",
@@ -85,6 +88,7 @@ MODULE_GROUP = {
     "dashboard": "Monitoreo",
     "guides_new": "Operacion",
     "guides": "Operacion",
+    "routes": "Operacion",
     "deliveries": "Operacion",
     "services": "Catalogos",
     "zones": "Catalogos",
@@ -101,8 +105,8 @@ MODULE_GROUP = {
 
 ROLE_MODULES = {
     "admin": {key for key, _label, _href in MENU},
-    "station": {"guides_new", "guides", "deliveries", "comm_rider", "comm_station"},
-    "rider": {"guides", "deliveries"},
+    "station": {"guides_new", "guides", "routes", "deliveries", "comm_rider", "comm_station"},
+    "rider": {"guides", "routes", "deliveries"},
     "client": {"guides", "deliveries"},
 }
 
@@ -894,6 +898,175 @@ def _require_ops(request: Request, redirect_to: str, action_label: str) -> Redir
     return _check_role_or_redirect(role, {"admin", "station"}, redirect_to, action_label)
 
 
+BACKEND_ROUTE_STATUSES = {"planned", "assigned", "in_progress", "completed", "failed", "cancelled"}
+
+
+def _build_backend_route_legs(
+    guide: Guide,
+    pricing_rule: PricingRule,
+    service_type: str,
+    station_id: str,
+    destination_station_id: str,
+    use_station_handoff: bool,
+) -> list[RouteLeg]:
+    route_legs: list[RouteLeg] = []
+
+    if service_type in {"messaging", "package"}:
+        route_legs.append(
+            RouteLeg(
+                guide_id=guide.id,
+                sequence=1,
+                leg_type="pickup_to_origin_station",
+                from_node_type="client_origin",
+                to_node_type="station_origin",
+                origin_station_id=station_id,
+                destination_station_id=station_id,
+                rider_fee_amount=pricing_rule.pickup_fee,
+                station_fee_amount=pricing_rule.station_fee,
+                currency=pricing_rule.currency,
+                status="planned",
+            )
+        )
+
+        if destination_station_id != station_id:
+            route_legs.append(
+                RouteLeg(
+                    guide_id=guide.id,
+                    sequence=2,
+                    leg_type="station_to_station",
+                    from_node_type="station_origin",
+                    to_node_type="station_destination",
+                    origin_station_id=station_id,
+                    destination_station_id=destination_station_id,
+                    rider_fee_amount=pricing_rule.transfer_fee,
+                    station_fee_amount=pricing_rule.station_fee,
+                    currency=pricing_rule.currency,
+                    status="planned",
+                )
+            )
+            delivery_sequence = 3
+        else:
+            delivery_sequence = 2
+
+        route_legs.append(
+            RouteLeg(
+                guide_id=guide.id,
+                sequence=delivery_sequence,
+                leg_type="destination_station_to_client",
+                from_node_type="station_destination",
+                to_node_type="client_destination",
+                origin_station_id=destination_station_id,
+                destination_station_id=destination_station_id,
+                rider_fee_amount=pricing_rule.delivery_fee,
+                station_fee_amount=pricing_rule.station_fee,
+                currency=pricing_rule.currency,
+                status="planned",
+            )
+        )
+        return route_legs
+
+    if use_station_handoff:
+        route_legs.append(
+            RouteLeg(
+                guide_id=guide.id,
+                sequence=1,
+                leg_type="pickup_to_station",
+                from_node_type="client_origin",
+                to_node_type="station_origin",
+                origin_station_id=station_id,
+                destination_station_id=station_id,
+                rider_fee_amount=pricing_rule.pickup_fee,
+                station_fee_amount=pricing_rule.station_fee,
+                currency=pricing_rule.currency,
+                status="planned",
+            )
+        )
+        route_legs.append(
+            RouteLeg(
+                guide_id=guide.id,
+                sequence=2,
+                leg_type="station_to_client",
+                from_node_type="station_origin",
+                to_node_type="client_destination",
+                origin_station_id=station_id,
+                destination_station_id=destination_station_id,
+                rider_fee_amount=pricing_rule.delivery_fee,
+                station_fee_amount=pricing_rule.station_fee,
+                currency=pricing_rule.currency,
+                status="planned",
+            )
+        )
+    else:
+        route_legs.append(
+            RouteLeg(
+                guide_id=guide.id,
+                sequence=1,
+                leg_type="pickup_to_client",
+                from_node_type="client_origin",
+                to_node_type="client_destination",
+                origin_station_id=station_id,
+                destination_station_id=destination_station_id,
+                rider_fee_amount=pricing_rule.pickup_fee + pricing_rule.delivery_fee,
+                station_fee_amount=pricing_rule.station_fee,
+                currency=pricing_rule.currency,
+                status="planned",
+            )
+        )
+
+    return route_legs
+
+
+def _derive_backend_delivery_stage(route_legs: list[RouteLeg]) -> WorkflowStage:
+    if not route_legs:
+        return WorkflowStage.assigned
+    statuses = [item.status for item in sorted(route_legs, key=lambda leg: leg.sequence)]
+    if any(item == "failed" for item in statuses):
+        return WorkflowStage.failed
+    if all(item == "completed" for item in statuses):
+        return WorkflowStage.delivered
+    if any(item == "in_progress" for item in statuses):
+        return WorkflowStage.in_transit
+    if any(item == "completed" for item in statuses):
+        return WorkflowStage.at_station
+    if any(item == "assigned" for item in statuses):
+        return WorkflowStage.in_transit
+    return WorkflowStage.assigned
+
+
+def _sync_delivery_from_backend_route_legs(db: Session, guide_id: str) -> None:
+    delivery = db.query(Delivery).filter(Delivery.guide_id == guide_id).first()
+    if not delivery:
+        return
+    route_legs = db.query(RouteLeg).filter(RouteLeg.guide_id == guide_id).order_by(RouteLeg.sequence.asc()).all()
+    if not route_legs:
+        return
+
+    stage = _derive_backend_delivery_stage(route_legs)
+    delivery.stage = stage
+    if stage == WorkflowStage.delivered and not delivery.delivered_at:
+        delivery.delivered_at = datetime.now(timezone.utc)
+    if stage != WorkflowStage.delivered:
+        delivery.delivered_at = None
+    if stage == WorkflowStage.delivered:
+        delivery.has_evidence = True
+        delivery.has_signature = True
+    delivery.updated_at = datetime.now(timezone.utc)
+
+
+def _suggest_backend_riders_for_leg(db: Session, route_leg: RouteLeg) -> list[Rider]:
+    station_id = route_leg.origin_station_id or route_leg.destination_station_id
+    station_zone_id = None
+    if station_id:
+        station = db.query(Station).filter(Station.id == station_id, Station.active.is_(True)).first()
+        if station:
+            station_zone_id = station.zone_id
+
+    riders = db.query(Rider).filter(Rider.active.is_(True)).all()
+    if not riders:
+        return []
+    return sorted(riders, key=lambda item: (0 if station_zone_id and item.zone_id == station_zone_id else 1, item.id))
+
+
 @router.post("/role/select")
 def backend_select_role(role: str = Form("admin"), return_to: str = Form("/ERPMande24")) -> RedirectResponse:
     selected = role if role in ROLE_OPTIONS else "admin"
@@ -1261,6 +1434,8 @@ def backend_new_guide_page(db: Session = Depends(get_db), msg: str = "", kind: s
         "<label>Facturar servicio origen<select name=\"origin_wants_invoice\"><option value=\"\">Tomar perfil</option><option value=\"true\">Si</option><option value=\"false\">No</option></select></label>"
         f"<label>Servicio<select name=\"service_id\" required><option value=\"\">Selecciona</option>{service_options}</select></label>"
         f"<label>Estacion<select name=\"station_id\" required><option value=\"\">Selecciona</option>{station_options}</select></label>"
+        f"<label>Estacion destino<select name=\"destination_station_id\"><option value=\"\">Misma estacion</option>{station_options}</select></label>"
+        "<label><input type=\"checkbox\" name=\"use_station_handoff\" /> Usar handoff en estacion (mandadito)</label>"
         "<div class=\"full actions\"><button class=\"primary\" type=\"submit\">Generar Guia</button></div>"
         "</form>"
         f"<p class=\"muted\">Las opciones de cliente y estacion incluyen telefonos para facilitar contacto operativo y validacion al capturar la guia.</p>"
@@ -1283,6 +1458,8 @@ def backend_create_guide(
     origin_wants_invoice: str = Form(""),
     service_id: str = Form(...),
     station_id: str = Form(...),
+    destination_station_id: str = Form(""),
+    use_station_handoff: str | None = Form(None),
     request: Request = None,
     db: Session = Depends(get_db),
 ) -> RedirectResponse:
@@ -1296,6 +1473,11 @@ def backend_create_guide(
     station = db.query(Station).filter(Station.id == station_id, Station.active.is_(True)).first()
     if not station:
         return _redirect("/ERPMande24/guides/new", "Estacion no encontrada o inactiva.", "error")
+
+    destination_station_clean = destination_station_id.strip() or station_id
+    destination_station = db.query(Station).filter(Station.id == destination_station_clean, Station.active.is_(True)).first()
+    if not destination_station:
+        return _redirect("/ERPMande24/guides/new", "Estacion destino no encontrada o inactiva.", "error")
 
     pricing_rule = (
         db.query(PricingRule)
@@ -1332,6 +1514,7 @@ def backend_create_guide(
         service_type=service.service_type.value,
         service_id=service.id,
         station_id=station.id,
+        destination_station_id=destination_station.id,
         sale_amount=pricing_rule.price,
         currency=pricing_rule.currency,
     )
@@ -1348,6 +1531,17 @@ def backend_create_guide(
             origin_wants_invoice=wants_invoice,
         )
     )
+
+    for leg in _build_backend_route_legs(
+        guide=guide,
+        pricing_rule=pricing_rule,
+        service_type=service.service_type.value,
+        station_id=station.id,
+        destination_station_id=destination_station.id,
+        use_station_handoff=use_station_handoff == "on",
+    ):
+        db.add(leg)
+
     db.commit()
 
     return _redirect(
@@ -1420,6 +1614,7 @@ def backend_guide_detail(guide_code: str, request: Request, db: Session = Depend
         return _render_layout("guides", "Guia", "Detalle", '<section class="panel"><div class="empty">Guia no encontrada.</div></section>', msg, "error", request=request)
 
     deliveries = db.query(Delivery).filter(Delivery.guide_id == guide.id).order_by(Delivery.created_at.asc()).all()
+    route_legs = db.query(RouteLeg).filter(RouteLeg.guide_id == guide.id).order_by(RouteLeg.sequence.asc()).all()
     party = db.query(GuideParty).filter(GuideParty.guide_id == guide.id).first()
     origin_client = db.query(ClientProfile).filter(ClientProfile.id == party.origin_client_id).first() if party and party.origin_client_id else None
     destination_client = db.query(ClientProfile).filter(ClientProfile.id == party.destination_client_id).first() if party and party.destination_client_id else None
@@ -1427,6 +1622,8 @@ def backend_guide_detail(guide_code: str, request: Request, db: Session = Depend
     latest_delivery = deliveries[-1] if deliveries else None
     assigned_rider = db.query(Rider).filter(Rider.id == latest_delivery.rider_id).first() if latest_delivery and latest_delivery.rider_id else None
     assigned_rider_user = db.query(User).filter(User.id == assigned_rider.user_id).first() if assigned_rider else None
+    riders = {item.id: item for item in db.query(Rider).all()}
+    users = {item.id: item for item in db.query(User).all()}
     delivery_rows = [
         [
             f'<a href="/ERPMande24/deliveries/{escape(item.id)}">{escape(item.id)}</a>',
@@ -1437,6 +1634,20 @@ def backend_guide_detail(guide_code: str, request: Request, db: Session = Depend
         ]
         for item in deliveries
     ]
+    route_leg_rows = []
+    for leg in route_legs:
+        rider_item = riders.get(leg.assigned_rider_id) if leg.assigned_rider_id else None
+        rider_user = users.get(rider_item.user_id) if rider_item else None
+        route_leg_rows.append(
+            [
+                str(leg.sequence),
+                escape(leg.leg_type),
+                escape(leg.status),
+                escape(rider_user.full_name if rider_user else "-"),
+                f"{leg.rider_fee_amount:.2f} {escape(leg.currency)}",
+                f"{leg.station_fee_amount:.2f} {escape(leg.currency)}",
+            ]
+        )
 
     timeline_events = [(guide.created_at.strftime("%Y-%m-%d %H:%M"), f"Guia creada ({guide.guide_code})")]
     for item in deliveries:
@@ -1473,7 +1684,7 @@ def backend_guide_detail(guide_code: str, request: Request, db: Session = Depend
     ]
 
     details = (
-        f"{_tabs([('resumen', 'Resumen'), ('contactos', 'Contactos'), ('entregas', 'Entregas'), ('timeline', 'Timeline'), ('operacion', 'Operacion')])}"
+        f"{_tabs([('resumen', 'Resumen'), ('contactos', 'Contactos'), ('rutas', 'Rutas'), ('entregas', 'Entregas'), ('timeline', 'Timeline'), ('operacion', 'Operacion')])}"
         "<section id=\"resumen\" class=\"panel\"><h3>Ficha de Guia</h3>"
         "<div class=\"kpi-grid\">"
         f"<article class=\"kpi\"><small>Codigo</small><strong>{escape(guide.guide_code)}</strong></article>"
@@ -1484,6 +1695,8 @@ def backend_guide_detail(guide_code: str, request: Request, db: Session = Depend
         "<section id=\"contactos\" class=\"panel\"><h3>Contactos Operativos</h3>"
         f"{_table(['Rol', 'Nombre', 'Telefono fijo', 'WhatsApp'], contact_rows)}"
         "</section>"
+        f"<section id=\"rutas\" class=\"panel\"><h3>Rutas de la Guia</h3>{_table(['Seq', 'Tipo Tramo', 'Estado', 'Rider', 'Costo Rider', 'Costo Estacion'], route_leg_rows)}"
+        f"<div class=\"actions\"><a class=\"btn\" href=\"/ERPMande24/routes?guide_code={escape(guide.guide_code)}\">Administrar rutas</a></div></section>"
         "<section id=\"operacion\" class=\"panel\"><h3>Operacion</h3><div class=\"actions\"><a class=\"btn\" href=\"/ERPMande24/guides\">Volver a listado</a><a class=\"btn\" href=\"/ERPMande24/guides/new\">Nueva Guia</a>"
         f"<a class=\"btn\" href=\"/ERPMande24/guides/{escape(guide.guide_code)}/print\" target=\"_blank\">Imprimir / PDF</a></div></section>"
     )
@@ -1551,6 +1764,149 @@ def backend_guide_printable(guide_code: str, db: Session = Depends(get_db)) -> s
         "</body></html>"
     )
     return html
+
+
+@router.get("/routes", response_class=HTMLResponse)
+def backend_routes(
+    request: Request,
+    db: Session = Depends(get_db),
+    guide_code: str = "",
+    status: str = "",
+    msg: str = "",
+    kind: str = "ok",
+) -> str:
+    rows = db.query(RouteLeg, Guide).join(Guide, Guide.id == RouteLeg.guide_id)
+    if guide_code.strip():
+        rows = rows.filter(Guide.guide_code.ilike(f"%{guide_code.strip()}%"))
+    if status.strip():
+        rows = rows.filter(RouteLeg.status == status.strip())
+    route_pairs = rows.order_by(RouteLeg.updated_at.desc()).limit(300).all()
+
+    riders = db.query(Rider).filter(Rider.active.is_(True)).order_by(Rider.id.desc()).all()
+    rider_options = "".join([f'<option value="{item.id}">{escape(item.id)} | user:{escape(item.user_id)}</option>' for item in riders])
+
+    table_rows = []
+    for leg, guide in route_pairs:
+        table_rows.append(
+            [
+                f'<a href="/ERPMande24/guides/{escape(guide.guide_code)}">{escape(guide.guide_code)}</a>',
+                str(leg.sequence),
+                escape(leg.leg_type),
+                escape(leg.status),
+                escape(leg.assigned_rider_id or "-"),
+                escape(leg.id),
+                leg.updated_at.strftime("%Y-%m-%d %H:%M"),
+            ]
+        )
+
+    status_options = "".join(
+        [f'<option value="{item}" {"selected" if status == item else ""}>{item}</option>' for item in sorted(BACKEND_ROUTE_STATUSES)]
+    )
+
+    content = (
+        "<section class=\"panel\"><h3>Filtros de Rutas</h3>"
+        "<form class=\"actions\" method=\"get\" action=\"/ERPMande24/routes\">"
+        f'<input name="guide_code" value="{escape(guide_code)}" placeholder="Buscar por codigo de guia" />'
+        f'<select name="status"><option value="">Todos los estados</option>{status_options}</select>'
+        "<button type=\"submit\">Aplicar</button><a class=\"btn\" href=\"/ERPMande24/routes\">Limpiar</a>"
+        "</form></section>"
+        "<section class=\"panel\"><h3>Actualizar Tramo</h3>"
+        "<form class=\"grid\" method=\"post\" action=\"/ERPMande24/routes/assign\">"
+        "<label>Route Leg ID<input name=\"route_leg_id\" required /></label>"
+        f"<label>Rider<select name=\"rider_id\"><option value=\"\">Sin cambio</option>{rider_options}</select></label>"
+        f"<label>Estado<select name=\"status\"><option value=\"\">Sin cambio</option>{status_options}</select></label>"
+        "<div class=\"full actions\"><button class=\"primary\" type=\"submit\">Actualizar tramo</button></div>"
+        "</form>"
+        "<form class=\"actions\" method=\"post\" action=\"/ERPMande24/routes/suggest\">"
+        "<input name=\"route_leg_id\" placeholder=\"Route Leg ID para sugerir\" required />"
+        "<button type=\"submit\">Sugerir y asignar rider por zona</button></form>"
+        "</section>"
+        f"<section class=\"panel\"><h3>Tramos de Ruta</h3>{_table(['Guia', 'Seq', 'Tipo', 'Estado', 'Rider', 'Route Leg ID', 'Actualizado'], table_rows)}</section>"
+    )
+    return _render_layout("routes", "Rutas", "Alta y operacion de tramos por guia en ERPMande24.", content, msg, kind, request=request)
+
+
+@router.post("/routes/assign")
+def backend_assign_route_leg(
+    route_leg_id: str = Form(...),
+    rider_id: str = Form(""),
+    status: str = Form(""),
+    request: Request = None,
+    db: Session = Depends(get_db),
+) -> RedirectResponse:
+    forbidden = _require_ops(request, "/ERPMande24/routes", "actualizar tramo de ruta")
+    if forbidden:
+        return forbidden
+
+    route_leg = db.query(RouteLeg).filter(RouteLeg.id == route_leg_id.strip()).first()
+    if not route_leg:
+        return _redirect("/ERPMande24/routes", "Route leg no encontrado.", "error")
+
+    guide = db.query(Guide).filter(Guide.id == route_leg.guide_id).first()
+    guide_code = guide.guide_code if guide else ""
+    base_url = f"/ERPMande24/routes?guide_code={quote_plus(guide_code)}" if guide_code else "/ERPMande24/routes"
+
+    rider_clean = rider_id.strip()
+    if rider_clean:
+        rider = db.query(Rider).filter(Rider.id == rider_clean, Rider.active.is_(True)).first()
+        if not rider:
+            return _redirect(base_url, "Rider no encontrado o inactivo.", "error")
+        route_leg.assigned_rider_id = rider.id
+        if route_leg.status == "planned":
+            route_leg.status = "assigned"
+
+    status_clean = status.strip().lower()
+    if status_clean:
+        if status_clean not in BACKEND_ROUTE_STATUSES:
+            return _redirect(base_url, "Estado de tramo no valido.", "error")
+        if status_clean in {"in_progress", "completed", "failed"} and not route_leg.assigned_rider_id:
+            return _redirect(base_url, "Asigna rider antes de ejecutar el tramo.", "error")
+        if status_clean in {"in_progress", "completed"}:
+            previous_leg = (
+                db.query(RouteLeg)
+                .filter(RouteLeg.guide_id == route_leg.guide_id, RouteLeg.sequence == route_leg.sequence - 1)
+                .first()
+            )
+            if previous_leg and previous_leg.status != "completed":
+                return _redirect(base_url, "El tramo previo debe estar completado.", "error")
+        if route_leg.status == "completed" and status_clean != "completed":
+            return _redirect(base_url, "Un tramo completado no puede regresar a otro estado.", "error")
+        route_leg.status = status_clean
+
+    route_leg.updated_at = datetime.now(timezone.utc)
+    _sync_delivery_from_backend_route_legs(db, route_leg.guide_id)
+    db.commit()
+    return _redirect(base_url, f"Tramo {route_leg.sequence} actualizado a {route_leg.status}.", "ok")
+
+
+@router.post("/routes/suggest")
+def backend_suggest_route_leg_rider(
+    route_leg_id: str = Form(...),
+    request: Request = None,
+    db: Session = Depends(get_db),
+) -> RedirectResponse:
+    forbidden = _require_ops(request, "/ERPMande24/routes", "sugerir rider para tramo")
+    if forbidden:
+        return forbidden
+
+    route_leg = db.query(RouteLeg).filter(RouteLeg.id == route_leg_id.strip()).first()
+    if not route_leg:
+        return _redirect("/ERPMande24/routes", "Route leg no encontrado.", "error")
+
+    guide = db.query(Guide).filter(Guide.id == route_leg.guide_id).first()
+    guide_code = guide.guide_code if guide else ""
+    base_url = f"/ERPMande24/routes?guide_code={quote_plus(guide_code)}" if guide_code else "/ERPMande24/routes"
+
+    suggestions = _suggest_backend_riders_for_leg(db, route_leg)
+    if not suggestions:
+        return _redirect(base_url, "No hay riders activos para sugerir.", "error")
+
+    route_leg.assigned_rider_id = suggestions[0].id
+    if route_leg.status == "planned":
+        route_leg.status = "assigned"
+    route_leg.updated_at = datetime.now(timezone.utc)
+    db.commit()
+    return _redirect(base_url, f"Rider sugerido y asignado: {suggestions[0].id}.", "ok")
 
 
 @router.get("/deliveries", response_class=HTMLResponse)
