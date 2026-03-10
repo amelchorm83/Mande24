@@ -62,7 +62,11 @@ def list_geo_states(db: Session = Depends(get_db), _user: User = Depends(get_cur
     try:
         sync_sepomex_catalog(db)
     except Exception:
-        seed_geo_catalogs(db)
+        db.rollback()
+        try:
+            seed_geo_catalogs(db)
+        except Exception:
+            db.rollback()
     rows = db.query(GeoState).order_by(GeoState.name.asc()).all()
     return [GeoStateResponse(code=item.code, name=item.name) for item in rows]
 
