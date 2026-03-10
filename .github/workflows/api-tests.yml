@@ -34,4 +34,34 @@ jobs:
           pip install pytest
 
       - name: Run API tests
-        run: pytest -q tests
+        id: run_tests
+        run: |
+          set -o pipefail
+          pytest -q tests | tee pytest-output.txt
+
+      - name: Build smoke summary
+        if: always()
+        run: |
+          SUMMARY_LINE=$(grep -E "[0-9]+ (passed|failed|error|errors|skipped|xfailed|xpassed)" pytest-output.txt | tail -n 1 || true)
+          cat > api-smoke-summary.json <<EOF
+          {
+            "workflow": "API Tests",
+            "job": "test-api",
+            "tests_step_outcome": "${{ steps.run_tests.outcome }}",
+            "summary_line": "${SUMMARY_LINE}",
+            "commit": "${{ github.sha }}",
+            "branch": "${{ github.ref_name }}",
+            "run_id": "${{ github.run_id }}",
+            "generated_at_utc": "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          }
+          EOF
+
+      - name: Upload API test artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: api-test-report
+          path: |
+            apps/api/pytest-output.txt
+            apps/api/api-smoke-summary.json
+          if-no-files-found: warn
