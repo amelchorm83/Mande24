@@ -1570,6 +1570,7 @@ def backend_sync_sepomex_now(request: Request, db: Session = Depends(get_db)) ->
 def backend_new_guide_page(db: Session = Depends(get_db), msg: str = "", kind: str = "ok") -> str:
     services = db.query(Service).filter(Service.active.is_(True)).order_by(Service.name.asc()).all()
     stations = db.query(Station).filter(Station.active.is_(True)).order_by(Station.name.asc()).all()
+    states = db.query(GeoState).order_by(GeoState.name.asc()).all()
     origin_clients = (
         db.query(ClientProfile)
         .filter(ClientProfile.active.is_(True), ClientProfile.client_kind.in_([ClientKind.origin, ClientKind.both]))
@@ -1582,10 +1583,17 @@ def backend_new_guide_page(db: Session = Depends(get_db), msg: str = "", kind: s
         .order_by(ClientProfile.display_name.asc())
         .all()
     )
+
+    client_user_ids = {item.user_id for item in origin_clients + destination_clients if item.user_id}
+    client_users = {}
+    if client_user_ids:
+        client_users = {item.id: item for item in db.query(User).filter(User.id.in_(client_user_ids)).all()}
+
     riders = db.query(Rider).filter(Rider.active.is_(True)).order_by(Rider.id.desc()).limit(100).all()
     users = {item.id: item for item in db.query(User).all()}
 
     service_options = "".join([f'<option value="{item.id}">{escape(item.name)} ({item.service_type.value})</option>' for item in services])
+    state_options = "".join([f'<option value="{item.code}">{escape(item.name)} ({escape(item.code)})</option>' for item in states])
     station_options = "".join(
         [
             (
@@ -1599,7 +1607,16 @@ def backend_new_guide_page(db: Session = Depends(get_db), msg: str = "", kind: s
     origin_client_options = "".join(
         [
             (
-                f'<option value="{item.id}">{escape(item.display_name)} '
+                f'<option value="{item.id}" '
+                f'data-name="{escape(item.display_name)}" '
+                f'data-landline="{escape(item.landline_phone or "")}" '
+                f'data-whatsapp="{escape(item.whatsapp_phone or "")}" '
+                f'data-email="{escape((client_users.get(item.user_id).email if item.user_id and client_users.get(item.user_id) else ""))}" '
+                f'data-state="{escape(item.state_code or "")}" '
+                f'data-municipality="{escape(item.municipality_code or "")}" '
+                f'data-postal="{escape(item.postal_code or "")}" '
+                f'data-colony="{escape(item.colony_id or "")}" '
+                f'data-address="{escape(item.address_line or "")}">{escape(item.display_name)} '
                 f'| Fijo: {escape(item.landline_phone or "-")} '
                 f'| WhatsApp: {escape(item.whatsapp_phone or "-")}</option>'
             )
@@ -1609,7 +1626,16 @@ def backend_new_guide_page(db: Session = Depends(get_db), msg: str = "", kind: s
     destination_client_options = "".join(
         [
             (
-                f'<option value="{item.id}">{escape(item.display_name)} '
+                f'<option value="{item.id}" '
+                f'data-name="{escape(item.display_name)}" '
+                f'data-landline="{escape(item.landline_phone or "")}" '
+                f'data-whatsapp="{escape(item.whatsapp_phone or "")}" '
+                f'data-email="{escape((client_users.get(item.user_id).email if item.user_id and client_users.get(item.user_id) else ""))}" '
+                f'data-state="{escape(item.state_code or "")}" '
+                f'data-municipality="{escape(item.municipality_code or "")}" '
+                f'data-postal="{escape(item.postal_code or "")}" '
+                f'data-colony="{escape(item.colony_id or "")}" '
+                f'data-address="{escape(item.address_line or "")}">{escape(item.display_name)} '
                 f'| Fijo: {escape(item.landline_phone or "-")} '
                 f'| WhatsApp: {escape(item.whatsapp_phone or "-")}</option>'
             )
@@ -1637,23 +1663,120 @@ def backend_new_guide_page(db: Session = Depends(get_db), msg: str = "", kind: s
         "<form class=\"grid\" method=\"post\" action=\"/ERPMande24/guides/create\">"
         "<label>Nombre cliente<input name=\"customer_name\" minlength=\"2\" maxlength=\"150\" value=\"Cliente Backend\" required /></label>"
         "<label>Nombre destino<input name=\"destination_name\" minlength=\"2\" maxlength=\"150\" value=\"Destino Backend\" required /></label>"
-        f"<label>Cliente origen<select name=\"origin_client_id\"><option value=\"\">Selecciona (opcional)</option>{origin_client_options}</select></label>"
-        f"<label>Cliente destino<select name=\"destination_client_id\"><option value=\"\">Selecciona (opcional)</option>{destination_client_options}</select></label>"
+        f"<label>Cliente origen<select id=\"guide-origin-client\" name=\"origin_client_id\"><option value=\"\">Selecciona (opcional)</option>{origin_client_options}</select></label>"
+        f"<label>Cliente destino<select id=\"guide-destination-client\" name=\"destination_client_id\"><option value=\"\">Selecciona (opcional)</option>{destination_client_options}</select></label>"
+        "<label>Origen telefono fijo (opcional)<input id=\"guide-origin-landline\" name=\"origin_landline_phone\" maxlength=\"40\" /></label>"
+        "<label>Origen WhatsApp (obligatorio)<input id=\"guide-origin-whatsapp\" name=\"origin_whatsapp_phone\" maxlength=\"40\" required /></label>"
+        "<label>Origen email (obligatorio)<input id=\"guide-origin-email\" name=\"origin_email\" type=\"email\" maxlength=\"190\" required /></label>"
+        "<label>Destino telefono fijo (opcional)<input id=\"guide-destination-landline\" name=\"destination_landline_phone\" maxlength=\"40\" /></label>"
+        "<label>Destino WhatsApp (obligatorio)<input id=\"guide-destination-whatsapp\" name=\"destination_whatsapp_phone\" maxlength=\"40\" required /></label>"
+        "<label>Destino email (obligatorio)<input id=\"guide-destination-email\" name=\"destination_email\" type=\"email\" maxlength=\"190\" required /></label>"
+        f"<label>Origen estado<select id=\"guide-origin-state\" name=\"origin_state_code\" required><option value=\"\">Selecciona</option>{state_options}</select></label>"
+        "<label>Origen municipio<select id=\"guide-origin-municipality\" name=\"origin_municipality_code\" required><option value=\"\">Selecciona</option></select></label>"
+        "<label>Origen codigo postal<select id=\"guide-origin-postal\" name=\"origin_postal_code\" required><option value=\"\">Selecciona</option></select></label>"
+        "<label>Origen colonia<select id=\"guide-origin-colony\" name=\"origin_colony_id\" required><option value=\"\">Selecciona</option></select></label>"
+        "<label class=\"full\">Origen direccion (solo guia)<input id=\"guide-origin-address\" name=\"origin_address_line\" maxlength=\"255\" required /></label>"
+        f"<label>Destino estado<select id=\"guide-destination-state\" name=\"destination_state_code\" required><option value=\"\">Selecciona</option>{state_options}</select></label>"
+        "<label>Destino municipio<select id=\"guide-destination-municipality\" name=\"destination_municipality_code\" required><option value=\"\">Selecciona</option></select></label>"
+        "<label>Destino codigo postal<select id=\"guide-destination-postal\" name=\"destination_postal_code\" required><option value=\"\">Selecciona</option></select></label>"
+        "<label>Destino colonia<select id=\"guide-destination-colony\" name=\"destination_colony_id\" required><option value=\"\">Selecciona</option></select></label>"
+        "<label class=\"full\">Destino direccion (solo guia)<input id=\"guide-destination-address\" name=\"destination_address_line\" maxlength=\"255\" required /></label>"
         "<label>Facturar servicio origen<select name=\"origin_wants_invoice\"><option value=\"\">Tomar perfil</option><option value=\"true\">Si</option><option value=\"false\">No</option></select></label>"
         "<label>Solicitante del servicio<select name=\"requester_role\"><option value=\"origin\">Cliente origen</option><option value=\"destination\">Cliente destino</option><option value=\"external\">Tercero / externo</option></select></label>"
         f"<label>Servicio<select name=\"service_id\" required><option value=\"\">Selecciona</option>{service_options}</select></label>"
-        f"<label>Estacion<select name=\"station_id\" required><option value=\"\">Selecciona</option>{station_options}</select></label>"
-        f"<label>Estacion destino<select name=\"destination_station_id\"><option value=\"\">Misma estacion</option>{station_options}</select></label>"
+        f"<label>Estacion<select id=\"guide-station\" name=\"station_id\" required><option value=\"\">Selecciona</option>{station_options}</select></label>"
+        f"<label>Estacion destino<select id=\"guide-destination-station\" name=\"destination_station_id\"><option value=\"\">Misma estacion</option>{station_options}</select></label>"
+        "<label>Zona sugerida por origen<input id=\"guide-origin-zone-suggest\" readonly /></label>"
+        "<label>Estacion sugerida por origen<input id=\"guide-origin-station-suggest\" readonly /></label>"
+        "<label>Zona sugerida por destino<input id=\"guide-destination-zone-suggest\" readonly /></label>"
+        "<label>Estacion sugerida por destino<input id=\"guide-destination-station-suggest\" readonly /></label>"
         "<label><input type=\"checkbox\" name=\"use_station_handoff\" /> Usar handoff en estacion (mandadito)</label>"
         "<div class=\"full actions\"><button class=\"primary\" type=\"submit\">Generar Guia</button></div>"
         "</form>"
         f"<p class=\"muted\">Las opciones de cliente y estacion incluyen telefonos para facilitar contacto operativo y validacion al capturar la guia.</p>"
         "<p class=\"muted\"><strong>Regla Mandadito:</strong> el solicitante puede ser cliente origen, cliente destino o un tercero.</p>"
+        "<p class=\"muted\"><strong>Nota:</strong> las ediciones de direccion y contacto aqui se guardan solo para esta guia, no modifican el catalogo maestro de clientes.</p>"
         "<h4>Contactos Operativos de Riders</h4>"
         f"{_table(['Rider ID', 'Nombre', 'Telefono fijo', 'WhatsApp'], rider_rows)}"
         "<div class=\"actions\"><form method=\"post\" action=\"/ERPMande24/demo/seed/form\"><button type=\"submit\">Generar datos demo</button></form>"
         "<a class=\"btn\" href=\"/ERPMande24/guides\">Ver listado de guias</a></div>"
         f"{catalog_hint}</section>"
+        "<script>"
+        "(function(){"
+        "  const stationEl = document.getElementById('guide-station');"
+        "  const dstStationEl = document.getElementById('guide-destination-station');"
+        "  async function fillSelect(el, rows, valueField, labelField, selectedValue) {"
+        "    const current = selectedValue || '';"
+        "    const base = el.options[0] ? el.options[0].outerHTML : '<option value=\"\">Selecciona</option>';"
+        "    el.innerHTML = base + rows.map((r) => `<option value=\"${r[valueField]}\">${r[labelField]}</option>`).join('');"
+        "    if (current) el.value = current;"
+        "  }"
+        "  async function loadMunicipalities(stateEl, munEl, selected) {"
+        "    munEl.innerHTML = '<option value=\"\">Selecciona</option>';"
+        "    if (!stateEl.value) return;"
+        "    const data = await fetch(`/ERPMande24/geo/municipalities?state_code=${encodeURIComponent(stateEl.value)}`).then((r)=>r.json());"
+        "    await fillSelect(munEl, data, 'code', 'name', selected);"
+        "  }"
+        "  async function loadPostalCodes(munEl, postalEl, selected) {"
+        "    postalEl.innerHTML = '<option value=\"\">Selecciona</option>';"
+        "    if (!munEl.value) return;"
+        "    const data = await fetch(`/ERPMande24/geo/postal-codes?municipality_code=${encodeURIComponent(munEl.value)}`).then((r)=>r.json());"
+        "    await fillSelect(postalEl, data, 'code', 'code', selected);"
+        "  }"
+        "  async function loadColonies(stateEl, munEl, postalEl, colonyEl, selected) {"
+        "    colonyEl.innerHTML = '<option value=\"\">Selecciona</option>';"
+        "    if (!stateEl.value || !munEl.value || !postalEl.value) return;"
+        "    const q = `state_code=${encodeURIComponent(stateEl.value)}&municipality_code=${encodeURIComponent(munEl.value)}&postal_code=${encodeURIComponent(postalEl.value)}`;"
+        "    const data = await fetch(`/ERPMande24/geo/colonies?${q}`).then((r)=>r.json());"
+        "    await fillSelect(colonyEl, data, 'id', 'name', selected);"
+        "  }"
+        "  async function loadCoverage(stateEl, munEl, postalEl, colonyEl, zoneOut, stationOut, applyToStation) {"
+        "    zoneOut.value = '';"
+        "    stationOut.value = '';"
+        "    if (!stateEl.value || !munEl.value || !postalEl.value) return;"
+        "    const q = `state_code=${encodeURIComponent(stateEl.value)}&municipality_code=${encodeURIComponent(munEl.value)}&postal_code=${encodeURIComponent(postalEl.value)}&colony_id=${encodeURIComponent(colonyEl.value || '')}`;"
+        "    const data = await fetch(`/ERPMande24/geo/service-coverage?${q}`).then((r)=>r.json());"
+        "    if (!data) return;"
+        "    zoneOut.value = data.zone_name || '-';"
+        "    stationOut.value = data.station_name || '-';"
+        "    if (applyToStation && data.station_id && stationEl && !stationEl.value) stationEl.value = data.station_id;"
+        "    if (applyToStation && data.station_id && dstStationEl && !dstStationEl.value) dstStationEl.value = data.station_id;"
+        "  }"
+        "  function bindGeo(prefix){"
+        "    const clientEl = document.getElementById(`guide-${prefix}-client`);"
+        "    const landlineEl = document.getElementById(`guide-${prefix}-landline`);"
+        "    const whatsappEl = document.getElementById(`guide-${prefix}-whatsapp`);"
+        "    const emailEl = document.getElementById(`guide-${prefix}-email`);"
+        "    const stateEl = document.getElementById(`guide-${prefix}-state`);"
+        "    const munEl = document.getElementById(`guide-${prefix}-municipality`);"
+        "    const postalEl = document.getElementById(`guide-${prefix}-postal`);"
+        "    const colonyEl = document.getElementById(`guide-${prefix}-colony`);"
+        "    const addressEl = document.getElementById(`guide-${prefix}-address`);"
+        "    const zoneOut = document.getElementById(`guide-${prefix}-zone-suggest`);"
+        "    const stationOut = document.getElementById(`guide-${prefix}-station-suggest`);"
+        "    async function applyFromClient(){"
+        "      const opt = clientEl.options[clientEl.selectedIndex];"
+        "      if (!opt || !opt.value) return;"
+        "      landlineEl.value = opt.dataset.landline || '';"
+        "      whatsappEl.value = opt.dataset.whatsapp || '';"
+        "      emailEl.value = opt.dataset.email || '';"
+        "      addressEl.value = opt.dataset.address || '';"
+        "      stateEl.value = opt.dataset.state || '';"
+        "      await loadMunicipalities(stateEl, munEl, opt.dataset.municipality || '');"
+        "      await loadPostalCodes(munEl, postalEl, opt.dataset.postal || '');"
+        "      await loadColonies(stateEl, munEl, postalEl, colonyEl, opt.dataset.colony || '');"
+        "      await loadCoverage(stateEl, munEl, postalEl, colonyEl, zoneOut, stationOut, prefix === 'origin');"
+        "    }"
+        "    clientEl.addEventListener('change', applyFromClient);"
+        "    stateEl.addEventListener('change', async () => { await loadMunicipalities(stateEl, munEl, ''); await loadPostalCodes(munEl, postalEl, ''); await loadColonies(stateEl, munEl, postalEl, colonyEl, ''); await loadCoverage(stateEl, munEl, postalEl, colonyEl, zoneOut, stationOut, prefix === 'origin'); });"
+        "    munEl.addEventListener('change', async () => { await loadPostalCodes(munEl, postalEl, ''); await loadColonies(stateEl, munEl, postalEl, colonyEl, ''); await loadCoverage(stateEl, munEl, postalEl, colonyEl, zoneOut, stationOut, prefix === 'origin'); });"
+        "    postalEl.addEventListener('change', async () => { await loadColonies(stateEl, munEl, postalEl, colonyEl, ''); await loadCoverage(stateEl, munEl, postalEl, colonyEl, zoneOut, stationOut, prefix === 'origin'); });"
+        "    colonyEl.addEventListener('change', async () => { await loadCoverage(stateEl, munEl, postalEl, colonyEl, zoneOut, stationOut, prefix === 'origin'); });"
+        "  }"
+        "  bindGeo('origin');"
+        "  bindGeo('destination');"
+        "})();"
+        "</script>"
     )
 
     return _render_layout("guides_new", "Generar Guia", "Formulario backend para crear guias con precio automatico por tarifario.", content, msg, kind)
@@ -1665,6 +1788,22 @@ def backend_create_guide(
     destination_name: str = Form(...),
     origin_client_id: str = Form(""),
     destination_client_id: str = Form(""),
+    origin_landline_phone: str = Form(""),
+    origin_whatsapp_phone: str = Form(""),
+    origin_email: str = Form(""),
+    origin_state_code: str = Form(""),
+    origin_municipality_code: str = Form(""),
+    origin_postal_code: str = Form(""),
+    origin_colony_id: str = Form(""),
+    origin_address_line: str = Form(""),
+    destination_landline_phone: str = Form(""),
+    destination_whatsapp_phone: str = Form(""),
+    destination_email: str = Form(""),
+    destination_state_code: str = Form(""),
+    destination_municipality_code: str = Form(""),
+    destination_postal_code: str = Form(""),
+    destination_colony_id: str = Form(""),
+    destination_address_line: str = Form(""),
     origin_wants_invoice: str = Form(""),
     requester_role: str = Form("origin"),
     service_id: str = Form(...),
@@ -1716,6 +1855,82 @@ def backend_create_guide(
         if not destination_client:
             return _redirect("/ERPMande24/guides/new", "Cliente destino no encontrado o inactivo.", "error")
 
+    origin_user = None
+    destination_user = None
+    if origin_client and origin_client.user_id:
+        origin_user = db.query(User).filter(User.id == origin_client.user_id).first()
+    if destination_client and destination_client.user_id:
+        destination_user = db.query(User).filter(User.id == destination_client.user_id).first()
+
+    origin_landline_clean = (origin_landline_phone or "").strip() or (origin_client.landline_phone if origin_client else "") or ""
+    origin_whatsapp_clean = (origin_whatsapp_phone or "").strip() or (origin_client.whatsapp_phone if origin_client else "") or ""
+    origin_email_clean = (origin_email or "").strip() or (origin_user.email if origin_user else "") or ""
+    origin_state_clean = (origin_state_code or "").strip().upper() or (origin_client.state_code if origin_client else "") or ""
+    origin_municipality_clean = (origin_municipality_code or "").strip().upper() or (origin_client.municipality_code if origin_client else "") or ""
+    origin_postal_clean = (origin_postal_code or "").strip() or (origin_client.postal_code if origin_client else "") or ""
+    origin_colony_clean = (origin_colony_id or "").strip() or (origin_client.colony_id if origin_client else "") or ""
+    origin_address_clean = (origin_address_line or "").strip() or (origin_client.address_line if origin_client else "") or ""
+
+    destination_landline_clean = (destination_landline_phone or "").strip() or (destination_client.landline_phone if destination_client else "") or ""
+    destination_whatsapp_clean = (destination_whatsapp_phone or "").strip() or (destination_client.whatsapp_phone if destination_client else "") or ""
+    destination_email_clean = (destination_email or "").strip() or (destination_user.email if destination_user else "") or ""
+    destination_state_clean = (destination_state_code or "").strip().upper() or (destination_client.state_code if destination_client else "") or ""
+    destination_municipality_clean = (destination_municipality_code or "").strip().upper() or (destination_client.municipality_code if destination_client else "") or ""
+    destination_postal_clean = (destination_postal_code or "").strip() or (destination_client.postal_code if destination_client else "") or ""
+    destination_colony_clean = (destination_colony_id or "").strip() or (destination_client.colony_id if destination_client else "") or ""
+    destination_address_clean = (destination_address_line or "").strip() or (destination_client.address_line if destination_client else "") or ""
+
+    if not origin_whatsapp_clean:
+        return _redirect("/ERPMande24/guides/new", "Origen: WhatsApp es obligatorio.", "error")
+    if not origin_email_clean:
+        return _redirect("/ERPMande24/guides/new", "Origen: email es obligatorio.", "error")
+    if not destination_whatsapp_clean:
+        return _redirect("/ERPMande24/guides/new", "Destino: WhatsApp es obligatorio.", "error")
+    if not destination_email_clean:
+        return _redirect("/ERPMande24/guides/new", "Destino: email es obligatorio.", "error")
+
+    required_geo = [
+        (origin_state_clean, "Origen: estado es obligatorio."),
+        (origin_municipality_clean, "Origen: municipio es obligatorio."),
+        (origin_postal_clean, "Origen: codigo postal es obligatorio."),
+        (origin_colony_clean, "Origen: colonia es obligatoria."),
+        (origin_address_clean, "Origen: direccion es obligatoria."),
+        (destination_state_clean, "Destino: estado es obligatorio."),
+        (destination_municipality_clean, "Destino: municipio es obligatorio."),
+        (destination_postal_clean, "Destino: codigo postal es obligatorio."),
+        (destination_colony_clean, "Destino: colonia es obligatoria."),
+        (destination_address_clean, "Destino: direccion es obligatoria."),
+    ]
+    for value, message in required_geo:
+        if not value:
+            return _redirect("/ERPMande24/guides/new", message, "error")
+
+    origin_geo_valid = (
+        db.query(GeoColony)
+        .filter(
+            GeoColony.id == origin_colony_clean,
+            GeoColony.state_code == origin_state_clean,
+            GeoColony.municipality_code == origin_municipality_clean,
+            GeoColony.postal_code == origin_postal_clean,
+        )
+        .first()
+    )
+    if not origin_geo_valid:
+        return _redirect("/ERPMande24/guides/new", "Origen: combinacion de estado/municipio/cp/colonia invalida.", "error")
+
+    destination_geo_valid = (
+        db.query(GeoColony)
+        .filter(
+            GeoColony.id == destination_colony_clean,
+            GeoColony.state_code == destination_state_clean,
+            GeoColony.municipality_code == destination_municipality_clean,
+            GeoColony.postal_code == destination_postal_clean,
+        )
+        .first()
+    )
+    if not destination_geo_valid:
+        return _redirect("/ERPMande24/guides/new", "Destino: combinacion de estado/municipio/cp/colonia invalida.", "error")
+
     if _is_errand_service(service_kind):
         if requester_role_clean == "origin" and not origin_client:
             return _redirect("/ERPMande24/guides/new", "Mandadito: solicitante origen requiere cliente origen.", "error")
@@ -1759,6 +1974,22 @@ def backend_create_guide(
             origin_client_id=(origin_client.id if origin_client else None),
             destination_client_id=(destination_client.id if destination_client else None),
             origin_wants_invoice=wants_invoice,
+            origin_landline_phone=origin_landline_clean,
+            origin_whatsapp_phone=origin_whatsapp_clean,
+            origin_email=origin_email_clean,
+            origin_state_code=origin_state_clean,
+            origin_municipality_code=origin_municipality_clean,
+            origin_postal_code=origin_postal_clean,
+            origin_colony_id=origin_colony_clean,
+            origin_address_line=origin_address_clean,
+            destination_landline_phone=destination_landline_clean,
+            destination_whatsapp_phone=destination_whatsapp_clean,
+            destination_email=destination_email_clean,
+            destination_state_code=destination_state_clean,
+            destination_municipality_code=destination_municipality_clean,
+            destination_postal_code=destination_postal_clean,
+            destination_colony_id=destination_colony_clean,
+            destination_address_line=destination_address_clean,
         )
     )
 
@@ -1886,30 +2117,53 @@ def backend_guide_detail(guide_code: str, request: Request, db: Session = Depend
             label = f"{label} (entregada)"
         timeline_events.append((item.updated_at.strftime("%Y-%m-%d %H:%M"), label))
 
+    origin_display_name = origin_client.display_name if origin_client else guide.customer_name
+    destination_display_name = destination_client.display_name if destination_client else guide.destination_name
+    origin_landline = party.origin_landline_phone if party and party.origin_landline_phone else (origin_client.landline_phone if origin_client and origin_client.landline_phone else "-")
+    origin_whatsapp = party.origin_whatsapp_phone if party and party.origin_whatsapp_phone else (origin_client.whatsapp_phone if origin_client and origin_client.whatsapp_phone else "-")
+    origin_email_value = party.origin_email if party and party.origin_email else "-"
+    origin_address_value = (
+        party.origin_address_line if party and party.origin_address_line else (origin_client.address_line if origin_client and origin_client.address_line else "-")
+    )
+    destination_landline = party.destination_landline_phone if party and party.destination_landline_phone else (destination_client.landline_phone if destination_client and destination_client.landline_phone else "-")
+    destination_whatsapp = party.destination_whatsapp_phone if party and party.destination_whatsapp_phone else (destination_client.whatsapp_phone if destination_client and destination_client.whatsapp_phone else "-")
+    destination_email_value = party.destination_email if party and party.destination_email else "-"
+    destination_address_value = (
+        party.destination_address_line if party and party.destination_address_line else (destination_client.address_line if destination_client and destination_client.address_line else "-")
+    )
+
     contact_rows = [
         [
             "Cliente origen",
-            escape(origin_client.display_name if origin_client else guide.customer_name),
-            escape(origin_client.landline_phone if origin_client and origin_client.landline_phone else "-"),
-            escape(origin_client.whatsapp_phone if origin_client and origin_client.whatsapp_phone else "-"),
+            escape(origin_display_name),
+            escape(origin_landline),
+            escape(origin_whatsapp),
+            escape(origin_email_value),
+            escape(origin_address_value),
         ],
         [
             "Cliente destino",
-            escape(destination_client.display_name if destination_client else guide.destination_name),
-            escape(destination_client.landline_phone if destination_client and destination_client.landline_phone else "-"),
-            escape(destination_client.whatsapp_phone if destination_client and destination_client.whatsapp_phone else "-"),
+            escape(destination_display_name),
+            escape(destination_landline),
+            escape(destination_whatsapp),
+            escape(destination_email_value),
+            escape(destination_address_value),
         ],
         [
             "Estacion",
             escape(station.name if station else "-"),
             escape(station.landline_phone if station and station.landline_phone else "-"),
             escape(station.whatsapp_phone if station and station.whatsapp_phone else "-"),
+            "-",
+            "-",
         ],
         [
             "Rider asignado",
             escape(assigned_rider_user.full_name if assigned_rider_user else "-"),
             escape(assigned_rider.landline_phone if assigned_rider and assigned_rider.landline_phone else "-"),
             escape(assigned_rider.whatsapp_phone if assigned_rider and assigned_rider.whatsapp_phone else "-"),
+            "-",
+            "-",
         ],
     ]
 
@@ -1923,7 +2177,7 @@ def backend_guide_detail(guide_code: str, request: Request, db: Session = Depend
         f"<article class=\"kpi\"><small>Monto</small><strong>{guide.sale_amount:.2f} {escape(guide.currency)}</strong></article>"
         "</div></section>"
         "<section id=\"contactos\" class=\"panel\"><h3>Contactos Operativos</h3>"
-        f"{_table(['Rol', 'Nombre', 'Telefono fijo', 'WhatsApp'], contact_rows)}"
+        f"{_table(['Rol', 'Nombre', 'Telefono fijo', 'WhatsApp', 'Email', 'Direccion'], contact_rows)}"
         "</section>"
         f"<section id=\"rutas\" class=\"panel\"><h3>Rutas de la Guia</h3>{_table(['Seq', 'Tipo Tramo', 'Estado', 'Rider', 'Costo Rider', 'Costo Estacion'], route_leg_rows)}"
         f"<div class=\"actions\"><a class=\"btn\" href=\"/ERPMande24/routes?guide_code={escape(guide.guide_code)}\">Administrar rutas</a></div></section>"
@@ -1952,24 +2206,43 @@ def backend_guide_printable(guide_code: str, db: Session = Depends(get_db)) -> s
     assigned_rider = db.query(Rider).filter(Rider.id == latest_delivery.rider_id).first() if latest_delivery and latest_delivery.rider_id else None
     assigned_rider_user = db.query(User).filter(User.id == assigned_rider.user_id).first() if assigned_rider else None
 
+    origin_landline = party.origin_landline_phone if party and party.origin_landline_phone else (origin_client.landline_phone if origin_client and origin_client.landline_phone else "-")
+    origin_whatsapp = party.origin_whatsapp_phone if party and party.origin_whatsapp_phone else (origin_client.whatsapp_phone if origin_client and origin_client.whatsapp_phone else "-")
+    origin_email_value = party.origin_email if party and party.origin_email else "-"
+    origin_address_value = (
+        party.origin_address_line if party and party.origin_address_line else (origin_client.address_line if origin_client and origin_client.address_line else "-")
+    )
+    destination_landline = party.destination_landline_phone if party and party.destination_landline_phone else (destination_client.landline_phone if destination_client and destination_client.landline_phone else "-")
+    destination_whatsapp = party.destination_whatsapp_phone if party and party.destination_whatsapp_phone else (destination_client.whatsapp_phone if destination_client and destination_client.whatsapp_phone else "-")
+    destination_email_value = party.destination_email if party and party.destination_email else "-"
+    destination_address_value = (
+        party.destination_address_line if party and party.destination_address_line else (destination_client.address_line if destination_client and destination_client.address_line else "-")
+    )
+
     contact_rows = "".join(
         [
             "<tr><td>Cliente origen</td>"
             f"<td>{escape(origin_client.display_name if origin_client else guide.customer_name)}</td>"
-            f"<td>{escape(origin_client.landline_phone if origin_client and origin_client.landline_phone else '-')}</td>"
-            f"<td>{escape(origin_client.whatsapp_phone if origin_client and origin_client.whatsapp_phone else '-')}</td></tr>",
+            f"<td>{escape(origin_landline)}</td>"
+            f"<td>{escape(origin_whatsapp)}</td>"
+            f"<td>{escape(origin_email_value)}</td>"
+            f"<td>{escape(origin_address_value)}</td></tr>",
             "<tr><td>Cliente destino</td>"
             f"<td>{escape(destination_client.display_name if destination_client else guide.destination_name)}</td>"
-            f"<td>{escape(destination_client.landline_phone if destination_client and destination_client.landline_phone else '-')}</td>"
-            f"<td>{escape(destination_client.whatsapp_phone if destination_client and destination_client.whatsapp_phone else '-')}</td></tr>",
+            f"<td>{escape(destination_landline)}</td>"
+            f"<td>{escape(destination_whatsapp)}</td>"
+            f"<td>{escape(destination_email_value)}</td>"
+            f"<td>{escape(destination_address_value)}</td></tr>",
             "<tr><td>Estacion</td>"
             f"<td>{escape(station.name if station else '-')}</td>"
             f"<td>{escape(station.landline_phone if station and station.landline_phone else '-')}</td>"
-            f"<td>{escape(station.whatsapp_phone if station and station.whatsapp_phone else '-')}</td></tr>",
+            f"<td>{escape(station.whatsapp_phone if station and station.whatsapp_phone else '-')}</td>"
+            "<td>-</td><td>-</td></tr>",
             "<tr><td>Rider asignado</td>"
             f"<td>{escape(assigned_rider_user.full_name if assigned_rider_user else '-')}</td>"
             f"<td>{escape(assigned_rider.landline_phone if assigned_rider and assigned_rider.landline_phone else '-')}</td>"
-            f"<td>{escape(assigned_rider.whatsapp_phone if assigned_rider and assigned_rider.whatsapp_phone else '-')}</td></tr>",
+            f"<td>{escape(assigned_rider.whatsapp_phone if assigned_rider and assigned_rider.whatsapp_phone else '-')}</td>"
+            "<td>-</td><td>-</td></tr>",
         ]
     )
 
@@ -1988,7 +2261,7 @@ def backend_guide_printable(guide_code: str, db: Session = Depends(get_db)) -> s
         f"<div class='grid'><div class='card'><strong>Cliente:</strong> {escape(guide.customer_name)}<br><strong>Destino:</strong> {escape(guide.destination_name)}</div>"
         f"<div class='card'><strong>Servicio:</strong> {escape(guide.service_type)}<br><strong>Monto:</strong> {guide.sale_amount:.2f} {escape(guide.currency)}<br><strong>Etapa:</strong> {escape(stage_label)}</div></div>"
         "<h2>Contactos Operativos</h2>"
-        "<table><thead><tr><th>Rol</th><th>Nombre</th><th>Telefono fijo</th><th>WhatsApp</th></tr></thead><tbody>"
+        "<table><thead><tr><th>Rol</th><th>Nombre</th><th>Telefono fijo</th><th>WhatsApp</th><th>Email</th><th>Direccion</th></tr></thead><tbody>"
         f"{contact_rows}</tbody></table>"
         f"<p style='margin-top:14px;font-size:12px;color:#6b7280;'>Generada: {escape(guide.created_at.strftime('%Y-%m-%d %H:%M'))}</p>"
         "</body></html>"
@@ -3088,6 +3361,71 @@ def backend_geo_colonies(state_code: str, municipality_code: str, postal_code: s
     )
     payload = [{"id": item.id, "name": item.name, "settlement_type": item.settlement_type} for item in rows]
     return JSONResponse(payload)
+
+
+@router.get("/geo/service-coverage", response_class=JSONResponse)
+def backend_geo_service_coverage(
+    state_code: str,
+    municipality_code: str,
+    postal_code: str,
+    colony_id: str = "",
+    db: Session = Depends(get_db),
+) -> JSONResponse:
+    state_clean = state_code.strip().upper()
+    municipality_clean = municipality_code.strip().upper()
+    postal_clean = postal_code.strip()
+    colony_clean = colony_id.strip()
+
+    if not state_clean or not municipality_clean or not postal_clean:
+        return JSONResponse({"zone_id": None, "zone_name": None, "station_id": None, "station_name": None})
+
+    candidates = (
+        db.query(ZoneGeoRule)
+        .filter(
+            ZoneGeoRule.active.is_(True),
+            ZoneGeoRule.state_code == state_clean,
+            or_(ZoneGeoRule.municipality_code.is_(None), ZoneGeoRule.municipality_code == municipality_clean),
+            or_(ZoneGeoRule.postal_code.is_(None), ZoneGeoRule.postal_code == postal_clean),
+            or_(ZoneGeoRule.colony_id.is_(None), ZoneGeoRule.colony_id == colony_clean),
+        )
+        .all()
+    )
+
+    def _score(rule: ZoneGeoRule) -> tuple[int, int, int, int]:
+        return (
+            1 if rule.colony_id else 0,
+            1 if rule.postal_code else 0,
+            1 if rule.municipality_code else 0,
+            1 if rule.state_code else 0,
+        )
+
+    best_rule = None
+    if candidates:
+        candidates.sort(key=_score, reverse=True)
+        best_rule = candidates[0]
+
+    if not best_rule:
+        return JSONResponse({"zone_id": None, "zone_name": None, "station_id": None, "station_name": None})
+
+    zone = db.query(Zone).filter(Zone.id == best_rule.zone_id, Zone.active.is_(True)).first()
+    if not zone:
+        return JSONResponse({"zone_id": None, "zone_name": None, "station_id": None, "station_name": None})
+
+    station = (
+        db.query(Station)
+        .filter(Station.zone_id == zone.id, Station.active.is_(True))
+        .order_by(Station.name.asc())
+        .first()
+    )
+
+    return JSONResponse(
+        {
+            "zone_id": zone.id,
+            "zone_name": zone.name,
+            "station_id": (station.id if station else None),
+            "station_name": (station.name if station else None),
+        }
+    )
 
 
 @router.get("/catalogs/clients", response_class=HTMLResponse)

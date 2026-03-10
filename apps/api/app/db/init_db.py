@@ -78,6 +78,42 @@ def _ensure_runtime_schema() -> None:
             if "currency" not in route_columns:
                 conn.execute(text("ALTER TABLE route_legs ADD COLUMN currency VARCHAR(10) DEFAULT 'MXN'"))
 
+    if "guide_parties" in tables:
+        party_columns = {col["name"] for col in inspector.get_columns("guide_parties")}
+        with engine.begin() as conn:
+            if "origin_landline_phone" not in party_columns:
+                conn.execute(text("ALTER TABLE guide_parties ADD COLUMN origin_landline_phone VARCHAR(40) DEFAULT ''"))
+            if "origin_whatsapp_phone" not in party_columns:
+                conn.execute(text("ALTER TABLE guide_parties ADD COLUMN origin_whatsapp_phone VARCHAR(40) DEFAULT ''"))
+            if "origin_email" not in party_columns:
+                conn.execute(text("ALTER TABLE guide_parties ADD COLUMN origin_email VARCHAR(190) DEFAULT ''"))
+            if "origin_state_code" not in party_columns:
+                conn.execute(text("ALTER TABLE guide_parties ADD COLUMN origin_state_code VARCHAR(10) DEFAULT ''"))
+            if "origin_municipality_code" not in party_columns:
+                conn.execute(text("ALTER TABLE guide_parties ADD COLUMN origin_municipality_code VARCHAR(20) DEFAULT ''"))
+            if "origin_postal_code" not in party_columns:
+                conn.execute(text("ALTER TABLE guide_parties ADD COLUMN origin_postal_code VARCHAR(10) DEFAULT ''"))
+            if "origin_colony_id" not in party_columns:
+                conn.execute(text("ALTER TABLE guide_parties ADD COLUMN origin_colony_id VARCHAR(64) DEFAULT ''"))
+            if "origin_address_line" not in party_columns:
+                conn.execute(text("ALTER TABLE guide_parties ADD COLUMN origin_address_line VARCHAR(255) DEFAULT ''"))
+            if "destination_landline_phone" not in party_columns:
+                conn.execute(text("ALTER TABLE guide_parties ADD COLUMN destination_landline_phone VARCHAR(40) DEFAULT ''"))
+            if "destination_whatsapp_phone" not in party_columns:
+                conn.execute(text("ALTER TABLE guide_parties ADD COLUMN destination_whatsapp_phone VARCHAR(40) DEFAULT ''"))
+            if "destination_email" not in party_columns:
+                conn.execute(text("ALTER TABLE guide_parties ADD COLUMN destination_email VARCHAR(190) DEFAULT ''"))
+            if "destination_state_code" not in party_columns:
+                conn.execute(text("ALTER TABLE guide_parties ADD COLUMN destination_state_code VARCHAR(10) DEFAULT ''"))
+            if "destination_municipality_code" not in party_columns:
+                conn.execute(text("ALTER TABLE guide_parties ADD COLUMN destination_municipality_code VARCHAR(20) DEFAULT ''"))
+            if "destination_postal_code" not in party_columns:
+                conn.execute(text("ALTER TABLE guide_parties ADD COLUMN destination_postal_code VARCHAR(10) DEFAULT ''"))
+            if "destination_colony_id" not in party_columns:
+                conn.execute(text("ALTER TABLE guide_parties ADD COLUMN destination_colony_id VARCHAR(64) DEFAULT ''"))
+            if "destination_address_line" not in party_columns:
+                conn.execute(text("ALTER TABLE guide_parties ADD COLUMN destination_address_line VARCHAR(255) DEFAULT ''"))
+
     if "contact_leads" not in tables:
         return
 
