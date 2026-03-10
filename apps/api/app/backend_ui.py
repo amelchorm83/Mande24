@@ -573,6 +573,69 @@ th {
   color: #5f4d34;
 }
 
+.erp-footer {
+    margin-top: 1.05rem;
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    background: linear-gradient(150deg, #fffaf3, #ffedd5);
+    padding: 0.85rem;
+    display: grid;
+    gap: 0.72rem;
+}
+
+.erp-footer-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 0.62rem;
+}
+
+.erp-footer-box {
+    border: 1px solid #f0c6a6;
+    border-radius: 10px;
+    background: #fff;
+    padding: 0.6rem;
+}
+
+.erp-footer-box h4 {
+    margin: 0 0 0.35rem;
+    font-size: 0.92rem;
+    color: #9a3412;
+}
+
+.erp-footer-box p {
+    margin: 0.2rem 0;
+    font-size: 0.84rem;
+    color: #374151;
+    overflow-wrap: anywhere;
+}
+
+.erp-footer-links {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.45rem;
+}
+
+.erp-footer-links a {
+    text-decoration: none;
+    border: 1px solid #f0c6a6;
+    border-radius: 999px;
+    background: #fff7ed;
+    color: #7c2d12;
+    padding: 0.2rem 0.55rem;
+    font-size: 0.8rem;
+}
+
+.erp-footer-meta {
+    border-top: 1px dashed #f2b183;
+    padding-top: 0.5rem;
+    display: flex;
+    justify-content: space-between;
+    gap: 0.65rem;
+    flex-wrap: wrap;
+    font-size: 0.78rem;
+    color: #6b7280;
+}
+
 @media (max-width: 1040px) {
   .layout { grid-template-columns: 1fr; }
   .sidebar { border-right: 0; border-bottom: 1px solid var(--sidebar-line); }
@@ -581,6 +644,7 @@ th {
 @media (max-width: 760px) {
   .grid, .grid-3 { grid-template-columns: 1fr; }
     .hero-shell { grid-template-columns: 1fr; }
+    .erp-footer-meta { flex-direction: column; align-items: flex-start; }
 }
 """
 
@@ -795,6 +859,33 @@ def _render_layout(
         '</section>'
     )
 
+    footer_block = (
+        '<footer class="erp-footer" aria-label="Pie de pagina ERPMande24">'
+        '<div class="erp-footer-grid">'
+        '<section class="erp-footer-box">'
+        '<h4>Centro Operativo</h4>'
+        '<p>Gestion unificada de guias, rutas, entregas, clientes y comisiones.</p>'
+        '<p>Enfoque: trazabilidad por tramo y control comercial.</p>'
+        '</section>'
+        '<section class="erp-footer-box">'
+        '<h4>Accesos Rapidos</h4>'
+        '<div class="erp-footer-links">'
+        '<a href="/ERPMande24">Dashboard</a>'
+        '<a href="/ERPMande24/guides">Guias</a>'
+        '<a href="/ERPMande24/routes">Rutas</a>'
+        '<a href="/ERPMande24/deliveries">Entregas</a>'
+        '</div>'
+        '</section>'
+        '<section class="erp-footer-box">'
+        '<h4>Soporte</h4>'
+        '<p>Telefono/WhatsApp: +52 993 343 8003</p>'
+        '<p>Horario operativo: Lunes a sabado, 07:00 - 19:00</p>'
+        '</section>'
+        '</div>'
+        f'<div class="erp-footer-meta"><span>{datetime.now().year} ERPMande24</span><span>Revision 2026-03-10</span></div>'
+        '</footer>'
+    )
+
     return (
         "<!doctype html><html lang=\"es\"><head><meta charset=\"utf-8\" />"
         "<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\" />"
@@ -809,7 +900,7 @@ def _render_layout(
         "<main class=\"content\">"
         f"<header class=\"header\"><div><h1>{escape(title)}</h1><p class=\"subtitle\">{escape(subtitle)}</p></div>"
         f"<div class=\"top-actions\"><span class=\"tag\">Operador: {escape(operator_label)}</span><a class=\"btn\" href=\"/ERPMande24\">Dashboard</a><a class=\"btn primary\" href=\"/ERPMande24/guides/new\">Nueva Guia</a></div></header>"
-        f"{hero_block}{msg_html}{content}</main></div>{script}</body></html>"
+        f"{hero_block}{msg_html}{content}{footer_block}</main></div>{script}</body></html>"
     )
 
 
