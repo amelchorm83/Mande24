@@ -61,7 +61,7 @@ export default function AuthPage() {
           <img className="brand-logo" src="/brand/icon.svg" alt="Icono Mande24" />
           <div className="brand-copy">
             <h2>ERPMande24</h2>
-            <p className="brand-slogan">Acceso central para operacion y control.</p>
+            <p className="brand-slogan">Acceso central para operación y control.</p>
           </div>
         </div>
         <nav className="nav-pills">
@@ -74,7 +74,7 @@ export default function AuthPage() {
           <a className="nav-link active" href="/auth">Portal Auth</a>
           <a className="nav-link" href="/client">Portal Cliente</a>
           <a className="nav-link" href="/rider">Portal Rider</a>
-          <a className="nav-link" href="/station">Portal Estacion</a>
+          <a className="nav-link" href="/station">Portal Estación</a>
         
           <a className="nav-link" href="/cotizador">Cotizador</a>
           <a className="nav-link" href="/niveles-servicio">Niveles de Servicio</a>
@@ -82,8 +82,8 @@ export default function AuthPage() {
       </header>
 
       <span className="badge">Portal Auth</span>
-      <h1>Acceso Seguro y Gestion de Token</h1>
-      <p className="hero-note">Inicia sesion o registra usuarios operativos. El token se almacena en el navegador para habilitar los demas portales automaticamente.</p>
+      <h1>Acceso Seguro y Gestión de Token</h1>
+      <p className="hero-note">Inicia sesión o registra usuarios operativos. El token se almacena en el navegador para habilitar los demás portales automáticamente.</p>
       <img className="hero-banner" src="/brand/banner.svg" alt="Banner portal auth" />
 
       <section className="panel">
@@ -92,7 +92,7 @@ export default function AuthPage() {
             <img src="/brand/photo-station.svg" alt="Panel de control y accesos" />
             <div>
               <h3>Control de Accesos</h3>
-              <p className="hero-note">Centraliza la autenticacion para mantener continuidad en todos los portales operativos.</p>
+              <p className="hero-note">Centraliza la autenticación para mantener continuidad en todos los portales operativos.</p>
             </div>
           </article>
         </div>
@@ -132,10 +132,10 @@ export default function AuthPage() {
             <label>
               Rol
               <select value={role} onChange={(e) => setRole(e.target.value)}>
-                <option value="admin">admin</option>
-                <option value="station">station</option>
-                <option value="rider">rider</option>
-                <option value="client">client</option>
+                <option value="admin">Administrador</option>
+                <option value="station">Estación</option>
+                <option value="rider">Repartidor</option>
+                <option value="client">Cliente</option>
               </select>
             </label>
           )}
@@ -150,8 +150,8 @@ export default function AuthPage() {
       {section === "flujo" && <section className="panel">
         <h2>Flujo recomendado</h2>
         <ol className="flow-list">
-          <li>Autentica con usuario `admin` para configurar catalogos y parametros iniciales.</li>
-          <li>Continua en `Cliente` para registrar perfiles y crear guias.</li>
+          <li>Autentica con usuario `admin` para configurar catálogos y parámetros iniciales.</li>
+          <li>Continúa en `Cliente` para registrar perfiles y crear guías.</li>
           <li>Da seguimiento en `Rider` para actualizar etapas de entrega.</li>
         </ol>
       </section>}

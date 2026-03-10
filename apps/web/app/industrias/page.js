@@ -1,23 +1,23 @@
 const industryData = [
   {
     title: "Retail y comercio local",
-    pain: "Picos de demanda en horarios de salida y entregas fallidas por direccion incompleta.",
-    solution: "Rutas por zonas, validacion previa de direccion y seguimiento por etapa para reducir incidencias.",
+    pain: "Picos de demanda en horarios de salida y entregas fallidas por dirección incompleta.",
+    solution: "Rutas por zonas, validación previa de dirección y seguimiento por etapa para reducir incidencias.",
   },
   {
     title: "Farmacia y salud",
-    pain: "Necesidad de respuesta rapida para pedidos sensibles y entregas prioritarias.",
+    pain: "Necesidad de respuesta rápida para pedidos sensibles y entregas prioritarias.",
     solution: "Servicio express con prioridad operativa y evidencia digital para trazabilidad.",
   },
   {
     title: "Refacciones y autopartes",
-    pain: "Paros de taller por falta de pieza y urgencia de reposicion.",
-    solution: "Flujo mixto express + programado para surtido inmediato y reposicion diaria.",
+    pain: "Paros de taller por falta de pieza y urgencia de reposición.",
+    solution: "Flujo mixto express + programado para surtido inmediato y reposición diaria.",
   },
   {
     title: "Despachos y oficinas",
     pain: "Traslado constante de documentos, contratos y paquetes entre sucursales.",
-    solution: "Mensajeria corporativa con rutas recurrentes y control por guia.",
+    solution: "Mensajería corporativa con rutas recurrentes y control por guía.",
   },
 ];
 
@@ -49,12 +49,12 @@ export default function IndustriasPage() {
       <p className="hero-note">Mande24 adapta SLA, frecuencia y cobertura por giro para maximizar cumplimiento en Tabasco y Campeche.</p>
 
       <section className="panel">
-        <h2>Diagnostico rapido por giro</h2>
+        <h2>Diagnóstico rápido por giro</h2>
         <div className="grid">
           {industryData.map((industry) => (
             <article className="card" key={industry.title}>
               <h3>{industry.title}</h3>
-              <p><strong>Reto comun:</strong> {industry.pain}</p>
+              <p><strong>Reto común:</strong> {industry.pain}</p>
               <p><strong>Respuesta Mande24:</strong> {industry.solution}</p>
             </article>
           ))}
@@ -62,14 +62,14 @@ export default function IndustriasPage() {
       </section>
 
       <section className="panel">
-        <h2>Como definimos tu esquema</h2>
+        <h2>Cómo definimos tu esquema</h2>
         <ol className="flow-list">
-          <li>Analisis del volumen diario y ventanas de entrega requeridas.</li>
-          <li>Segmentacion por zona, tipo de producto y nivel de urgencia.</li>
-          <li>Definicion de SLA y tablero de seguimiento por indicadores clave.</li>
+          <li>Análisis del volumen diario y ventanas de entrega requeridas.</li>
+          <li>Segmentación por zona, tipo de producto y nivel de urgencia.</li>
+          <li>Definición de SLA y tablero de seguimiento por indicadores clave.</li>
         </ol>
         <div className="inline-actions">
-          <a className="btn btn-primary" href="/contacto">Solicitar diagnostico comercial</a>
+          <a className="btn btn-primary" href="/contacto">Solicitar diagnóstico comercial</a>
           <a className="btn" href="/niveles-servicio">Revisar niveles de servicio</a>
         </div>
       </section>

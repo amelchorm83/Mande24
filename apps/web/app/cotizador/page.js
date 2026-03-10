@@ -10,12 +10,12 @@ export default function CotizadorPage() {
   const [zoneType, setZoneType] = useState("urbana");
   const [serviceType, setServiceType] = useState("programado");
   const [estimate, setEstimate] = useState(null);
-  const [statusMsg, setStatusMsg] = useState("Calculando cotizacion...");
+  const [statusMsg, setStatusMsg] = useState("Calculando cotización...");
   const [isLoading, setIsLoading] = useState(false);
 
   async function fetchQuote() {
     setIsLoading(true);
-    setStatusMsg("Calculando cotizacion...");
+    setStatusMsg("Calculando cotización...");
     try {
       const res = await fetch(`${API_BASE}/api/v1/public/quote`, {
         method: "POST",
@@ -34,7 +34,7 @@ export default function CotizadorPage() {
         return;
       }
       setEstimate(data);
-      setStatusMsg(data.message || "Cotizacion calculada.");
+      setStatusMsg(data.message || "Cotización calculada.");
     } catch (error) {
       setEstimate(null);
       setStatusMsg(`Error de red: ${error.message}`);
@@ -70,12 +70,12 @@ export default function CotizadorPage() {
       </header>
 
       <span className="badge">Cotizador Express</span>
-      <h1>Estima tu envio en segundos para Tabasco y Campeche.</h1>
+      <h1>Estima tu envío en segundos para Tabasco y Campeche.</h1>
       <p className="hero-note">Este cotizador es referencial y ayuda a comparar escenarios por distancia, tipo de zona y nivel de urgencia.</p>
 
       <section className="panel contact-grid">
         <article className="card">
-          <h2>Parametros del servicio</h2>
+          <h2>Parámetros del servicio</h2>
           <form className="form-grid">
             <label>
               Distancia estimada (km)
@@ -88,7 +88,7 @@ export default function CotizadorPage() {
               />
             </label>
             <label>
-              Numero de paradas
+              Número de paradas
               <input
                 type="number"
                 min={1}
@@ -109,7 +109,7 @@ export default function CotizadorPage() {
               Tipo de servicio
               <select value={serviceType} onChange={(e) => setServiceType(e.target.value)}>
                 <option value="programado">Programado</option>
-                <option value="express">Express</option>
+                <option value="express">Exprés</option>
                 <option value="recurrente">Recurrente</option>
               </select>
             </label>
@@ -122,7 +122,7 @@ export default function CotizadorPage() {
           <p className="kpi">Tiempo estimado: <strong>{estimate ? `${estimate.eta_minutes} min` : "--"}</strong></p>
           <p className={`status-line ${statusMsg.includes("Error") || statusMsg.includes("No se pudo") ? "warn" : "ok"}`}>{statusMsg}</p>
           <button className="btn" type="button" disabled={isLoading} onClick={fetchQuote}>{isLoading ? "Calculando..." : "Recalcular"}</button>
-          <p className="field-hint">El precio final puede variar por horario, saturacion operativa, dimensiones del paquete y politicas vigentes.</p>
+          <p className="field-hint">El precio final puede variar por horario, saturación operativa, dimensiones del paquete y políticas vigentes.</p>
           <div className="inline-actions">
             <a className="btn btn-primary" href="/contacto">Solicitar propuesta formal</a>
             <a className="btn" href="/niveles-servicio">Ver niveles de servicio</a>

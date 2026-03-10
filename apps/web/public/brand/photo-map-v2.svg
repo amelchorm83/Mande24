@@ -1,0 +1,50 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 675" role="img" aria-labelledby="title desc">
+  <title id="title">Mapa de cobertura Mande24 v2</title>
+  <desc id="desc">Visual regional Tabasco y Campeche con nodos de cobertura y rutas activas.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#fff7ed"/>
+      <stop offset="100%" stop-color="#ffedd5"/>
+    </linearGradient>
+    <linearGradient id="route" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#f97316"/>
+      <stop offset="100%" stop-color="#ea580c"/>
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="675" fill="url(#bg)"/>
+
+  <g opacity="0.2" fill="#fb923c">
+    <circle cx="90" cy="80" r="64"/>
+    <circle cx="1110" cy="560" r="88"/>
+  </g>
+
+  <g transform="translate(180 90)">
+    <path d="M120 90 L320 40 L450 130 L400 300 L260 360 L120 280 Z" fill="#fdba74" stroke="#9a3412" stroke-width="4"/>
+    <path d="M470 80 L640 60 L760 180 L710 340 L520 330 L430 210 Z" fill="#fed7aa" stroke="#9a3412" stroke-width="4"/>
+
+    <g stroke="url(#route)" stroke-width="8" fill="none" stroke-linecap="round" stroke-dasharray="14 12">
+      <path d="M250 180 C330 140, 430 150, 510 190"/>
+      <path d="M300 260 C390 250, 500 250, 590 230"/>
+      <path d="M200 230 C280 290, 430 320, 560 300"/>
+    </g>
+
+    <g fill="#c2410c" stroke="#ffffff" stroke-width="3">
+      <circle cx="250" cy="170" r="12"/>
+      <circle cx="340" cy="250" r="12"/>
+      <circle cx="520" cy="190" r="12"/>
+      <circle cx="585" cy="235" r="12"/>
+      <circle cx="545" cy="300" r="12"/>
+    </g>
+
+    <g fill="#7c2d12" font-family="Avenir Next, Trebuchet MS, sans-serif" font-weight="700" font-size="28">
+      <text x="180" y="35">TABASCO</text>
+      <text x="520" y="35">CAMPECHE</text>
+    </g>
+  </g>
+
+  <g transform="translate(80 560)">
+    <rect width="1040" height="64" rx="16" fill="#ffffff" stroke="#fdba74" stroke-width="2"/>
+    <circle cx="40" cy="32" r="10" fill="#c2410c"/>
+    <text x="62" y="39" font-family="Avenir Next, Trebuchet MS, sans-serif" font-size="24" fill="#7c2d12">Cobertura activa por zonas | Actualizacion v2</text>
+  </g>
+</svg>

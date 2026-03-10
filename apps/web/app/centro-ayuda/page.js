@@ -1,19 +1,19 @@
 const faqs = [
   {
-    q: "Como solicito una recoleccion?",
+    q: "¿Cómo solicito una recolección?",
     a: "Desde Contacto o con tu ejecutivo comercial indicando origen, destino, horario y tipo de servicio.",
   },
   {
-    q: "Como doy seguimiento a una guia?",
-    a: "Con el folio de guia en la pagina de Rastreo o directamente desde el portal cliente.",
+    q: "¿Cómo doy seguimiento a una guía?",
+    a: "Con el folio de guía en la página de Rastreo o directamente desde el portal cliente.",
   },
   {
-    q: "Atienden servicios fuera de ciudad?",
-    a: "Si, con planeacion intermunicipal segun cobertura activa en Tabasco y Campeche.",
+    q: "¿Atienden servicios fuera de ciudad?",
+    a: "Sí, con planeación intermunicipal según cobertura activa en Tabasco y Campeche.",
   },
   {
-    q: "Que pasa si no reciben el paquete?",
-    a: "Se registra incidencia y se coordina reintento conforme a politica comercial.",
+    q: "¿Qué pasa si no reciben el paquete?",
+    a: "Se registra incidencia y se coordina reintento conforme a política comercial.",
   },
 ];
 
@@ -40,7 +40,7 @@ export default function CentroAyudaPage() {
       </header>
 
       <span className="badge">Centro de Ayuda</span>
-      <h1>Respuestas rapidas para clientes y prospectos de Mande24.</h1>
+      <h1>Respuestas rápidas para clientes y prospectos de Mande24.</h1>
 
       <section className="panel">
         <h2>Preguntas frecuentes</h2>
@@ -55,10 +55,10 @@ export default function CentroAyudaPage() {
       </section>
 
       <section className="panel">
-        <h2>No encuentras tu respuesta?</h2>
+        <h2>¿No encuentras tu respuesta?</h2>
         <div className="inline-actions">
           <a className="btn btn-primary" href="/contacto">Hablar con soporte comercial</a>
-          <a className="btn" href="/rastreo-guia">Rastrear una guia</a>
+          <a className="btn" href="/rastreo-guia">Rastrear una guía</a>
         </div>
       </section>
     </main>

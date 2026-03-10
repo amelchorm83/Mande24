@@ -2,10 +2,10 @@ const coverageByState = [
   {
     state: "Tabasco",
     zones: [
-      { zone: "Centro", municipalities: "Centro, Nacajuca, Jalpa de Mendez" },
-      { zone: "Chontalpa", municipalities: "Comalcalco, Cardenas, Huimanguillo" },
+      { zone: "Centro", municipalities: "Centro, Nacajuca, Jalpa de Méndez" },
+      { zone: "Chontalpa", municipalities: "Comalcalco, Cárdenas, Huimanguillo" },
       { zone: "Sierra", municipalities: "Teapa, Tacotalpa, Jalapa" },
-      { zone: "Rios", municipalities: "Balancan, Tenosique, Emiliano Zapata" },
+      { zone: "Ríos", municipalities: "Balancán, Tenosique, Emiliano Zapata" },
     ],
   },
   {
@@ -13,8 +13,8 @@ const coverageByState = [
     zones: [
       { zone: "Campeche Capital", municipalities: "Campeche, Lerma" },
       { zone: "Carmen", municipalities: "Ciudad del Carmen, Sabancuy" },
-      { zone: "Norte", municipalities: "Calkini, Hecelchakan, Tenabo" },
-      { zone: "Oriente", municipalities: "Champoton, Escarcega" },
+      { zone: "Norte", municipalities: "Calkiní, Hecelchakán, Tenabo" },
+      { zone: "Oriente", municipalities: "Champotón, Escárcega" },
     ],
   },
 ];
@@ -41,7 +41,7 @@ export default function CoberturaPage() {
           <a className="nav-link" href="/auth">Portal Auth</a>
           <a className="nav-link" href="/client">Portal Cliente</a>
           <a className="nav-link" href="/rider">Portal Rider</a>
-          <a className="nav-link" href="/station">Portal Estacion</a>
+          <a className="nav-link" href="/station">Portal Estación</a>
         
           <a className="nav-link" href="/cotizador">Cotizador</a>
           <a className="nav-link" href="/niveles-servicio">Niveles de Servicio</a>
@@ -59,15 +59,15 @@ export default function CoberturaPage() {
           <article className="media-card">
             <img src="/brand/photo-map.svg" alt="Mapa de cobertura de Tabasco" />
             <div>
-              <h3>Operacion Regional</h3>
-              <p className="hero-note">Cobertura definida por municipio, codigo postal y colonia para una asignacion mas precisa.</p>
+              <h3>Operación Regional</h3>
+              <p className="hero-note">Cobertura definida por municipio, código postal y colonia para una asignación más precisa.</p>
             </div>
           </article>
           <article className="media-card">
-            <img src="/brand/photo-station.svg" alt="Estacion operativa para zonas" />
+            <img src="/brand/photo-station.svg" alt="Estación operativa para zonas" />
             <div>
               <h3>Despacho por Zonas</h3>
-              <p className="hero-note">Las estaciones operan bajo reglas geograficas para optimizar cada ruta de entrega.</p>
+              <p className="hero-note">Las estaciones operan bajo reglas geográficas para optimizar cada ruta de entrega.</p>
             </div>
           </article>
         </div>
@@ -92,7 +92,7 @@ export default function CoberturaPage() {
         <div className="grid">
           <article className="card">
             <h3>Express urbano</h3>
-            <p>Atencion prioritaria en zonas urbanas con asignacion rapida de rider.</p>
+            <p>Atención prioritaria en zonas urbanas con asignación rápida de rider.</p>
           </article>
           <article className="card">
             <h3>Programado intermunicipal</h3>
@@ -100,17 +100,17 @@ export default function CoberturaPage() {
           </article>
           <article className="card">
             <h3>Rutas recurrentes</h3>
-            <p>Planeacion semanal para empresas con volumen estable y entregas frecuentes.</p>
+            <p>Planeación semanal para empresas con volumen estable y entregas frecuentes.</p>
           </article>
         </div>
       </section>
 
       <section className="panel">
-        <h2>Plan de Expansion</h2>
+        <h2>Plan de Expansión</h2>
         <ol className="flow-list">
-          <li>Consolidar cobertura por colonia y codigo postal en municipios activos de Tabasco y Campeche.</li>
+          <li>Consolidar cobertura por colonia y código postal en municipios activos de Tabasco y Campeche.</li>
           <li>Escalar a corredores regionales colindantes con demanda sostenida en sureste.</li>
-          <li>Automatizar asignacion por zonas geograficas dentro del ERP para mejorar tiempos de respuesta.</li>
+          <li>Automatizar asignación por zonas geográficas dentro del ERP para mejorar tiempos de respuesta.</li>
         </ol>
       </section>
     </main>

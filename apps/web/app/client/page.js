@@ -113,8 +113,8 @@ export default function ClientPortalPage() {
       localStorage.setItem("m24_token", data.access_token);
       localStorage.setItem("m24_role", "client");
       localStorage.setItem("m24_email", registerEmail);
-      setRegisterMsg("Cuenta lista. Sesion iniciada como cliente.");
-      setMsg("Token de cliente listo. Ahora carga catalogos.");
+      setRegisterMsg("Cuenta lista. Sesión iniciada como cliente.");
+      setMsg("Token de cliente listo. Ahora carga catálogos.");
     } catch (error) {
       setRegisterMsg(`Error: ${error.message}`);
     }
@@ -146,7 +146,7 @@ export default function ClientPortalPage() {
         fetch(`${API_BASE}/api/v1/catalogs/stations`, { headers }),
       ]);
       if (!svcRes.ok || !stRes.ok) {
-        setMsg("No se pudieron cargar catalogos. Revisa tu token/rol.");
+        setMsg("No se pudieron cargar catálogos. Revisa tu token/rol.");
         return;
       }
       const svcData = await svcRes.json();
@@ -156,7 +156,7 @@ export default function ClientPortalPage() {
       if (svcData.length && !serviceId) setServiceId(svcData[0].id);
       if (stData.length && !stationId) setStationId(stData[0].id);
       await Promise.all([loadProfiles(), loadGeoStates(), loadShipments()]);
-      setMsg("Catalogos y clientes cargados.");
+      setMsg("Catálogos y clientes cargados.");
     } catch (error) {
       setMsg(`Error catalogos: ${error.message}`);
     }
@@ -191,7 +191,7 @@ export default function ClientPortalPage() {
     const res = await fetch(`${API_BASE}/api/v1/clients/geo/states`, { headers });
     if (!res.ok) {
       setGeoLoading(false);
-      setMsg("No se pudo cargar Estados. Verifica token o sincronizacion geo.");
+      setMsg("No se pudo cargar Estados. Verifica token o sincronización geo.");
       return;
     }
     const rows = await res.json();
@@ -288,7 +288,7 @@ export default function ClientPortalPage() {
   async function createGuide(e) {
     e.preventDefault();
     if (!serviceId || !stationId) {
-      setMsg("Selecciona servicio y estacion.");
+      setMsg("Selecciona servicio y estación.");
       return;
     }
     try {
@@ -307,7 +307,7 @@ export default function ClientPortalPage() {
       });
       const data = await res.json();
       if (!res.ok) {
-        setMsg(`Error creando guia: ${JSON.stringify(data)}`);
+        setMsg(`Error creando guía: ${JSON.stringify(data)}`);
         return;
       }
 
@@ -320,10 +320,10 @@ export default function ClientPortalPage() {
       }
 
       setGuideResult(data);
-      setMsg("Guia creada correctamente.");
+      setMsg("Guía creada correctamente.");
       await loadShipments();
     } catch (error) {
-      setMsg(`Error creando guia: ${error.message}`);
+      setMsg(`Error creando guía: ${error.message}`);
     }
   }
 
@@ -357,7 +357,7 @@ export default function ClientPortalPage() {
           <img className="brand-logo" src="/brand/icon.svg" alt="Icono Mande24" />
           <div className="brand-copy">
             <h2>Portal Cliente</h2>
-            <p className="brand-slogan">Registro, guias y seguimiento en una sola vista.</p>
+            <p className="brand-slogan">Registro, guías y seguimiento en una sola vista.</p>
           </div>
         </div>
         <nav className="nav-pills">
@@ -370,7 +370,7 @@ export default function ClientPortalPage() {
           <a className="nav-link" href="/auth">Portal Auth</a>
           <a className="nav-link active" href="/client">Portal Cliente</a>
           <a className="nav-link" href="/rider">Portal Rider</a>
-          <a className="nav-link" href="/station">Portal Estacion</a>
+          <a className="nav-link" href="/station">Portal Estación</a>
         
           <a className="nav-link" href="/cotizador">Cotizador</a>
           <a className="nav-link" href="/niveles-servicio">Niveles de Servicio</a>
@@ -378,24 +378,24 @@ export default function ClientPortalPage() {
       </header>
 
       <span className="badge">Portal Cliente</span>
-      <h1>Gestion de Clientes y Guias</h1>
-      <p className="hero-note">Registra clientes de origen y destino con direccion validada, define facturacion y opera guias con trazabilidad de envios enviados y recibidos.</p>
+      <h1>Gestión de Clientes y Guías</h1>
+      <p className="hero-note">Registra clientes de origen y destino con dirección validada, define facturación y opera guías con trazabilidad de envíos enviados y recibidos.</p>
       <img className="hero-banner" src="/brand/banner.svg" alt="Banner portal cliente" />
 
       <section className="panel">
         <div className="media-grid">
           <article className="media-card">
-            <img src="/brand/photo-hub.svg" alt="Captura de clientes y guias" />
+            <img src="/brand/photo-hub.svg" alt="Captura de clientes y guías" />
             <div>
               <h3>Captura Estructurada</h3>
-              <p className="hero-note">Completa direcciones con cascada geografia y crea guias con menos errores de captura.</p>
+              <p className="hero-note">Completa direcciones con cascada geografía y crea guías con menos errores de captura.</p>
             </div>
           </article>
           <article className="media-card">
             <img src="/brand/photo-map.svg" alt="Cobertura por zonas de entrega" />
             <div>
-              <h3>Envios con Contexto</h3>
-              <p className="hero-note">Opera envios por zonas de cobertura para mejorar promesas de entrega y servicio.</p>
+              <h3>Envíos con Contexto</h3>
+              <p className="hero-note">Opera envíos por zonas de cobertura para mejorar promesas de entrega y servicio.</p>
             </div>
           </article>
         </div>
@@ -403,20 +403,20 @@ export default function ClientPortalPage() {
 
       <nav className="section-nav">
         <button className={section === "acceso" ? "section-link active" : "section-link"} onClick={() => setSection("acceso")}>Acceso</button>
-        <button className={section === "catalogos" ? "section-link active" : "section-link"} onClick={() => setSection("catalogos")}>Token y Catalogos</button>
+        <button className={section === "catalogos" ? "section-link active" : "section-link"} onClick={() => setSection("catalogos")}>Token y Catálogos</button>
         <button className={section === "clientes" ? "section-link active" : "section-link"} onClick={() => setSection("clientes")}>Alta Cliente</button>
-        <button className={section === "guias" ? "section-link active" : "section-link"} onClick={() => setSection("guias")}>Guias</button>
-        <button className={section === "envios" ? "section-link active" : "section-link"} onClick={() => setSection("envios")}>Envios</button>
+        <button className={section === "guias" ? "section-link active" : "section-link"} onClick={() => setSection("guias")}>Guías</button>
+        <button className={section === "envios" ? "section-link active" : "section-link"} onClick={() => setSection("envios")}>Envíos</button>
       </nav>
 
       {section === "acceso" && <section className="panel">
         <h2>Acceso para nuevos clientes</h2>
-        <p className="field-hint">Crea tu cuenta desde esta seccion para ingresar al portal sin pasos adicionales.</p>
+        <p className="field-hint">Crea tu cuenta desde esta sección para ingresar al portal sin pasos adicionales.</p>
       </section>}
 
       {section === "acceso" && <section className="panel">
-        <h2>Registro rapido de cuenta</h2>
-        <p className="field-hint">Completa estos datos para activar tu acceso y autenticarte automaticamente.</p>
+        <h2>Registro rápido de cuenta</h2>
+        <p className="field-hint">Completa estos datos para activar tu acceso y autenticarte automáticamente.</p>
         <form className="form-grid" onSubmit={registerAndLoginClient}>
           <label>
             Nombre completo
@@ -436,7 +436,7 @@ export default function ClientPortalPage() {
       </section>}
 
       {section === "catalogos" && <section className="panel">
-        <h2>Paso 1: Token y Catalogos</h2>
+        <h2>Paso 1: Token y Catálogos</h2>
         <label>
           Token Bearer
           <textarea value={token} onChange={(e) => setToken(e.target.value)} rows={4} className="mono-box" />
@@ -444,7 +444,7 @@ export default function ClientPortalPage() {
         <p className="field-hint">Si no cuentas con token, ingresa primero al portal `Auth` para autenticarte.</p>
         <div className="inline-actions">
           <button className="btn btn-ghost" onClick={() => localStorage.setItem("m24_token", token)}>Guardar token</button>
-          <button className="btn btn-primary" onClick={loadCatalogs}>Cargar catalogos</button>
+          <button className="btn btn-primary" onClick={loadCatalogs}>Cargar catálogos</button>
         </div>
       </section>}
 
@@ -478,9 +478,9 @@ export default function ClientPortalPage() {
             </select>
           </label>
           <label>
-            Codigo postal
+            Código postal
             <select value={postalCode} onChange={(e) => setPostalCode(e.target.value)} disabled={!token || postalCodes.length === 0}>
-              <option value="">{!token ? "Captura token primero" : "Selecciona codigo postal"}</option>
+              <option value="">{!token ? "Captura token primero" : "Selecciona código postal"}</option>
               {postalCodes.map((item) => <option key={item.code} value={item.code}>{item.code}</option>)}
             </select>
           </label>
@@ -492,11 +492,11 @@ export default function ClientPortalPage() {
             </select>
           </label>
           <label>
-            Calle y numero
+            Calle y número
             <input value={addressLine} onChange={(e) => setAddressLine(e.target.value)} />
           </label>
           <label>
-            Telefono fijo
+            Teléfono fijo
             <input value={landlinePhone} onChange={(e) => setLandlinePhone(e.target.value)} />
           </label>
           <label>
@@ -506,7 +506,7 @@ export default function ClientPortalPage() {
           <label>
             Facturar servicios (solo origen)
             <select value={originWantsInvoice ? "true" : "false"} onChange={(e) => setOriginWantsInvoice(e.target.value === "true")}>
-              <option value="true">Si</option>
+              <option value="true">Sí</option>
               <option value="false">No</option>
             </select>
           </label>
@@ -514,7 +514,7 @@ export default function ClientPortalPage() {
             Crear acceso portal/PWA destino
             <select value={createPortalAccess ? "true" : "false"} onChange={(e) => setCreatePortalAccess(e.target.value === "true")}>
               <option value="false">No</option>
-              <option value="true">Si</option>
+              <option value="true">Sí</option>
             </select>
           </label>
           {createPortalAccess && (
@@ -534,7 +534,7 @@ export default function ClientPortalPage() {
       </section>}
 
       {section === "guias" && <section className="panel">
-        <h2>Paso 3: Crear Guia</h2>
+        <h2>Paso 3: Crear Guía</h2>
         <form className="form-grid" onSubmit={createGuide}>
           <label>
             Cliente origen
@@ -553,7 +553,7 @@ export default function ClientPortalPage() {
           <label>
             Facturar servicio origen
             <select value={originWantsInvoice ? "true" : "false"} onChange={(e) => setOriginWantsInvoice(e.target.value === "true")}>
-              <option value="true">Si</option>
+              <option value="true">Sí</option>
               <option value="false">No</option>
             </select>
           </label>
@@ -567,7 +567,7 @@ export default function ClientPortalPage() {
             </select>
           </label>
           <label>
-            Estacion
+            Estación
             <select value={stationId} onChange={(e) => setStationId(e.target.value)}>
               <option value="">Selecciona</option>
               {stations.map((item) => (
@@ -575,12 +575,12 @@ export default function ClientPortalPage() {
               ))}
             </select>
           </label>
-          <button className="btn btn-primary" type="submit">Crear guia</button>
+          <button className="btn btn-primary" type="submit">Crear guía</button>
         </form>
 
         {guideResult && (
           <div className="result-box">
-            <p><strong>Guia:</strong> {guideResult.guide_code}</p>
+            <p><strong>Guía:</strong> {guideResult.guide_code}</p>
             <p><strong>Venta:</strong> {guideResult.sale_amount} {guideResult.currency}</p>
             {deliveryId && <p><strong>Delivery ID:</strong> {deliveryId}</p>}
             {deliveryId && <p className="field-hint">Siguiente paso: abre `Rider` y utiliza este Delivery ID para actualizar etapas.</p>}
@@ -590,14 +590,14 @@ export default function ClientPortalPage() {
       </section>}
 
       {section === "envios" && <section className="panel">
-        <h2>Historial de Envios</h2>
+        <h2>Historial de Envíos</h2>
         <div className="inline-actions">
-          <button className="btn btn-ghost" onClick={loadShipments}>Actualizar envios</button>
+          <button className="btn btn-ghost" onClick={loadShipments}>Actualizar envíos</button>
         </div>
         <h3>Enviados</h3>
         <div className="table-wrap">
           <table>
-            <thead><tr><th>Guia</th><th>Origen</th><th>Destino</th><th>Monto</th></tr></thead>
+            <thead><tr><th>Guía</th><th>Origen</th><th>Destino</th><th>Monto</th></tr></thead>
             <tbody>
               {sentGuides.map((item) => (
                 <tr key={`sent-${item.guide_code}`}><td>{item.guide_code}</td><td>{item.customer_name}</td><td>{item.destination_name}</td><td>{item.sale_amount} {item.currency}</td></tr>
@@ -608,7 +608,7 @@ export default function ClientPortalPage() {
         <h3>Recibidos</h3>
         <div className="table-wrap">
           <table>
-            <thead><tr><th>Guia</th><th>Origen</th><th>Destino</th><th>Monto</th></tr></thead>
+            <thead><tr><th>Guía</th><th>Origen</th><th>Destino</th><th>Monto</th></tr></thead>
             <tbody>
               {receivedGuides.map((item) => (
                 <tr key={`recv-${item.guide_code}`}><td>{item.guide_code}</td><td>{item.customer_name}</td><td>{item.destination_name}</td><td>{item.sale_amount} {item.currency}</td></tr>

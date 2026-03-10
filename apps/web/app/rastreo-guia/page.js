@@ -18,7 +18,7 @@ export default function RastreoGuiaPage() {
   async function onSearch() {
     const normalized = guideCode.trim().toUpperCase();
     if (!normalized) {
-      setStatusMsg("Ingresa un folio valido.");
+      setStatusMsg("Ingresa un folio válido.");
       setTracking(null);
       return;
     }
@@ -30,7 +30,7 @@ export default function RastreoGuiaPage() {
       const data = await res.json();
       if (!res.ok) {
         setTracking(null);
-        setStatusMsg(data?.detail || "No se encontro informacion para este folio.");
+        setStatusMsg(data?.detail || "No se encontró información para este folio.");
         return;
       }
       setTracking(data);
@@ -63,15 +63,15 @@ export default function RastreoGuiaPage() {
         </nav>
       </header>
 
-      <span className="badge">Rastreo de Guia</span>
-      <h1>Consulta el estado de tu envio con tu folio.</h1>
-      <p className="hero-note">Consulta publica conectada a la API de Mande24 para validar etapa actual y datos clave del envio.</p>
+      <span className="badge">Rastreo de Guía</span>
+      <h1>Consulta el estado de tu envío con tu folio.</h1>
+      <p className="hero-note">Consulta pública conectada a la API de Mande24 para validar etapa actual y datos clave del envío.</p>
 
       <section className="panel contact-grid">
         <article className="card">
           <h2>Buscar folio</h2>
           <label>
-            Folio de guia
+            Folio de guía
             <input
               value={guideCode}
               onChange={(e) => setGuideCode(e.target.value)}
@@ -79,7 +79,7 @@ export default function RastreoGuiaPage() {
             />
           </label>
           <div className="inline-actions">
-            <button className="btn btn-primary" type="button" disabled={isLoading} onClick={onSearch}>{isLoading ? "Consultando..." : "Buscar guia"}</button>
+            <button className="btn btn-primary" type="button" disabled={isLoading} onClick={onSearch}>{isLoading ? "Consultando..." : "Buscar guía"}</button>
           </div>
           <p className={`status-line ${statusMsg.includes("Error") || statusMsg.includes("No se") ? "warn" : "ok"}`}>{statusMsg}</p>
         </article>
@@ -90,9 +90,9 @@ export default function RastreoGuiaPage() {
           <p className="field-hint">Folio: {tracking?.guide_code || "--"}</p>
           <p className="field-hint">Cliente origen: {tracking?.customer_name || "--"}</p>
           <p className="field-hint">Destino: {tracking?.destination_name || "--"}</p>
-          <p className="field-hint">Ultima actualizacion: {tracking?.updated_at ? new Date(tracking.updated_at).toLocaleString() : "--"}</p>
-          <p className="field-hint">Evidencia: {tracking ? (tracking.has_evidence ? "Si" : "No") : "--"}</p>
-          <p className="field-hint">Firma: {tracking ? (tracking.has_signature ? "Si" : "No") : "--"}</p>
+          <p className="field-hint">Última actualización: {tracking?.updated_at ? new Date(tracking.updated_at).toLocaleString() : "--"}</p>
+          <p className="field-hint">Evidencia: {tracking ? (tracking.has_evidence ? "Sí" : "No") : "--"}</p>
+          <p className="field-hint">Firma: {tracking ? (tracking.has_signature ? "Sí" : "No") : "--"}</p>
           <div className="inline-actions">
             <a className="btn" href="/contacto">Reportar incidencia</a>
             <a className="btn btn-primary" href="/auth">Ingresar al portal</a>

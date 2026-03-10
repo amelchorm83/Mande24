@@ -1,19 +1,19 @@
 const policies = [
   {
     title: "Tarifa base",
-    text: "Incluye recoleccion, traslado y evidencia digital en cobertura urbana definida.",
+    text: "Incluye recolección, traslado y evidencia digital en cobertura urbana definida.",
   },
   {
     title: "Ajuste por distancia",
-    text: "Se calcula por kilometros estimados y complejidad de ruta intermunicipal.",
+    text: "Se calcula por kilómetros estimados y complejidad de ruta intermunicipal.",
   },
   {
     title: "Recargos operativos",
-    text: "Pueden aplicar en horarios extendidos, dias de alta demanda o servicios criticos.",
+    text: "Pueden aplicar en horarios extendidos, días de alta demanda o servicios críticos.",
   },
   {
-    title: "Politica de reintento",
-    text: "Si no hay receptor disponible, se agenda nuevo intento segun condiciones comerciales.",
+    title: "Política de reintento",
+    text: "Si no hay receptor disponible, se agenda nuevo intento según condiciones comerciales.",
   },
 ];
 
@@ -34,13 +34,13 @@ export default function TarifasPoliticasPage() {
           <a className="nav-link" href="/cobertura">Cobertura</a>
           <a className="nav-link" href="/contacto">Contacto</a>
           <a className="nav-link" href="/cotizador">Cotizador</a>
-          <a className="nav-link active" href="/tarifas-politicas">Tarifas y Politicas</a>
+          <a className="nav-link active" href="/tarifas-politicas">Tarifas y Políticas</a>
         </nav>
       </header>
 
-      <span className="badge">Tarifas y Politicas</span>
+      <span className="badge">Tarifas y Políticas</span>
       <h1>Reglas claras para cotizar y operar con mayor confianza.</h1>
-      <p className="hero-note">Aqui encuentras criterios generales para estimacion comercial y politica de servicio en Tabasco y Campeche.</p>
+      <p className="hero-note">Aquí encuentras criterios generales para estimación comercial y política de servicio en Tabasco y Campeche.</p>
 
       <section className="panel">
         <h2>Lineamientos principales</h2>
@@ -59,7 +59,7 @@ export default function TarifasPoliticasPage() {
         <ul className="flow-list">
           <li>El cotizador web es referencial y no sustituye una propuesta formal.</li>
           <li>Las condiciones finales se definen por volumen, zonas y nivel de SLA.</li>
-          <li>Los tiempos de atencion pueden variar por clima y saturacion operativa.</li>
+          <li>Los tiempos de atención pueden variar por clima y saturación operativa.</li>
         </ul>
       </section>
     </main>

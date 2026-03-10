@@ -78,8 +78,8 @@ export default function ContactoPage() {
       </header>
 
       <span className="badge">Contacto</span>
-      <h1>Hablemos de tu operacion de entregas.</h1>
-      <p className="hero-note">Comparte tus necesidades y te proponemos una solucion de ultima milla para tu negocio en Tabasco y Campeche.</p>
+      <h1>Hablemos de tu operación de entregas.</h1>
+      <p className="hero-note">Comparte tus necesidades y te proponemos una solución de última milla para tu negocio en Tabasco y Campeche.</p>
       <img className="hero-banner" src="/brand/banner.svg" alt="Banner contacto Mande24" />
 
       <section className="panel contact-grid">
@@ -99,20 +99,20 @@ export default function ContactoPage() {
               <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="correo@empresa.com" required />
             </label>
             <label>
-              Telefono
+              Teléfono
               <input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="993 000 0000" />
             </label>
             <label>
               Tipo de servicio
               <select value={serviceInterest} onChange={(e) => setServiceInterest(e.target.value)}>
-                <option value="express">Entrega Express</option>
+                <option value="express">Entrega Exprés</option>
                 <option value="programada">Entrega Programada</option>
                 <option value="recurrente">Ruta Recurrente</option>
               </select>
             </label>
             <label>
               Mensaje
-              <textarea value={message} onChange={(e) => setMessage(e.target.value)} rows={5} placeholder="Describe tu operacion y volumen estimado" required minLength={10} />
+              <textarea value={message} onChange={(e) => setMessage(e.target.value)} rows={5} placeholder="Describe tu operación y volumen estimado" required minLength={10} />
             </label>
             <button className="btn btn-primary" type="submit" disabled={isSending}>{isSending ? "Enviando..." : "Enviar solicitud"}</button>
           </form>
@@ -121,34 +121,34 @@ export default function ContactoPage() {
 
         <article className="card">
           <h2>Canales Directos</h2>
-          <p className="hero-note">Tambien puedes contactarnos por WhatsApp para una atencion mas rapida.</p>
+          <p className="hero-note">También puedes contactarnos por WhatsApp para una atención más rápida.</p>
           <div className="inline-actions">
             <a className="btn whatsapp-btn" href="https://wa.me/529930000000" target="_blank" rel="noreferrer">WhatsApp Comercial</a>
             <a className="btn" href="mailto:comercial@mande24.com">comercial@mande24.com</a>
           </div>
-          <h3>Horario de Atencion</h3>
+          <h3>Horario de Atención</h3>
           <ul className="flow-list">
             <li>Lunes a viernes: 08:00 - 19:00</li>
-            <li>Sabado: 09:00 - 14:00</li>
-            <li>Domingo: guardias operativas segun contrato</li>
+            <li>Sábado: 09:00 - 14:00</li>
+            <li>Domingo: guardias operativas según contrato</li>
           </ul>
           <img className="hero-banner" src="/brand/photo-station.svg" alt="Equipo de atencion comercial" />
         </article>
       </section>
 
       <section className="panel">
-        <h2>Que informacion nos ayuda a cotizar mejor</h2>
+        <h2>Qué información nos ayuda a cotizar mejor</h2>
         <div className="grid">
           <article className="card">
             <h3>Volumen estimado</h3>
-            <p>Numero de entregas por dia o por semana para proyectar capacidad y tiempos.</p>
+            <p>Número de entregas por día o por semana para proyectar capacidad y tiempos.</p>
           </article>
           <article className="card">
             <h3>Tipo de servicio</h3>
-            <p>Express, programado o rutas recurrentes para recomendar el esquema correcto.</p>
+            <p>Exprés, programado o rutas recurrentes para recomendar el esquema correcto.</p>
           </article>
           <article className="card">
-            <h3>Zonas de operacion</h3>
+            <h3>Zonas de operación</h3>
             <p>Colonias o municipios de Tabasco y Campeche donde necesitas cobertura.</p>
           </article>
         </div>

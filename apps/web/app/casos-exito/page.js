@@ -3,18 +3,18 @@ const cases = [
     name: "Cadena de farmacias regional",
     challenge: "Pedidos urgentes al cierre de turno con alto riesgo de atraso.",
     approach: "Modelo mixto express + programado con prioridad por zona urbana.",
-    result: "Reduccion estimada de 28% en entregas fuera de tiempo en 8 semanas.",
+    result: "Reducción estimada de 28% en entregas fuera de tiempo en 8 semanas.",
   },
   {
     name: "Refaccionaria con entrega a talleres",
     challenge: "Paros por falta de piezas criticas en horarios pico.",
     approach: "Rutas recurrentes por corredor y soporte express para urgencias.",
-    result: "Mejora estimada de 22% en tiempos de reposicion.",
+    result: "Mejora estimada de 22% en tiempos de reposición.",
   },
   {
     name: "Comercio local con e-commerce",
-    challenge: "Variacion diaria de volumen y baja trazabilidad de incidencias.",
-    approach: "Tablero de seguimiento por guia y gestion de reintentos.",
+    challenge: "Variación diaria de volumen y baja trazabilidad de incidencias.",
+    approach: "Tablero de seguimiento por guía y gestión de reintentos.",
     result: "Aumento estimado de 19% en cumplimiento semanal.",
   },
 ];
@@ -38,16 +38,16 @@ export default function CasosExitoPage() {
           <a className="nav-link" href="/cotizador">Cotizador</a>
           <a className="nav-link" href="/niveles-servicio">Niveles de Servicio</a>
           <a className="nav-link" href="/industrias">Industrias</a>
-          <a className="nav-link active" href="/casos-exito">Casos de Exito</a>
+          <a className="nav-link active" href="/casos-exito">Casos de Éxito</a>
         </nav>
       </header>
 
-      <span className="badge">Casos de Exito</span>
-      <h1>Resultados operativos que muestran el impacto de una ultima milla bien ejecutada.</h1>
+      <span className="badge">Casos de Éxito</span>
+      <h1>Resultados operativos que muestran el impacto de una última milla bien ejecutada.</h1>
       <p className="hero-note">Estos casos son referenciales y sirven para visualizar mejoras medibles en cumplimiento, tiempos y control de incidencias.</p>
 
       <section className="panel">
-        <h2>Historias de operacion</h2>
+        <h2>Historias de operación</h2>
         <div className="grid">
           {cases.map((item) => (
             <article className="card" key={item.name}>
@@ -61,7 +61,7 @@ export default function CasosExitoPage() {
       </section>
 
       <section className="panel">
-        <h2>Que medimos para mejorar</h2>
+        <h2>Qué medimos para mejorar</h2>
         <ol className="flow-list">
           <li>Cumplimiento por franja horaria y por municipio.</li>
           <li>Tiempo promedio por ruta y causa principal de retraso.</li>

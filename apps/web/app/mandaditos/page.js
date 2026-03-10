@@ -93,7 +93,7 @@ export default function MandaditosPage() {
 
       <span className="badge">Mandaditos 24</span>
       <h1>Resuelve pendientes urgentes en minutos.</h1>
-      <p className="hero-note">Compras rapidas, documentos, articulos olvidados y envios puntuales con seguimiento claro de principio a fin.</p>
+      <p className="hero-note">Compras rápidas, documentos, artículos olvidados y envíos puntuales con seguimiento claro de principio a fin.</p>
       <img className="hero-banner" src="/brand/photo-mandaditos.svg" alt="Servicio de mandaditos Mande24" />
 
       <section className="panel contact-grid">
@@ -109,31 +109,31 @@ export default function MandaditosPage() {
               <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="correo@dominio.com" required />
             </label>
             <label>
-              Telefono
+              Teléfono
               <input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="993 000 0000" required />
             </label>
             <label>
-              Direccion de origen
+              Dirección de origen
               <input value={pickupAddress} onChange={(e) => setPickupAddress(e.target.value)} placeholder="Donde recogemos" required />
             </label>
             <label>
-              Direccion de destino
+              Dirección de destino
               <input value={deliveryAddress} onChange={(e) => setDeliveryAddress(e.target.value)} placeholder="Donde entregamos" required />
             </label>
             <label>
               Tipo de mandadito
               <select value={itemType} onChange={(e) => setItemType(e.target.value)}>
                 <option value="documentos">Documentos</option>
-                <option value="compras">Compras rapidas</option>
+                <option value="compras">Compras rápidas</option>
                 <option value="medicinas">Medicinas</option>
-                <option value="articulo_olvidado">Articulo olvidado</option>
+                <option value="articulo_olvidado">Artículo olvidado</option>
               </select>
             </label>
             <label>
               Urgencia
               <select value={urgency} onChange={(e) => setUrgency(e.target.value)}>
                 <option value="hoy">Hoy</option>
-                <option value="en_2_horas">En las proximas 2 horas</option>
+                <option value="en_2_horas">En las próximas 2 horas</option>
                 <option value="programado">Programado</option>
               </select>
             </label>
@@ -149,9 +149,9 @@ export default function MandaditosPage() {
         <article className="card">
           <h2>Que puedes resolver</h2>
           <ul className="flow-list">
-            <li>Envio de documentos urgentes entre oficinas.</li>
-            <li>Compra y entrega de articulos de ultimo minuto.</li>
-            <li>Recuperacion de objetos olvidados en casa o negocio.</li>
+            <li>Envío de documentos urgentes entre oficinas.</li>
+            <li>Compra y entrega de artículos de último minuto.</li>
+            <li>Recuperación de objetos olvidados en casa o negocio.</li>
             <li>Entregas puntuales con evidencia digital.</li>
           </ul>
           <div className="inline-actions">

@@ -61,7 +61,7 @@ export default function RiderPortalPage() {
           <a className="nav-link" href="/auth">Portal Auth</a>
           <a className="nav-link" href="/client">Portal Cliente</a>
           <a className="nav-link active" href="/rider">Portal Rider</a>
-          <a className="nav-link" href="/station">Portal Estacion</a>
+          <a className="nav-link" href="/station">Portal Estación</a>
         
           <a className="nav-link" href="/cotizador">Cotizador</a>
           <a className="nav-link" href="/niveles-servicio">Niveles de Servicio</a>
@@ -78,7 +78,7 @@ export default function RiderPortalPage() {
           <article className="media-card">
             <img src="/brand/photo-rider.svg" alt="Rider en ruta con control de etapas" />
             <div>
-              <h3>Operacion de Ruta</h3>
+              <h3>Operación de Ruta</h3>
               <p className="hero-note">Actualiza etapas, evidencia y firma para cerrar entregas con trazabilidad completa.</p>
             </div>
           </article>
@@ -87,11 +87,11 @@ export default function RiderPortalPage() {
 
       <nav className="section-nav">
         <button className={section === "actualizar" ? "section-link active" : "section-link"} onClick={() => setSection("actualizar")}>Actualizar Etapa</button>
-        <button className={section === "guia" ? "section-link active" : "section-link"} onClick={() => setSection("guia")}>Guia Rapida</button>
+        <button className={section === "guia" ? "section-link active" : "section-link"} onClick={() => setSection("guia")}>Guía Rápida</button>
       </nav>
 
       {section === "actualizar" && <section className="panel">
-        <h2>Actualizacion de Etapa</h2>
+        <h2>Actualización de Etapa</h2>
         <form className="form-grid" onSubmit={updateStage}>
           <label>
             Token Bearer
@@ -104,13 +104,13 @@ export default function RiderPortalPage() {
           <label>
             Nueva etapa
             <select value={stage} onChange={(e) => setStage(e.target.value)}>
-              <option value="assigned">assigned</option>
-              <option value="picked_up">picked_up</option>
-              <option value="in_transit">in_transit</option>
-              <option value="at_station">at_station</option>
-              <option value="out_for_delivery">out_for_delivery</option>
-              <option value="delivered">delivered</option>
-              <option value="failed">failed</option>
+              <option value="assigned">Asignado</option>
+              <option value="picked_up">Recolectado</option>
+              <option value="in_transit">En tránsito</option>
+              <option value="at_station">En estación</option>
+              <option value="out_for_delivery">En ruta de entrega</option>
+              <option value="delivered">Entregado</option>
+              <option value="failed">No entregado</option>
             </select>
           </label>
           <label className="check-row">
@@ -127,10 +127,10 @@ export default function RiderPortalPage() {
       </section>}
 
       {section === "guia" && <section className="panel">
-        <h2>Guia Operativa de Etapas</h2>
+        <h2>Guía Operativa de Etapas</h2>
         <ol className="flow-list">
           <li><code>assigned</code>: pedido asignado al rider.</li>
-          <li><code>picked_up</code> y <code>in_transit</code>: envio en traslado.</li>
+          <li><code>picked_up</code> y <code>in_transit</code>: envío en traslado.</li>
           <li><code>delivered</code>: registrar <code>Evidencia</code> y <code>Firma</code> para validar cierre.</li>
         </ol>
       </section>}

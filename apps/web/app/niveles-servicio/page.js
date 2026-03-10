@@ -1,6 +1,6 @@
 const slaLevels = [
   {
-    level: "SLA Basico",
+    level: "SLA Básico",
     promise: "Entrega dentro de ventana programada",
     target: "85% a 92% cumplimiento",
     useCase: "Operaciones estables con prioridad de costo.",
@@ -13,7 +13,7 @@ const slaLevels = [
   },
   {
     level: "SLA Critico",
-    promise: "Atencion preferente y monitoreo operativo extendido",
+    promise: "Atención preferente y monitoreo operativo extendido",
     target: "96%+ cumplimiento",
     useCase: "Cuentas estrategicas con impacto alto por retraso.",
   },
@@ -44,7 +44,7 @@ export default function NivelesServicioPage() {
 
       <span className="badge">Niveles de Servicio</span>
       <h1>Define una promesa operativa realista y medible para tus entregas.</h1>
-      <p className="hero-note">Esta pagina te ayuda a conversar de SLA con lenguaje claro para clientes, operaciones y comercial.</p>
+      <p className="hero-note">Esta página te ayuda a conversar de SLA con lenguaje claro para clientes, operaciones y comercial.</p>
 
       <section className="panel">
         <h2>Comparativo SLA</h2>
@@ -73,11 +73,11 @@ export default function NivelesServicioPage() {
       </section>
 
       <section className="panel">
-        <h2>Buenas practicas para cumplir SLA</h2>
+        <h2>Buenas prácticas para cumplir SLA</h2>
         <ol className="flow-list">
           <li>Definir cobertura exacta por zona y horarios de corte por municipio.</li>
           <li>Establecer rutas contingentes para demanda alta o clima adverso.</li>
-          <li>Monitorear causas de incumplimiento y ajustar reglas de asignacion semanalmente.</li>
+          <li>Monitorear causas de incumplimiento y ajustar reglas de asignación semanalmente.</li>
         </ol>
         <div className="inline-actions">
           <a className="btn btn-primary" href="/contacto">Diseñar SLA con Mande24</a>

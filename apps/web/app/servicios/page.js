@@ -20,7 +20,7 @@ export default function ServiciosPage() {
           <a className="nav-link" href="/auth">Portal Auth</a>
           <a className="nav-link" href="/client">Portal Cliente</a>
           <a className="nav-link" href="/rider">Portal Rider</a>
-          <a className="nav-link" href="/station">Portal Estacion</a>
+          <a className="nav-link" href="/station">Portal Estación</a>
         
           <a className="nav-link" href="/cotizador">Cotizador</a>
           <a className="nav-link" href="/niveles-servicio">Niveles de Servicio</a>
@@ -28,8 +28,8 @@ export default function ServiciosPage() {
       </header>
 
       <span className="badge">Servicios</span>
-      <h1>Mensajeria, paqueteria y mandaditos para resolver entregas urgentes todos los dias.</h1>
-      <p className="hero-note">Diseñamos servicios escalables para empresas y personas que necesitan rapidez, comunicacion clara y evidencia de entrega en Tabasco y Campeche.</p>
+      <h1>Mensajería, paquetería y mandaditos para resolver entregas urgentes todos los días.</h1>
+      <p className="hero-note">Diseñamos servicios escalables para empresas y personas que necesitan rapidez, comunicación clara y evidencia de entrega en Tabasco y Campeche.</p>
       <img className="hero-banner" src="/brand/banner.svg" alt="Banner de servicios Mande24" />
 
       <section className="panel" id="mandaditos">
@@ -37,11 +37,11 @@ export default function ServiciosPage() {
         <h2>Servicio estrella para pendientes urgentes</h2>
         <div className="contact-grid">
           <div>
-            <p className="hero-note">Resolvemos compras rapidas, entrega de documentos, olvidos de llaves, cargadores, medicinas y articulos prioritarios con asignacion inmediata.</p>
+            <p className="hero-note">Resolvemos compras rápidas, entrega de documentos, olvidos de llaves, cargadores, medicinas y artículos prioritarios con asignación inmediata.</p>
             <ul className="flow-list">
               <li>Solicitud por contacto directo con datos de origen y destino.</li>
-              <li>Asignacion del rider disponible mas cercano.</li>
-              <li>Seguimiento por etapa y confirmacion de entrega.</li>
+              <li>Asignación del rider disponible más cercano.</li>
+              <li>Seguimiento por etapa y confirmación de entrega.</li>
             </ul>
             <div className="inline-actions">
               <a className="btn btn-primary" href="/contacto">Pedir Mandadito</a>
@@ -51,7 +51,7 @@ export default function ServiciosPage() {
           <div className="media-card">
             <img src="/brand/photo-mandaditos.svg" alt="Mandaditos para compras y documentos" />
             <div>
-              <h3>Compras y Envio Express</h3>
+              <h3>Compras y Envío Exprés</h3>
               <p className="hero-note">Ideal para imprevistos de oficina, hogar y negocio que no pueden esperar.</p>
             </div>
           </div>
@@ -62,28 +62,28 @@ export default function ServiciosPage() {
         <div className="grid">
           <article className="card">
             <h3>Entrega Express</h3>
-            <p>Recoleccion y entrega el mismo dia para pedidos de alta prioridad.</p>
+            <p>Recolección y entrega el mismo día para pedidos de alta prioridad.</p>
             <small>Ideal para farmacias, refacciones, retail y comercio local.</small>
           </article>
           <article className="card">
             <h3>Mandaditos Urbanos</h3>
-            <p>Atencion de pendientes puntuales en minutos para personas y negocios con necesidad inmediata.</p>
-            <small>Ideal para documentos, compras urgentes y articulos olvidados.</small>
+            <p>Atención de pendientes puntuales en minutos para personas y negocios con necesidad inmediata.</p>
+            <small>Ideal para documentos, compras urgentes y artículos olvidados.</small>
           </article>
           <article className="card">
             <h3>Entrega Programada</h3>
-            <p>Programacion por ventanas horarias con seguimiento de incidencias y confirmacion de entrega.</p>
+            <p>Programación por ventanas horarias con seguimiento de incidencias y confirmación de entrega.</p>
             <small>Ideal para e-commerce y operaciones con promesa de horario.</small>
           </article>
           <article className="card">
             <h3>Ruta Recurrente</h3>
-            <p>Rutas fijas diarias o semanales para volumen constante con control de desempeno.</p>
+            <p>Rutas fijas diarias o semanales para volumen constante con control de desempeño.</p>
             <small>Ideal para distribuidores, mayoristas y cadenas comerciales.</small>
           </article>
           <article className="card">
             <h3>Evidencia Digital</h3>
             <p>Entrega validada con evidencia y firma para reducir reclamos y mejorar la confianza del cliente final.</p>
-            <small>Incluye historial por guia para auditoria y seguimiento.</small>
+            <small>Incluye historial por guía para auditoría y seguimiento.</small>
           </article>
         </div>
       </section>
@@ -93,8 +93,8 @@ export default function ServiciosPage() {
         <div className="grid">
           <article className="card">
             <h3>Plan Inicial</h3>
-            <p>Para negocios que estan comenzando su operacion de entregas.</p>
-            <small>Incluye express urbano y reportes basicos por semana.</small>
+            <p>Para negocios que están comenzando su operación de entregas.</p>
+            <small>Incluye exprés urbano y reportes básicos por semana.</small>
           </article>
           <article className="card">
             <h3>Plan Crecimiento</h3>
@@ -103,30 +103,30 @@ export default function ServiciosPage() {
           </article>
           <article className="card">
             <h3>Plan Enterprise</h3>
-            <p>Para operaciones con multiples rutas, sucursales y control avanzado.</p>
+            <p>Para operaciones con múltiples rutas, sucursales y control avanzado.</p>
             <small>Incluye tablero operativo, SLA y seguimiento dedicado.</small>
           </article>
         </div>
       </section>
 
       <section className="panel">
-        <h2>Que incluye cada servicio</h2>
+        <h2>Qué incluye cada servicio</h2>
         <ol className="flow-list">
           <li>Captura de solicitud con datos de origen, destino y prioridad.</li>
-          <li>Asignacion operativa segun zona de cobertura y disponibilidad.</li>
-          <li>Seguimiento por etapas con confirmacion de entrega.</li>
-          <li>Evidencia digital para control y reduccion de reclamos.</li>
+          <li>Asignación operativa según zona de cobertura y disponibilidad.</li>
+          <li>Seguimiento por etapas con confirmación de entrega.</li>
+          <li>Evidencia digital para control y reducción de reclamos.</li>
         </ol>
       </section>
 
       <section className="panel">
-        <h2>Operacion Unificada</h2>
-        <p className="hero-note">Nuestros portales conectan autenticacion, captura, reparto y comisiones en un mismo flujo digital.</p>
+        <h2>Operación Unificada</h2>
+        <p className="hero-note">Nuestros portales conectan autenticación, captura, reparto y comisiones en un mismo flujo digital.</p>
         <div className="inline-actions">
           <a className="btn" href="/auth">Portal Auth</a>
           <a className="btn" href="/client">Portal Cliente</a>
           <a className="btn" href="/rider">Portal Rider</a>
-          <a className="btn" href="/station">Portal Estacion</a>
+          <a className="btn" href="/station">Portal Estación</a>
         </div>
       </section>
 
@@ -134,16 +134,16 @@ export default function ServiciosPage() {
         <h2>FAQ Comercial</h2>
         <div className="grid">
           <article className="card">
-            <h3>Atienden solo empresas?</h3>
-            <p>No. Atendemos empresas, comercios y tambien solicitudes puntuales de clientes individuales.</p>
+            <h3>¿Atienden solo empresas?</h3>
+            <p>No. Atendemos empresas, comercios y también solicitudes puntuales de clientes individuales.</p>
           </article>
           <article className="card">
-            <h3>Pueden operar en dos estados?</h3>
-            <p>Si. Actualmente operamos con cobertura en Tabasco y Campeche segun zona y disponibilidad.</p>
+            <h3>¿Pueden operar en dos estados?</h3>
+            <p>Sí. Actualmente operamos con cobertura en Tabasco y Campeche según zona y disponibilidad.</p>
           </article>
           <article className="card">
-            <h3>Como solicito una propuesta?</h3>
-            <p>Desde contacto o WhatsApp comercial. Nuestro equipo arma una propuesta segun volumen y tipo de entrega.</p>
+            <h3>¿Cómo solicito una propuesta?</h3>
+            <p>Desde contacto o WhatsApp comercial. Nuestro equipo arma una propuesta según volumen y tipo de entrega.</p>
           </article>
         </div>
       </section>
@@ -155,20 +155,20 @@ export default function ServiciosPage() {
             <img src="/brand/photo-mandaditos-app.svg" alt="Caso operativo de mandaditos con seguimiento digital" />
             <div>
               <h3>Mandaditos con Trazabilidad</h3>
-              <p className="hero-note">Desde la solicitud hasta la entrega final con evidencia y confirmacion en tiempo real.</p>
+              <p className="hero-note">Desde la solicitud hasta la entrega final con evidencia y confirmación en tiempo real.</p>
             </div>
           </article>
           <article className="media-card">
             <img src="/brand/photo-rider.svg" alt="Servicio express en ruta" />
             <div>
               <h3>Express Urbano</h3>
-              <p className="hero-note">Atencion de pedidos criticos con seguimiento por etapa y evidencia de entrega.</p>
+              <p className="hero-note">Atención de pedidos críticos con seguimiento por etapa y evidencia de entrega.</p>
             </div>
           </article>
           <article className="media-card">
-            <img src="/brand/photo-hub.svg" alt="Operacion de hub logistico" />
+            <img src="/brand/photo-hub.svg" alt="Operación de hub logístico" />
             <div>
-              <h3>Consolidacion de Pedidos</h3>
+              <h3>Consolidación de Pedidos</h3>
               <p className="hero-note">Control centralizado de salidas para mejorar tiempos de respuesta y productividad.</p>
             </div>
           </article>

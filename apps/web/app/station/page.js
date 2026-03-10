@@ -157,7 +157,7 @@ export default function StationPortalPage() {
       setMsg(`Error alta cliente: ${JSON.stringify(data)}`);
       return;
     }
-    setMsg("Cliente registrado desde estacion.");
+    setMsg("Cliente registrado desde estación.");
     setNewClientName("");
     setAddressLine("");
     setLandlinePhone("");
@@ -250,7 +250,7 @@ export default function StationPortalPage() {
   async function createStation(e) {
     e.preventDefault();
     if (!newStationName || !newStationZoneId) {
-      setMsg("Completa nombre y zona de estacion.");
+      setMsg("Completa nombre y zona de estación.");
       return;
     }
     const headers = { Authorization: `Bearer ${token}`, "Content-Type": "application/json" };
@@ -266,10 +266,10 @@ export default function StationPortalPage() {
     });
     const data = await res.json();
     if (!res.ok) {
-      setMsg(`Error alta estacion: ${JSON.stringify(data)}`);
+      setMsg(`Error alta estación: ${JSON.stringify(data)}`);
       return;
     }
-    setMsg("Estacion registrada con telefono fijo y WhatsApp.");
+    setMsg("Estación registrada con teléfono fijo y WhatsApp.");
     setNewStationName("");
     setNewStationLandline("");
     setNewStationWhatsapp("");
@@ -321,8 +321,8 @@ export default function StationPortalPage() {
         <div className="brand">
           <img className="brand-logo" src="/brand/icon.svg" alt="Icono Mande24" />
           <div className="brand-copy">
-            <h2>Portal Estacion</h2>
-            <p className="brand-slogan">Control semanal y desempeno operativo.</p>
+            <h2>Portal Estación</h2>
+            <p className="brand-slogan">Control semanal y desempeño operativo.</p>
           </div>
         </div>
         <nav className="nav-pills">
@@ -335,22 +335,22 @@ export default function StationPortalPage() {
           <a className="nav-link" href="/auth">Portal Auth</a>
           <a className="nav-link" href="/client">Portal Cliente</a>
           <a className="nav-link" href="/rider">Portal Rider</a>
-          <a className="nav-link active" href="/station">Portal Estacion</a>
+          <a className="nav-link active" href="/station">Portal Estación</a>
         
           <a className="nav-link" href="/cotizador">Cotizador</a>
           <a className="nav-link" href="/niveles-servicio">Niveles de Servicio</a>
           <a className="nav-link" href="/industrias">Industrias</a></nav>
       </header>
 
-      <span className="badge">Portal Estacion</span>
+      <span className="badge">Portal Estación</span>
       <h1>Control Semanal de Comisiones</h1>
       <p className="hero-note">Consulta resultados de riders y estaciones en tiempo real. El cierre semanal requiere rol `admin`.</p>
-      <img className="hero-banner" src="/brand/banner.svg" alt="Banner portal estacion" />
+      <img className="hero-banner" src="/brand/banner.svg" alt="Banner portal estación" />
 
       <section className="panel">
         <div className="media-grid">
           <article className="media-card">
-            <img src="/brand/photo-station.svg" alt="Panel de estacion y comisiones" />
+            <img src="/brand/photo-station.svg" alt="Panel de estación y comisiones" />
             <div>
               <h3>Tablero de Comisiones</h3>
               <p className="hero-note">Visualiza avances semanales y ejecuta cierres administrativos con mayor claridad.</p>
@@ -395,7 +395,7 @@ export default function StationPortalPage() {
             </select>
           </label>
           <label>
-            Codigo postal
+            Código postal
             <select value={postalCode} onChange={(e) => setPostalCode(e.target.value)}>
               {postalCodes.map((item) => <option key={item.code} value={item.code}>{item.code}</option>)}
             </select>
@@ -408,11 +408,11 @@ export default function StationPortalPage() {
             </select>
           </label>
           <label>
-            Calle y numero
+            Calle y número
             <input value={addressLine} onChange={(e) => setAddressLine(e.target.value)} />
           </label>
           <label>
-            Telefono fijo
+            Teléfono fijo
             <input value={landlinePhone} onChange={(e) => setLandlinePhone(e.target.value)} />
           </label>
           <label>
@@ -422,7 +422,7 @@ export default function StationPortalPage() {
           <label>
             Facturar servicios origen
             <select value={wantsInvoice ? "true" : "false"} onChange={(e) => setWantsInvoice(e.target.value === "true")}>
-              <option value="true">Si</option>
+              <option value="true">Sí</option>
               <option value="false">No</option>
             </select>
           </label>
@@ -430,7 +430,7 @@ export default function StationPortalPage() {
             Crear acceso portal cliente destino
             <select value={createPortalAccess ? "true" : "false"} onChange={(e) => setCreatePortalAccess(e.target.value === "true")}>
               <option value="false">No</option>
-              <option value="true">Si</option>
+              <option value="true">Sí</option>
             </select>
           </label>
           {createPortalAccess && (
@@ -472,11 +472,11 @@ export default function StationPortalPage() {
             </select>
           </label>
           <label>
-            Vehiculo
+            Vehículo
             <input value={newRiderVehicle} onChange={(e) => setNewRiderVehicle(e.target.value)} />
           </label>
           <label>
-            Telefono fijo
+            Teléfono fijo
             <input value={newRiderLandline} onChange={(e) => setNewRiderLandline(e.target.value)} />
           </label>
           <label>
@@ -491,7 +491,7 @@ export default function StationPortalPage() {
         <h2>Alta de Estaciones</h2>
         <form className="form-grid" onSubmit={createStation}>
           <label>
-            Nombre estacion
+            Nombre estación
             <input value={newStationName} onChange={(e) => setNewStationName(e.target.value)} required />
           </label>
           <label>
@@ -502,19 +502,19 @@ export default function StationPortalPage() {
             </select>
           </label>
           <label>
-            Telefono fijo
+            Teléfono fijo
             <input value={newStationLandline} onChange={(e) => setNewStationLandline(e.target.value)} />
           </label>
           <label>
             WhatsApp
             <input value={newStationWhatsapp} onChange={(e) => setNewStationWhatsapp(e.target.value)} />
           </label>
-          <button className="btn btn-primary" type="submit">Registrar estacion</button>
+          <button className="btn btn-primary" type="submit">Registrar estación</button>
         </form>
       </section>}
 
       {section === "comisiones" && <section className="panel">
-        <h2>Acciones de Comision</h2>
+        <h2>Acciones de Comisión</h2>
         <label>
           Token Bearer
           <textarea value={token} onChange={(e) => setToken(e.target.value)} rows={4} className="mono-box" />
@@ -547,7 +547,7 @@ export default function StationPortalPage() {
       </section>}
 
       {section === "resultados" && <section className="panel">
-        <h2>Resumen Semanal Estacion</h2>
+        <h2>Resumen Semanal Estación</h2>
         <div className="table-wrap">
           <table>
             <thead>
@@ -572,7 +572,7 @@ export default function StationPortalPage() {
             <tbody>
               {profiles.map((row) => (
                 <tr key={row.id}>
-                  <td>{row.display_name}</td><td>{row.client_kind}</td><td>{row.state_code}</td><td>{row.municipality_code}</td><td>{row.postal_code}</td><td>{row.colony_name || "-"}</td><td>{row.landline_phone || "-"}</td><td>{row.whatsapp_phone || "-"}</td><td>{row.wants_invoice ? "Si" : "No"}</td>
+                  <td>{row.display_name}</td><td>{row.client_kind}</td><td>{row.state_code}</td><td>{row.municipality_code}</td><td>{row.postal_code}</td><td>{row.colony_name || "-"}</td><td>{row.landline_phone || "-"}</td><td>{row.whatsapp_phone || "-"}</td><td>{row.wants_invoice ? "Sí" : "No"}</td>
                 </tr>
               ))}
             </tbody>
@@ -581,15 +581,15 @@ export default function StationPortalPage() {
       </section>}
 
       {section === "resultados" && <section className="panel">
-        <h2>Catalogo de Repartidores</h2>
+        <h2>Catálogo de Repartidores</h2>
         <div className="table-wrap">
           <table>
             <thead>
-              <tr><th>ID</th><th>User ID</th><th>Zona</th><th>Telefono fijo</th><th>WhatsApp</th><th>Vehiculo</th><th>Activo</th></tr>
+              <tr><th>ID</th><th>User ID</th><th>Zona</th><th>Teléfono fijo</th><th>WhatsApp</th><th>Vehículo</th><th>Activo</th></tr>
             </thead>
             <tbody>
               {riderCatalogRows.map((row) => (
-                <tr key={row.id}><td>{row.id}</td><td>{row.user_id}</td><td>{row.zone_id || "-"}</td><td>{row.landline_phone || "-"}</td><td>{row.whatsapp_phone || "-"}</td><td>{row.vehicle_type}</td><td>{row.active ? "Si" : "No"}</td></tr>
+                <tr key={row.id}><td>{row.id}</td><td>{row.user_id}</td><td>{row.zone_id || "-"}</td><td>{row.landline_phone || "-"}</td><td>{row.whatsapp_phone || "-"}</td><td>{row.vehicle_type}</td><td>{row.active ? "Sí" : "No"}</td></tr>
               ))}
             </tbody>
           </table>
@@ -597,15 +597,15 @@ export default function StationPortalPage() {
       </section>}
 
       {section === "resultados" && <section className="panel">
-        <h2>Catalogo de Estaciones</h2>
+        <h2>Catálogo de Estaciones</h2>
         <div className="table-wrap">
           <table>
             <thead>
-              <tr><th>ID</th><th>Nombre</th><th>Zona</th><th>Telefono fijo</th><th>WhatsApp</th><th>Activo</th></tr>
+              <tr><th>ID</th><th>Nombre</th><th>Zona</th><th>Teléfono fijo</th><th>WhatsApp</th><th>Activo</th></tr>
             </thead>
             <tbody>
               {stationCatalogRows.map((row) => (
-                <tr key={row.id}><td>{row.id}</td><td>{row.name}</td><td>{row.zone_id}</td><td>{row.landline_phone || "-"}</td><td>{row.whatsapp_phone || "-"}</td><td>{row.active ? "Si" : "No"}</td></tr>
+                <tr key={row.id}><td>{row.id}</td><td>{row.name}</td><td>{row.zone_id}</td><td>{row.landline_phone || "-"}</td><td>{row.whatsapp_phone || "-"}</td><td>{row.active ? "Sí" : "No"}</td></tr>
               ))}
             </tbody>
           </table>

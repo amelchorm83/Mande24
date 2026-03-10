@@ -5,11 +5,11 @@ const values = [
   },
   {
     title: "Transparencia Total",
-    text: "Cada guia y etapa se registra para que cliente, estacion y equipo operativo compartan la misma informacion.",
+    text: "Cada guía y etapa se registra para que cliente, estación y equipo operativo compartan la misma información.",
   },
   {
     title: "Mejora Continua",
-    text: "Analizamos indicadores de servicio, incidencias y comisiones para optimizar la operacion semana tras semana.",
+    text: "Analizamos indicadores de servicio, incidencias y comisiones para optimizar la operación semana tras semana.",
   },
 ];
 
@@ -39,15 +39,15 @@ export default function NosotrosPage() {
       </header>
 
       <span className="badge">Nosotros</span>
-      <h1>Somos un equipo logistico enfocado en resultados de ultima milla.</h1>
-      <p className="hero-note">Mande24 Logistics nace para conectar negocios de Tabasco con una operacion confiable, trazable y escalable.</p>
+      <h1>Somos un equipo logístico enfocado en resultados de última milla.</h1>
+      <p className="hero-note">Mande24 Logistics nace para conectar negocios de Tabasco con una operación confiable, trazable y escalable.</p>
       <img className="hero-banner" src="/brand/banner.svg" alt="Banner nosotros Mande24" />
 
       <section className="panel">
         <h2>Nuestra Historia</h2>
         <p>
-          Integramos tecnologia operativa, estandarizacion de procesos y control en campo para resolver una necesidad clara:
-          entregas mejor coordinadas, con evidencia y comunicacion oportuna.
+          Integramos tecnología operativa, estandarización de procesos y control en campo para resolver una necesidad clara:
+          entregas mejor coordinadas, con evidencia y comunicación oportuna.
         </p>
       </section>
 
@@ -64,13 +64,13 @@ export default function NosotrosPage() {
       </section>
 
       <section className="panel">
-        <h2>Equipo y Operacion</h2>
+        <h2>Equipo y Operación</h2>
         <div className="media-grid">
           <article className="media-card">
             <img src="/brand/photo-hub.svg" alt="Centro operativo Mande24" />
             <div>
               <h3>Centro Operativo</h3>
-              <p className="hero-note">Coordinacion de rutas, control de guias y seguimiento de cumplimiento diario.</p>
+              <p className="hero-note">Coordinación de rutas, control de guías y seguimiento de cumplimiento diario.</p>
             </div>
           </article>
           <article className="media-card">
