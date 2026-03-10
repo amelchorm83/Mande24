@@ -1081,6 +1081,21 @@ def _require_ops(request: Request, redirect_to: str, action_label: str) -> Redir
 
 
 BACKEND_ROUTE_STATUSES = {"planned", "assigned", "in_progress", "completed", "failed", "cancelled"}
+REQUESTER_ROLE_OPTIONS = {"origin", "destination", "external"}
+
+
+def _service_type_value(service_type: object) -> str:
+    raw = getattr(service_type, "value", service_type)
+    return str(raw or "").strip().lower()
+
+
+def _is_errand_service(service_type: object) -> bool:
+    return _service_type_value(service_type) == ServiceType.errand.value
+
+
+def _sanitize_requester_role(requester_role: str) -> str:
+    value = requester_role.strip().lower()
+    return value if value in REQUESTER_ROLE_OPTIONS else "origin"
 
 
 def _build_backend_route_legs(
@@ -1092,8 +1107,9 @@ def _build_backend_route_legs(
     use_station_handoff: bool,
 ) -> list[RouteLeg]:
     route_legs: list[RouteLeg] = []
+    service_kind = _service_type_value(service_type)
 
-    if service_type in {"messaging", "package"}:
+    if service_kind in {"messaging", "package"}:
         route_legs.append(
             RouteLeg(
                 guide_id=guide.id,
@@ -1247,6 +1263,16 @@ def _suggest_backend_riders_for_leg(db: Session, route_leg: RouteLeg) -> list[Ri
     if not riders:
         return []
     return sorted(riders, key=lambda item: (0 if station_zone_id and item.zone_id == station_zone_id else 1, item.id))
+
+
+def _assigned_rider_for_guide(db: Session, guide_id: str) -> str | None:
+    assigned = (
+        db.query(RouteLeg.assigned_rider_id)
+        .filter(RouteLeg.guide_id == guide_id, RouteLeg.assigned_rider_id.isnot(None))
+        .order_by(RouteLeg.sequence.asc())
+        .first()
+    )
+    return assigned[0] if assigned and assigned[0] else None
 
 
 @router.post("/role/select")
@@ -1614,6 +1640,7 @@ def backend_new_guide_page(db: Session = Depends(get_db), msg: str = "", kind: s
         f"<label>Cliente origen<select name=\"origin_client_id\"><option value=\"\">Selecciona (opcional)</option>{origin_client_options}</select></label>"
         f"<label>Cliente destino<select name=\"destination_client_id\"><option value=\"\">Selecciona (opcional)</option>{destination_client_options}</select></label>"
         "<label>Facturar servicio origen<select name=\"origin_wants_invoice\"><option value=\"\">Tomar perfil</option><option value=\"true\">Si</option><option value=\"false\">No</option></select></label>"
+        "<label>Solicitante del servicio<select name=\"requester_role\"><option value=\"origin\">Cliente origen</option><option value=\"destination\">Cliente destino</option><option value=\"external\">Tercero / externo</option></select></label>"
         f"<label>Servicio<select name=\"service_id\" required><option value=\"\">Selecciona</option>{service_options}</select></label>"
         f"<label>Estacion<select name=\"station_id\" required><option value=\"\">Selecciona</option>{station_options}</select></label>"
         f"<label>Estacion destino<select name=\"destination_station_id\"><option value=\"\">Misma estacion</option>{station_options}</select></label>"
@@ -1621,6 +1648,7 @@ def backend_new_guide_page(db: Session = Depends(get_db), msg: str = "", kind: s
         "<div class=\"full actions\"><button class=\"primary\" type=\"submit\">Generar Guia</button></div>"
         "</form>"
         f"<p class=\"muted\">Las opciones de cliente y estacion incluyen telefonos para facilitar contacto operativo y validacion al capturar la guia.</p>"
+        "<p class=\"muted\"><strong>Regla Mandadito:</strong> el solicitante puede ser cliente origen, cliente destino o un tercero.</p>"
         "<h4>Contactos Operativos de Riders</h4>"
         f"{_table(['Rider ID', 'Nombre', 'Telefono fijo', 'WhatsApp'], rider_rows)}"
         "<div class=\"actions\"><form method=\"post\" action=\"/ERPMande24/demo/seed/form\"><button type=\"submit\">Generar datos demo</button></form>"
@@ -1638,6 +1666,7 @@ def backend_create_guide(
     origin_client_id: str = Form(""),
     destination_client_id: str = Form(""),
     origin_wants_invoice: str = Form(""),
+    requester_role: str = Form("origin"),
     service_id: str = Form(...),
     station_id: str = Form(...),
     destination_station_id: str = Form(""),
@@ -1673,6 +1702,9 @@ def backend_create_guide(
     if not pricing_rule:
         return _redirect("/ERPMande24/guides/new", "No existe tarifa activa para servicio + estacion.", "error")
 
+    service_kind = _service_type_value(service.service_type)
+    requester_role_clean = _sanitize_requester_role(requester_role)
+
     origin_client = None
     destination_client = None
     if origin_client_id.strip():
@@ -1684,16 +1716,31 @@ def backend_create_guide(
         if not destination_client:
             return _redirect("/ERPMande24/guides/new", "Cliente destino no encontrado o inactivo.", "error")
 
+    if _is_errand_service(service_kind):
+        if requester_role_clean == "origin" and not origin_client:
+            return _redirect("/ERPMande24/guides/new", "Mandadito: solicitante origen requiere cliente origen.", "error")
+        if requester_role_clean == "destination" and not destination_client:
+            return _redirect("/ERPMande24/guides/new", "Mandadito: solicitante destino requiere cliente destino.", "error")
+
     wants_invoice = origin_client.wants_invoice if origin_client else False
     if origin_wants_invoice in {"true", "false"}:
         wants_invoice = origin_wants_invoice == "true"
 
     guide_code = f"M24-{datetime.now(timezone.utc).strftime('%Y%m%d')}-{uuid4().hex[:6].upper()}"
+    guide_customer_name = origin_client.display_name if origin_client else customer_name.strip()
+    guide_destination_name = destination_client.display_name if destination_client else destination_name.strip()
+
+    if _is_errand_service(service_kind):
+        if requester_role_clean == "destination" and destination_client:
+            guide_customer_name = destination_client.display_name
+        elif requester_role_clean == "origin" and origin_client:
+            guide_customer_name = origin_client.display_name
+
     guide = Guide(
         guide_code=guide_code,
-        customer_name=(origin_client.display_name if origin_client else customer_name.strip()),
-        destination_name=(destination_client.display_name if destination_client else destination_name.strip()),
-        service_type=service.service_type.value,
+        customer_name=guide_customer_name,
+        destination_name=guide_destination_name,
+        service_type=service_kind,
         service_id=service.id,
         station_id=station.id,
         destination_station_id=destination_station.id,
@@ -1703,7 +1750,8 @@ def backend_create_guide(
     db.add(guide)
     db.flush()
 
-    delivery = Delivery(guide_id=guide.id, stage=WorkflowStage.assigned)
+    delivery_note = f"requester_role:{requester_role_clean}" if _is_errand_service(service_kind) else None
+    delivery = Delivery(guide_id=guide.id, stage=WorkflowStage.assigned, note=delivery_note)
     db.add(delivery)
     db.add(
         GuideParty(
@@ -1717,7 +1765,7 @@ def backend_create_guide(
     for leg in _build_backend_route_legs(
         guide=guide,
         pricing_rule=pricing_rule,
-        service_type=service.service_type.value,
+        service_type=service_kind,
         station_id=station.id,
         destination_station_id=destination_station.id,
         use_station_handoff=use_station_handoff == "on",
@@ -2086,9 +2134,16 @@ def backend_assign_route_leg(
         rider = db.query(Rider).filter(Rider.id == rider_clean, Rider.active.is_(True)).first()
         if not rider:
             return _redirect(base_url, "Rider no encontrado o inactivo.", "error")
-        route_leg.assigned_rider_id = rider.id
-        if route_leg.status == "planned":
-            route_leg.status = "assigned"
+        if guide and _is_errand_service(guide.service_type):
+            legs = db.query(RouteLeg).filter(RouteLeg.guide_id == route_leg.guide_id).all()
+            for leg_item in legs:
+                leg_item.assigned_rider_id = rider.id
+                if leg_item.status == "planned":
+                    leg_item.status = "assigned"
+        else:
+            route_leg.assigned_rider_id = rider.id
+            if route_leg.status == "planned":
+                route_leg.status = "assigned"
 
     status_clean = status.strip().lower()
     if status_clean:
@@ -2131,6 +2186,16 @@ def backend_suggest_route_leg_rider(
     guide = db.query(Guide).filter(Guide.id == route_leg.guide_id).first()
     guide_code = guide.guide_code if guide else ""
     base_url = f"/ERPMande24/routes?guide_code={quote_plus(guide_code)}" if guide_code else "/ERPMande24/routes"
+
+    if guide and _is_errand_service(guide.service_type):
+        existing_rider_id = _assigned_rider_for_guide(db, route_leg.guide_id)
+        if existing_rider_id:
+            route_leg.assigned_rider_id = existing_rider_id
+            if route_leg.status == "planned":
+                route_leg.status = "assigned"
+            route_leg.updated_at = datetime.now(timezone.utc)
+            db.commit()
+            return _redirect(base_url, f"Rider unificado de mandadito aplicado: {existing_rider_id}.", "ok")
 
     suggestions = _suggest_backend_riders_for_leg(db, route_leg)
     if not suggestions:
