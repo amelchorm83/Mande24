@@ -39,7 +39,7 @@ export default function AuthPage() {
       });
       if (!loginRes.ok) {
         const err = await loginRes.text();
-        setMsg(`Login fallido: ${err}`);
+        setMsg(`Inicio de sesion fallido: ${err}`);
         return;
       }
 
@@ -71,9 +71,9 @@ export default function AuthPage() {
           <a className="nav-link" href="/noticias">Noticias</a>
           <a className="nav-link" href="/nosotros">Nosotros</a>
           <a className="nav-link" href="/contacto">Contacto</a>
-          <a className="nav-link active" href="/auth">Portal Auth</a>
+          <a className="nav-link active" href="/auth">Portal Acceso</a>
           <a className="nav-link" href="/client">Portal Cliente</a>
-          <a className="nav-link" href="/rider">Portal Rider</a>
+          <a className="nav-link" href="/rider">Portal Repartidor</a>
           <a className="nav-link" href="/station">Portal Estación</a>
         
           <a className="nav-link" href="/cotizador">Cotizador</a>
@@ -81,10 +81,10 @@ export default function AuthPage() {
           <a className="nav-link" href="/industrias">Industrias</a></nav>
       </header>
 
-      <span className="badge">Portal Auth</span>
+      <span className="badge">Portal Acceso</span>
       <h1>Acceso Seguro y Gestión de Token</h1>
       <p className="hero-note">Inicia sesión o registra usuarios operativos. El token se almacena en el navegador para habilitar los demás portales automáticamente.</p>
-      <img className="hero-banner" src="/brand/banner.svg" alt="Banner portal auth" />
+      <img className="hero-banner" src="/brand/banner.svg" alt="Banner portal acceso" />
 
       <section className="panel">
         <div className="media-grid">
@@ -105,8 +105,8 @@ export default function AuthPage() {
 
       {section === "acceso" && <section className="panel">
         <div className="inline-actions">
-          <button className={mode === "login" ? "btn btn-primary" : "btn"} onClick={() => setMode("login")}>Login</button>
-          <button className={mode === "register" ? "btn btn-primary" : "btn"} onClick={() => setMode("register")}>Register + Login</button>
+          <button className={mode === "login" ? "btn btn-primary" : "btn"} onClick={() => setMode("login")}>Iniciar sesion</button>
+          <button className={mode === "register" ? "btn btn-primary" : "btn"} onClick={() => setMode("register")}>Registrar e iniciar sesion</button>
         </div>
         <p className="field-hint">Roles habilitados: `admin`, `station`, `rider`, `client`.</p>
 
@@ -124,7 +124,7 @@ export default function AuthPage() {
           )}
 
           <label>
-            Password
+            Contrasena
             <input value={password} type="password" onChange={(e) => setPassword(e.target.value)} required />
           </label>
 

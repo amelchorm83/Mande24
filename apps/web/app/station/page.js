@@ -422,9 +422,9 @@ export default function StationPortalPage() {
           <a className="nav-link" href="/noticias">Noticias</a>
           <a className="nav-link" href="/nosotros">Nosotros</a>
           <a className="nav-link" href="/contacto">Contacto</a>
-          <a className="nav-link" href="/auth">Portal Auth</a>
+          <a className="nav-link" href="/auth">Portal Acceso</a>
           <a className="nav-link" href="/client">Portal Cliente</a>
-          <a className="nav-link" href="/rider">Portal Rider</a>
+          <a className="nav-link" href="/rider">Portal Repartidor</a>
           <a className="nav-link active" href="/station">Portal Estación</a>
         
           <a className="nav-link" href="/cotizador">Cotizador</a>
@@ -531,7 +531,7 @@ export default function StationPortalPage() {
                 <input value={portalEmail} onChange={(e) => setPortalEmail(e.target.value)} required />
               </label>
               <label>
-                Password portal
+                Contrasena portal
                 <input type="password" value={portalPassword} onChange={(e) => setPortalPassword(e.target.value)} required />
               </label>
             </>
@@ -552,7 +552,7 @@ export default function StationPortalPage() {
             <input type="email" value={newRiderEmail} onChange={(e) => setNewRiderEmail(e.target.value)} required />
           </label>
           <label>
-            Password
+            Contrasena
             <input type="password" value={newRiderPassword} onChange={(e) => setNewRiderPassword(e.target.value)} required minLength={8} />
           </label>
           <label>
@@ -608,7 +608,7 @@ export default function StationPortalPage() {
         <h2>Asignación Operativa de Rutas</h2>
         <div className="form-grid">
           <label>
-            Token Bearer
+            Token de acceso (Bearer)
             <textarea value={token} onChange={(e) => setToken(e.target.value)} rows={4} className="mono-box" />
           </label>
           <label>
@@ -618,7 +618,7 @@ export default function StationPortalPage() {
         </div>
         <div className="inline-actions">
           <button className="btn btn-ghost" onClick={loadRouteLegs}>Cargar ruta</button>
-          <button className="btn" onClick={suggestRiderForRouteLeg}>Sugerir rider por zona</button>
+          <button className="btn" onClick={suggestRiderForRouteLeg}>Sugerir repartidor por zona</button>
         </div>
 
         <form className="form-grid" onSubmit={updateRouteLeg}>
@@ -632,7 +632,7 @@ export default function StationPortalPage() {
             </select>
           </label>
           <label>
-            Rider asignado
+            Repartidor asignado
             <select value={routeLegRiderId} onChange={(e) => setRouteLegRiderId(e.target.value)}>
               <option value="">Sin asignar</option>
               {riderCatalogRows.filter((row) => row.active).map((row) => (
@@ -655,7 +655,7 @@ export default function StationPortalPage() {
 
         <div className="table-wrap">
           <table>
-            <thead><tr><th>Seq</th><th>Tipo</th><th>Estado</th><th>Rider</th><th>Origen est.</th><th>Destino est.</th></tr></thead>
+            <thead><tr><th>Secuencia</th><th>Tipo</th><th>Estado</th><th>Repartidor</th><th>Est. origen</th><th>Est. destino</th></tr></thead>
             <tbody>
               {routeLegRows.map((row) => (
                 <tr key={row.id}><td>{row.sequence}</td><td>{row.leg_type}</td><td>{row.status}</td><td>{row.assigned_rider_id || "-"}</td><td>{row.origin_station_id || "-"}</td><td>{row.destination_station_id || "-"}</td></tr>
@@ -670,7 +670,7 @@ export default function StationPortalPage() {
       {section === "comisiones" && <section className="panel">
         <h2>Acciones de Comisión</h2>
         <label>
-          Token Bearer
+          Token de acceso (Bearer)
           <textarea value={token} onChange={(e) => setToken(e.target.value)} rows={4} className="mono-box" />
         </label>
         <div className="inline-actions">
@@ -679,19 +679,19 @@ export default function StationPortalPage() {
         </div>
         <p className={`status-line ${msg.includes("No se pudo") || msg.includes("Error") ? "warn" : "ok"}`}>{msg}</p>
         <div className="inline-actions">
-          <span className="kpi">Riders: <strong>{riderRows.length}</strong></span>
+          <span className="kpi">Repartidores: <strong>{riderRows.length}</strong></span>
           <span className="kpi">Estaciones: <strong>{stationRows.length}</strong></span>
-          <span className="kpi">Riders por tramo: <strong>{riderLegRows.length}</strong></span>
+          <span className="kpi">Repartidores por tramo: <strong>{riderLegRows.length}</strong></span>
           <span className="kpi">Estaciones por tramo: <strong>{stationLegRows.length}</strong></span>
         </div>
       </section>}
 
       {section === "resultados" && <section className="panel">
-        <h2>Resumen Semanal Rider</h2>
+        <h2>Resumen Semanal de Repartidores</h2>
         <div className="table-wrap">
           <table>
             <thead>
-              <tr><th>Rider ID</th><th>Entregas</th><th>Total</th></tr>
+              <tr><th>ID repartidor</th><th>Entregas</th><th>Total</th></tr>
             </thead>
             <tbody>
               {riderRows.map((row) => (
@@ -707,7 +707,7 @@ export default function StationPortalPage() {
         <div className="table-wrap">
           <table>
             <thead>
-              <tr><th>Station ID</th><th>Guias</th><th>Venta</th><th>Total</th></tr>
+              <tr><th>ID estacion</th><th>Guias</th><th>Venta</th><th>Total</th></tr>
             </thead>
             <tbody>
               {stationRows.map((row) => (
@@ -719,11 +719,11 @@ export default function StationPortalPage() {
       </section>}
 
       {section === "resultados" && <section className="panel">
-        <h2>Comisión Rider por Tipo de Tramo</h2>
+        <h2>Comision de Repartidor por Tipo de Tramo</h2>
         <div className="table-wrap">
           <table>
             <thead>
-              <tr><th>Rider ID</th><th>Tipo tramo</th><th>Cantidad</th><th>Total</th></tr>
+              <tr><th>ID repartidor</th><th>Tipo tramo</th><th>Cantidad</th><th>Total</th></tr>
             </thead>
             <tbody>
               {riderLegRows.map((row, idx) => (
@@ -735,11 +735,11 @@ export default function StationPortalPage() {
       </section>}
 
       {section === "resultados" && <section className="panel">
-        <h2>Comisión Estación por Tipo de Tramo</h2>
+        <h2>Comision de Estacion por Tipo de Tramo</h2>
         <div className="table-wrap">
           <table>
             <thead>
-              <tr><th>Station ID</th><th>Tipo tramo</th><th>Cantidad</th><th>Total</th></tr>
+              <tr><th>ID estacion</th><th>Tipo tramo</th><th>Cantidad</th><th>Total</th></tr>
             </thead>
             <tbody>
               {stationLegRows.map((row, idx) => (
@@ -773,7 +773,7 @@ export default function StationPortalPage() {
         <div className="table-wrap">
           <table>
             <thead>
-              <tr><th>ID</th><th>User ID</th><th>Zona</th><th>Teléfono fijo</th><th>WhatsApp</th><th>Vehículo</th><th>Activo</th></tr>
+              <tr><th>ID</th><th>ID usuario</th><th>Zona</th><th>Telefono fijo</th><th>WhatsApp</th><th>Vehiculo</th><th>Activo</th></tr>
             </thead>
             <tbody>
               {riderCatalogRows.map((row) => (

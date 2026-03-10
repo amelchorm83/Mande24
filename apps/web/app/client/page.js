@@ -603,9 +603,9 @@ export default function ClientPortalPage() {
           <a className="nav-link" href="/noticias">Noticias</a>
           <a className="nav-link" href="/nosotros">Nosotros</a>
           <a className="nav-link" href="/contacto">Contacto</a>
-          <a className="nav-link" href="/auth">Portal Auth</a>
+          <a className="nav-link" href="/auth">Portal Acceso</a>
           <a className="nav-link active" href="/client">Portal Cliente</a>
-          <a className="nav-link" href="/rider">Portal Rider</a>
+          <a className="nav-link" href="/rider">Portal Repartidor</a>
           <a className="nav-link" href="/station">Portal Estación</a>
         
           <a className="nav-link" href="/cotizador">Cotizador</a>
@@ -663,7 +663,7 @@ export default function ClientPortalPage() {
             <input type="email" value={registerEmail} onChange={(e) => setRegisterEmail(e.target.value)} required />
           </label>
           <label>
-            Password
+            Contrasena
             <input type="password" value={registerPassword} onChange={(e) => setRegisterPassword(e.target.value)} required minLength={8} />
           </label>
           <button className="btn btn-primary" type="submit">Crear cuenta cliente</button>
@@ -674,10 +674,10 @@ export default function ClientPortalPage() {
       {section === "catalogos" && <section className="panel">
         <h2>Paso 1: Token y Catálogos</h2>
         <label>
-          Token Bearer
+          Token de acceso (Bearer)
           <textarea value={token} onChange={(e) => setToken(e.target.value)} rows={4} className="mono-box" />
         </label>
-        <p className="field-hint">Si no cuentas con token, ingresa primero al portal `Auth` para autenticarte.</p>
+        <p className="field-hint">Si no cuentas con token, ingresa primero al portal de acceso para autenticarte.</p>
         <div className="inline-actions">
           <button className="btn btn-ghost" onClick={() => localStorage.setItem("m24_token", token)}>Guardar token</button>
           <button className="btn btn-primary" onClick={loadCatalogs}>Cargar catálogos</button>
@@ -760,7 +760,7 @@ export default function ClientPortalPage() {
                 <input value={portalEmail} onChange={(e) => setPortalEmail(e.target.value)} required />
               </label>
               <label>
-                Password portal
+                Contrasena portal
                 <input type="password" value={portalPassword} onChange={(e) => setPortalPassword(e.target.value)} required />
               </label>
             </>
@@ -930,8 +930,8 @@ export default function ClientPortalPage() {
           <div className="result-box">
             <p><strong>Guía:</strong> {guideResult.guide_code}</p>
             <p><strong>Venta:</strong> {guideResult.sale_amount} {guideResult.currency}</p>
-            {deliveryId && <p><strong>Delivery ID:</strong> {deliveryId}</p>}
-            {deliveryId && <p className="field-hint">Siguiente paso: abre `Rider` y utiliza este Delivery ID para actualizar etapas.</p>}
+            {deliveryId && <p><strong>ID de entrega:</strong> {deliveryId}</p>}
+            {deliveryId && <p className="field-hint">Siguiente paso: abre el portal de repartidor y utiliza este ID de entrega para actualizar etapas.</p>}
           </div>
         )}
 
@@ -942,7 +942,7 @@ export default function ClientPortalPage() {
         </div>
         <div className="table-wrap">
           <table>
-            <thead><tr><th>Seq</th><th>Tipo</th><th>Estado</th><th>Rider</th><th>Tarifa rider</th><th>Tarifa estación</th></tr></thead>
+            <thead><tr><th>Secuencia</th><th>Tipo</th><th>Estado</th><th>Repartidor</th><th>Tarifa repartidor</th><th>Tarifa estación</th></tr></thead>
             <tbody>
               {routeLegRows.map((row) => (
                 <tr key={row.id}>

@@ -54,16 +54,21 @@ MENU = [
     ("services", "Servicios", "/ERPMande24/catalogs/services"),
     ("zones", "Zonas", "/ERPMande24/catalogs/zones"),
     ("stations", "Estaciones", "/ERPMande24/catalogs/stations"),
-    ("riders", "Riders", "/ERPMande24/catalogs/riders"),
+    ("riders", "Repartidores", "/ERPMande24/catalogs/riders"),
     ("clients", "Clientes", "/ERPMande24/catalogs/clients"),
     ("leads", "Leads Contacto", "/ERPMande24/leads"),
     ("pricing", "Tarifas", "/ERPMande24/catalogs/pricing-rules"),
     ("users", "Usuarios", "/ERPMande24/users"),
-    ("comm_rider", "Comisiones Rider", "/ERPMande24/commissions/riders"),
+    ("comm_rider", "Comisiones Repartidor", "/ERPMande24/commissions/riders"),
     ("comm_station", "Comisiones Estacion", "/ERPMande24/commissions/stations"),
 ]
 
 ROLE_OPTIONS = ["admin", "station", "rider"]
+ROLE_LABELS = {
+    "admin": "Administrador",
+    "station": "Estacion",
+    "rider": "Repartidor",
+}
 BLOCKED_ERP_ROLES = {"client"}
 
 MODULE_ICON_SVG = {
@@ -758,7 +763,7 @@ def _current_operator_label(request: Request | None) -> str:
 def _role_switcher(current_role: str, return_to: str) -> str:
     options = "".join(
         [
-            f'<option value="{item}" {"selected" if item == current_role else ""}>{item}</option>'
+            f'<option value="{item}" {"selected" if item == current_role else ""}>{ROLE_LABELS.get(item, item)}</option>'
             for item in ROLE_OPTIONS
         ]
     )
@@ -986,7 +991,7 @@ def _render_layout(
         "<aside class=\"sidebar\">"
         "<div class=\"brand-row\"><img class=\"brand-logo\" src=\"/ERPMande24/icon.svg?v=2\" alt=\"Icono ERPMande24\" /><div class=\"brand-copy\"><h2>ERPMande24</h2><small>Entrega segura. Ruta inteligente.</small></div></div>"
         "<button id=\"sidebar-toggle\" class=\"sidebar-toggle\" type=\"button\" title=\"Ocultar menu\" aria-label=\"Ocultar o mostrar menu lateral\" aria-expanded=\"true\"><</button>"
-        f"<span class=\"tag\">ERPMande24 {escape(role_value.title())}</span>"
+        f"<span class=\"tag\">ERPMande24 {escape(ROLE_LABELS.get(role_value, role_value.title()))}</span>"
         f"<nav class=\"menu\">{_menu_html(active, role_value)}</nav><div class=\"sidebar-extra\">{_role_switcher(role_value, path_value)}{_operator_switcher(request, path_value)}</div></aside>"
         "<main class=\"content\">"
         f"<header class=\"header\"><div><h1>{escape(title)}</h1><p class=\"subtitle\">{escape(subtitle)}</p></div>"
@@ -1514,7 +1519,7 @@ def backend_dashboard(
         f"<article class=\"kpi\"><small>Entregas Hoy</small><strong>{deliveries_today}</strong></article>"
         f"<article class=\"kpi\"><small>Servicios</small><strong>{services_total}</strong></article>"
         f"<article class=\"kpi\"><small>Estaciones</small><strong>{stations_total}</strong></article>"
-        f"<article class=\"kpi\"><small>Riders</small><strong>{riders_total}</strong></article>"
+        f"<article class=\"kpi\"><small>Repartidores</small><strong>{riders_total}</strong></article>"
         "</div></section>"
         "<section class=\"panel\"><h3>Leads Comerciales</h3>"
         f"{lead_period_form}"
@@ -1697,7 +1702,7 @@ def backend_new_guide_page(db: Session = Depends(get_db), msg: str = "", kind: s
         "<p class=\"muted\"><strong>Regla Mandadito:</strong> el solicitante puede ser cliente origen, cliente destino o un tercero.</p>"
         "<p class=\"muted\"><strong>Nota:</strong> las ediciones de direccion y contacto aqui se guardan solo para esta guia, no modifican el catalogo maestro de clientes.</p>"
         "<h4>Contactos Operativos de Riders</h4>"
-        f"{_table(['Rider ID', 'Nombre', 'Telefono fijo', 'WhatsApp'], rider_rows)}"
+        f"{_table(['ID repartidor', 'Nombre', 'Telefono fijo', 'WhatsApp'], rider_rows)}"
         "<div class=\"actions\"><form method=\"post\" action=\"/ERPMande24/demo/seed/form\"><button type=\"submit\">Generar datos demo</button></form>"
         "<a class=\"btn\" href=\"/ERPMande24/guides\">Ver listado de guias</a></div>"
         f"{catalog_hint}</section>"

@@ -121,7 +121,7 @@ export default function RiderPortalPage() {
         <div className="brand">
           <img className="brand-logo" src="/brand/icon.svg" alt="Icono Mande24" />
           <div className="brand-copy">
-            <h2>Portal Rider</h2>
+            <h2>Portal Repartidor</h2>
             <p className="brand-slogan">Seguimiento de entrega en tiempo real.</p>
           </div>
         </div>
@@ -132,9 +132,9 @@ export default function RiderPortalPage() {
           <a className="nav-link" href="/noticias">Noticias</a>
           <a className="nav-link" href="/nosotros">Nosotros</a>
           <a className="nav-link" href="/contacto">Contacto</a>
-          <a className="nav-link" href="/auth">Portal Auth</a>
+          <a className="nav-link" href="/auth">Portal Acceso</a>
           <a className="nav-link" href="/client">Portal Cliente</a>
-          <a className="nav-link active" href="/rider">Portal Rider</a>
+          <a className="nav-link active" href="/rider">Portal Repartidor</a>
           <a className="nav-link" href="/station">Portal Estación</a>
         
           <a className="nav-link" href="/cotizador">Cotizador</a>
@@ -142,15 +142,15 @@ export default function RiderPortalPage() {
           <a className="nav-link" href="/industrias">Industrias</a></nav>
       </header>
 
-      <span className="badge">Portal Rider</span>
+      <span className="badge">Portal Repartidor</span>
       <h1>Control de Entrega en Ruta</h1>
       <p className="hero-note">Captura el <code>delivery_id</code> generado en Cliente y actualiza la entrega por etapas. Para <code>delivered</code> se requiere evidencia y firma.</p>
-      <img className="hero-banner" src="/brand/banner.svg" alt="Banner portal rider" />
+      <img className="hero-banner" src="/brand/banner.svg" alt="Banner portal repartidor" />
 
       <section className="panel">
         <div className="media-grid">
           <article className="media-card">
-            <img src="/brand/photo-rider.svg" alt="Rider en ruta con control de etapas" />
+            <img src="/brand/photo-rider.svg" alt="Repartidor en ruta con control de etapas" />
             <div>
               <h3>Operación de Ruta</h3>
               <p className="hero-note">Actualiza etapas, evidencia y firma para cerrar entregas con trazabilidad completa.</p>
@@ -169,11 +169,11 @@ export default function RiderPortalPage() {
         <h2>Actualización de Etapa</h2>
         <form className="form-grid" onSubmit={updateStage}>
           <label>
-            Token Bearer
+            Token de acceso (Bearer)
             <textarea value={token} onChange={(e) => setToken(e.target.value)} rows={4} className="mono-box" />
           </label>
           <label>
-            Delivery ID
+            ID de entrega
             <input value={deliveryId} onChange={(e) => setDeliveryId(e.target.value)} required />
           </label>
           <label>
@@ -205,7 +205,7 @@ export default function RiderPortalPage() {
         <h2>Ejecución de Tramos de Ruta</h2>
         <div className="form-grid">
           <label>
-            Token Bearer
+            Token de acceso (Bearer)
             <textarea value={token} onChange={(e) => setToken(e.target.value)} rows={4} className="mono-box" />
           </label>
           <label>
@@ -244,7 +244,7 @@ export default function RiderPortalPage() {
         <h3>Tramos de la guía</h3>
         <div className="table-wrap">
           <table>
-            <thead><tr><th>Seq</th><th>Tipo</th><th>Estado</th><th>Rider</th><th>Origen est.</th><th>Destino est.</th></tr></thead>
+            <thead><tr><th>Secuencia</th><th>Tipo</th><th>Estado</th><th>Repartidor</th><th>Est. origen</th><th>Est. destino</th></tr></thead>
             <tbody>
               {routeLegRows.map((item) => (
                 <tr key={item.id}>
@@ -273,7 +273,7 @@ export default function RiderPortalPage() {
       {section === "guia" && <section className="panel">
         <h2>Guía Operativa de Etapas</h2>
         <ol className="flow-list">
-          <li><code>assigned</code>: pedido asignado al rider.</li>
+          <li><code>assigned</code>: pedido asignado al repartidor.</li>
           <li><code>picked_up</code> y <code>in_transit</code>: envío en traslado.</li>
           <li><code>delivered</code>: registrar <code>Evidencia</code> y <code>Firma</code> para validar cierre.</li>
         </ol>
