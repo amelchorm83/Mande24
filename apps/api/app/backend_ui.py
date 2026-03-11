@@ -776,6 +776,9 @@ def _actor_identity_from_request(request: Request) -> tuple[str | None, str | No
 def _current_operator_label(request: Request | None) -> str:
     if not request:
         return "N/A"
+    user_name = (request.cookies.get("m24_erp_user_name") or "").strip()
+    if user_name:
+        return user_name
     actor_user_id, actor_email = _actor_identity_from_request(request)
     return actor_email or actor_user_id or "N/A"
 
@@ -1382,6 +1385,7 @@ def backend_login_submit(
     response.set_cookie("m24_erp_token", token, httponly=True, samesite="lax")
     response.set_cookie("m24_erpmande24_user_email", user.email, httponly=False, samesite="lax")
     response.set_cookie("m24_erpmande24_user_id", user.id, httponly=False, samesite="lax")
+    response.set_cookie("m24_erp_user_name", user.full_name, httponly=False, samesite="lax")
     return response
 
 
@@ -1391,6 +1395,7 @@ def backend_logout() -> RedirectResponse:
     response.delete_cookie("m24_erp_token")
     response.delete_cookie("m24_erpmande24_user_email")
     response.delete_cookie("m24_erpmande24_user_id")
+    response.delete_cookie("m24_erp_user_name")
     response.delete_cookie("m24_erpmande24_role")
     return response
 
