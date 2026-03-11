@@ -38,7 +38,7 @@ from app.db.models import (
     ZoneGeoRule,
 )
 from app.db.sepomex_sync import sync_sepomex_catalog
-from app.core.security import hash_password
+from app.core.security import create_access_token, decode_access_token, hash_password, verify_password
 from app.db.session import get_db
 from app.services.commissions import close_rider_week, close_station_week, resolve_week_window
 
@@ -69,7 +69,7 @@ ROLE_LABELS = {
     "station": "Estacion",
     "rider": "Repartidor",
 }
-BLOCKED_ERP_ROLES = {"client"}
+BLOCKED_ERP_ROLES = {"client", "rider"}
 
 MODULE_ICON_SVG = {
     "dashboard": "<rect x='3' y='3' width='18' height='18' rx='4'/><path d='M7.5 15.5v-3.5M12 15.5V8.5M16.5 15.5v-5.5'/>",
@@ -729,12 +729,32 @@ def _menu_html(active: str, role: str) -> str:
     return "".join(rows)
 
 
+def _erp_user_from_request(request: Request, db: Session) -> User | None:
+    token = (request.cookies.get("m24_erp_token") or "").strip()
+    if not token:
+        return None
+    try:
+        payload = decode_access_token(token)
+        user_id = str(payload.get("sub") or "").strip()
+    except Exception:
+        return None
+    if not user_id:
+        return None
+    return db.query(User).filter(User.id == user_id, User.is_active.is_(True)).first()
+
+
 def _role_from_request(request: Request) -> str:
-    role_cookie = request.cookies.get("m24_erpmande24_role") or request.cookies.get("m24_backend_role") or "admin"
-    role = role_cookie.strip().lower()
+    token = (request.cookies.get("m24_erp_token") or "").strip()
+    if not token:
+        return "guest"
+    try:
+        payload = decode_access_token(token)
+        role = str(payload.get("role") or "").strip().lower()
+    except Exception:
+        return "guest"
     if role in BLOCKED_ERP_ROLES:
         return role
-    return role if role in ROLE_OPTIONS else "admin"
+    return role if role in ROLE_OPTIONS else "guest"
 
 
 def _actor_identity_from_request(request: Request) -> tuple[str | None, str | None]:
@@ -808,9 +828,19 @@ def _can_ops(role: str) -> bool:
 
 
 def _check_role_or_redirect(role: str, allowed: set[str], redirect_to: str, action_label: str) -> RedirectResponse | None:
+    if role == "guest":
+        next_path = quote_plus(redirect_to or "/ERPMande24")
+        return RedirectResponse(url=f"/ERPMande24/login?next={next_path}", status_code=303)
     if role not in allowed:
         return _redirect(redirect_to, f"Sin permisos para {action_label} con rol {role}.", "error")
     return None
+
+
+def _safe_erp_next(next_path: str) -> str:
+    candidate = (next_path or "").strip()
+    if candidate.startswith("/ERPMande24"):
+        return candidate
+    return "/ERPMande24"
 
 
 def _pagination(path: str, page: int, page_size: int, total: int, query_params: dict[str, str] | None = None) -> str:
@@ -864,7 +894,22 @@ def _render_layout(
     path_value = current_path or (str(request.url.path) if request else "/ERPMande24")
     operator_label = _current_operator_label(request)
 
+    if role_value == "guest":
+        return (
+            "<!doctype html><html lang=\"es\"><head><meta charset=\"utf-8\" />"
+            "<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\" />"
+            "<title>ERPMande24 | Acceso</title>"
+            f"<style>{_base_css()}</style></head><body>"
+            '<main class="content" style="max-width:860px;margin:0 auto;padding-top:2rem;">'
+            '<section class="panel"><h1>Acceso requerido</h1>'
+            '<p class="subtitle">Debes iniciar sesion para acceder a ERPMande24.</p>'
+            '<div class="actions"><a class="btn primary" href="/ERPMande24/login">Ir a Acceso</a></div>'
+            '</section></main></body></html>'
+        )
+
     if role_value in BLOCKED_ERP_ROLES:
+        portal_url = "/client" if role_value == "client" else "/rider"
+        portal_name = "Portal Cliente" if role_value == "client" else "Portal Repartidor"
         return (
             "<!doctype html><html lang=\"es\"><head><meta charset=\"utf-8\" />"
             "<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\" />"
@@ -872,8 +917,8 @@ def _render_layout(
             f"<style>{_base_css()}</style></head><body>"
             '<main class="content" style="max-width:860px;margin:0 auto;padding-top:2rem;">'
             '<section class="panel"><h1>Acceso restringido</h1>'
-            '<p class="subtitle">El rol cliente no tiene acceso a ERPMande24. Usa el portal de cliente para consultar tus guias.</p>'
-            '<div class="actions"><a class="btn primary" href="/client">Ir a Portal Cliente</a></div>'
+            f'<p class="subtitle">Tu rol no tiene acceso a ERPMande24. Usa {portal_name} para tu operacion.</p>'
+            f'<div class="actions"><a class="btn primary" href="{portal_url}">Ir a {portal_name}</a></div>'
             '</section></main></body></html>'
         )
 
@@ -992,7 +1037,7 @@ def _render_layout(
         "<div class=\"brand-row\"><img class=\"brand-logo\" src=\"/ERPMande24/icon.svg?v=2\" alt=\"Icono ERPMande24\" /><div class=\"brand-copy\"><h2>ERPMande24</h2><small>Entrega segura. Ruta inteligente.</small></div></div>"
         "<button id=\"sidebar-toggle\" class=\"sidebar-toggle\" type=\"button\" title=\"Ocultar menu\" aria-label=\"Ocultar o mostrar menu lateral\" aria-expanded=\"true\"><</button>"
         f"<span class=\"tag\">ERPMande24 {escape(ROLE_LABELS.get(role_value, role_value.title()))}</span>"
-        f"<nav class=\"menu\">{_menu_html(active, role_value)}</nav><div class=\"sidebar-extra\">{_role_switcher(role_value, path_value)}{_operator_switcher(request, path_value)}</div></aside>"
+        f"<nav class=\"menu\">{_menu_html(active, role_value)}</nav><div class=\"sidebar-extra\">{_operator_switcher(request, path_value)}<section style=\"margin-top:0.8rem;padding-top:0.8rem;border-top:1px solid #3b4959;\"><form method=\"post\" action=\"/ERPMande24/logout\"><button type=\"submit\">Cerrar sesion</button></form></section></div></aside>"
         "<main class=\"content\">"
         f"<header class=\"header\"><div><h1>{escape(title)}</h1><p class=\"subtitle\">{escape(subtitle)}</p></div>"
         f"<div class=\"top-actions\"><span class=\"tag\">Operador: {escape(operator_label)}</span><a class=\"btn\" href=\"/ERPMande24\">Dashboard</a><a class=\"btn primary\" href=\"/ERPMande24/guides/new\">Nueva Guia</a></div></header>"
@@ -1282,9 +1327,71 @@ def _assigned_rider_for_guide(db: Session, guide_id: str) -> str | None:
 
 @router.post("/role/select")
 def backend_select_role(role: str = Form("admin"), return_to: str = Form("/ERPMande24")) -> RedirectResponse:
-    selected = role if role in ROLE_OPTIONS else "admin"
-    response = RedirectResponse(url=return_to or "/ERPMande24", status_code=303)
-    response.set_cookie("m24_erpmande24_role", selected, httponly=False, samesite="lax")
+    return _redirect(_safe_erp_next(return_to), "El rol ERP ahora se asigna por inicio de sesion.", "error")
+
+
+@router.get("/login", response_class=HTMLResponse)
+def backend_login_page(msg: str = "", kind: str = "ok", next: str = "/ERPMande24") -> str:
+    safe_next = _safe_erp_next(next)
+    msg_html = ""
+    if msg:
+        css = "msg error" if kind == "error" else "msg"
+        msg_html = f'<p class="{css}">{escape(msg)}</p>'
+    return (
+        "<!doctype html><html lang=\"es\"><head><meta charset=\"utf-8\" />"
+        "<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\" />"
+        "<title>ERPMande24 | Acceso</title>"
+        f"<style>{_base_css()}</style></head><body>"
+        '<main class="content" style="max-width:780px;margin:0 auto;padding-top:2rem;">'
+        '<section class="panel"><h1>Acceso ERPMande24</h1>'
+        '<p class="subtitle">Inicia sesion para habilitar modulos segun tu rol.</p>'
+        f"{msg_html}"
+        '<form class="grid" method="post" action="/ERPMande24/login">'
+        f'<input type="hidden" name="next" value="{escape(safe_next)}" />'
+        '<label>Email<input type="email" name="email" required /></label>'
+        '<label>Password<input type="password" name="password" minlength="8" required /></label>'
+        '<div class="actions"><button class="primary" type="submit">Entrar</button>'
+        '<a class="btn" href="/">Ir al sitio</a></div>'
+        '</form></section></main></body></html>'
+    )
+
+
+@router.post("/login")
+def backend_login_submit(
+    email: str = Form(...),
+    password: str = Form(...),
+    next: str = Form("/ERPMande24"),
+    db: Session = Depends(get_db),
+) -> RedirectResponse:
+    safe_next = _safe_erp_next(next)
+    email_clean = email.strip().lower()
+    user = db.query(User).filter(User.email == email_clean).first()
+    if not user or not verify_password(password, user.password_hash):
+        return RedirectResponse(url="/ERPMande24/login?kind=error&msg=Credenciales%20invalidas", status_code=303)
+    if not user.is_active:
+        return RedirectResponse(url="/ERPMande24/login?kind=error&msg=Usuario%20inactivo", status_code=303)
+
+    role_value = user.role.value
+    if role_value == "client":
+        return RedirectResponse(url="/client", status_code=303)
+    if role_value == "rider":
+        return RedirectResponse(url="/rider", status_code=303)
+
+    token = create_access_token(subject=user.id, role=role_value)
+    response = RedirectResponse(url=safe_next, status_code=303)
+    response.set_cookie("m24_erp_token", token, httponly=True, samesite="lax")
+    response.set_cookie("m24_erpmande24_user_email", user.email, httponly=False, samesite="lax")
+    response.set_cookie("m24_erpmande24_user_id", user.id, httponly=False, samesite="lax")
+    return response
+
+
+@router.post("/logout")
+def backend_logout() -> RedirectResponse:
+    response = RedirectResponse(url="/ERPMande24/login?msg=Sesion%20cerrada", status_code=303)
+    response.delete_cookie("m24_erp_token")
+    response.delete_cookie("m24_erpmande24_user_email")
+    response.delete_cookie("m24_erpmande24_user_id")
+    response.delete_cookie("m24_erpmande24_role")
     return response
 
 
@@ -1355,6 +1462,8 @@ def backend_dashboard(
     kind: str = "ok",
     period: str = "7d",
 ) -> str:
+    if not _erp_user_from_request(request, db):
+        return RedirectResponse(url="/ERPMande24/login?next=%2FERPMande24", status_code=303)
     role_value = _role_from_request(request)
     today = datetime.now(timezone.utc).date()
     now_dt = datetime.now(timezone.utc)
@@ -4047,6 +4156,7 @@ def backend_users(
     msg: str = "",
     kind: str = "ok",
 ) -> str:
+    total_users = db.query(func.count(User.id)).scalar() or 0
     safe_page = max(1, page)
     safe_page_size = max(5, min(page_size, 100))
     users_query = db.query(User)
@@ -4083,7 +4193,27 @@ def backend_users(
         total,
         query_params={"q": q.strip()} if q.strip() else None,
     )
+    role_options = "".join(
+        [
+            f'<option value="{item.value}">{escape(ROLE_LABELS.get(item.value, item.value.title()))}</option>'
+            for item in UserRole
+        ]
+    )
+    bootstrap_note = (
+        '<p class="muted"><strong>Modo inicial:</strong> no existen usuarios en la base. Crea primero un Administrador para habilitar la operacion.</p>'
+        if total_users == 0
+        else ""
+    )
     content = (
+        "<section class=\"panel\"><h3>Alta de Usuario</h3>"
+        f"{bootstrap_note}"
+        "<form class=\"grid\" method=\"post\" action=\"/ERPMande24/users/create\">"
+        "<label>Nombre completo<input name=\"full_name\" required /></label>"
+        "<label>Email<input name=\"email\" type=\"email\" required /></label>"
+        "<label>Password<input name=\"password\" type=\"password\" minlength=\"8\" required /></label>"
+        f"<label>Rol<select name=\"role\">{role_options}</select></label>"
+        "<div class=\"actions\"><button class=\"primary\" type=\"submit\">Crear usuario</button></div>"
+        "</form></section>"
         f"<section class=\"panel\"><h3>Lista de Usuarios</h3>{_querybox('/ERPMande24/users', 'Buscar por nombre o email', q)}"
         f"{pager}"
         "<div class=\"actions\"><a class=\"btn\" href=\"/ERPMande24/export/users.csv\">Exportar CSV</a></div>"
@@ -4092,6 +4222,55 @@ def backend_users(
         f"{pager}</section>"
     )
     return _render_layout("users", "Usuarios", "Modelo de usuarios del sistema y roles.", content, msg, kind, request=request)
+
+
+@router.post("/users/create")
+def backend_create_user(
+    full_name: str = Form(...),
+    email: str = Form(...),
+    password: str = Form(...),
+    role: str = Form("client"),
+    request: Request = None,
+    db: Session = Depends(get_db),
+) -> RedirectResponse:
+    total_users = db.query(func.count(User.id)).scalar() or 0
+    is_bootstrap = total_users == 0
+    if not is_bootstrap:
+        forbidden = _require_manage(request, "/ERPMande24/users", "dar de alta usuarios")
+        if forbidden:
+            return forbidden
+
+    full_name_clean = full_name.strip()
+    email_clean = email.strip().lower()
+    password_clean = password.strip()
+    if not full_name_clean or not email_clean:
+        return _redirect("/ERPMande24/users", "Captura nombre y email.", "error")
+    if len(password_clean) < 8:
+        return _redirect("/ERPMande24/users", "Password minimo 8 caracteres.", "error")
+
+    try:
+        role_value = UserRole(role)
+    except ValueError:
+        return _redirect("/ERPMande24/users", "Rol no valido.", "error")
+
+    if is_bootstrap and role_value != UserRole.admin:
+        return _redirect("/ERPMande24/users", "Primer usuario debe ser Administrador.", "error")
+
+    existing = db.query(User).filter(User.email == email_clean).first()
+    if existing:
+        return _redirect("/ERPMande24/users", "El email ya existe.", "error")
+
+    user = User(
+        full_name=full_name_clean,
+        email=email_clean,
+        password_hash=hash_password(password_clean),
+        role=role_value,
+        is_active=True,
+    )
+    db.add(user)
+    db.commit()
+
+    return _redirect("/ERPMande24/users", f"Usuario creado: {user.email} ({user.role.value}).")
 
 
 @router.post("/users/{user_id}/toggle")
