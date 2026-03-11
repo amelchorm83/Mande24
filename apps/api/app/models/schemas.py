@@ -9,6 +9,7 @@ class RegisterRequest(BaseModel):
     full_name: str = Field(min_length=2, max_length=150)
     password: str = Field(min_length=8, max_length=128)
     role: UserRole = UserRole.client
+    roles: list[UserRole] | None = None
 
 
 class LoginRequest(BaseModel):
@@ -26,6 +27,7 @@ class UserResponse(BaseModel):
     email: str
     full_name: str
     role: UserRole
+    roles: list[UserRole] = Field(default_factory=list)
 
 
 class ServiceCreate(BaseModel):

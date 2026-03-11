@@ -5,6 +5,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_current_user, require_roles
+from app.core.user_roles import user_has_role
 from app.db.models import ClientProfile, Delivery, GeoColony, Guide, GuideParty, PricingRule, Rider, RouteLeg, Service, ServiceType, Station, WorkflowStage
 from app.db.models import User, UserRole
 from app.db.session import get_db
@@ -577,13 +578,13 @@ def assign_route_leg(
         raise HTTPException(status_code=404, detail="Route leg not found")
 
     rider_profile = None
-    if user.role == UserRole.rider:
+    if user_has_role(user, UserRole.rider):
         rider_profile = db.query(Rider).filter(Rider.user_id == user.id, Rider.active.is_(True)).first()
         if not rider_profile:
             raise HTTPException(status_code=403, detail="Rider profile not found for current user")
 
     if payload.rider_id:
-        if user.role == UserRole.rider:
+        if user_has_role(user, UserRole.rider):
             raise HTTPException(status_code=403, detail="Rider cannot reassign route legs")
         rider = db.query(Rider).filter(Rider.id == payload.rider_id, Rider.active.is_(True)).first()
         if not rider:
@@ -604,7 +605,7 @@ def assign_route_leg(
         new_status = payload.status.strip().lower()
         if new_status not in VALID_ROUTE_LEG_STATUSES:
             raise HTTPException(status_code=400, detail="Invalid route leg status")
-        if user.role == UserRole.rider and route_leg.assigned_rider_id != rider_profile.id:
+        if user_has_role(user, UserRole.rider) and route_leg.assigned_rider_id != rider_profile.id:
             raise HTTPException(status_code=403, detail="Route leg is not assigned to current rider")
         _ensure_route_leg_transition(db, route_leg, new_status)
         route_leg.status = new_status

@@ -1,5 +1,6 @@
 from app.db.base import Base
 from app.db.geo_seed import seed_geo_catalogs
+from app.db.models import User, UserRoleLink
 from app.db.sepomex_sync import sync_sepomex_catalog
 from app.db.session import engine
 from app.db.session import SessionLocal
@@ -133,6 +134,16 @@ def init_db() -> None:
     _ensure_runtime_schema()
     db = SessionLocal()
     try:
+        users = db.query(User).all()
+        existing_links = {
+            (item.user_id, item.role.value)
+            for item in db.query(UserRoleLink).all()
+        }
+        for user in users:
+            key = (user.id, user.role.value)
+            if key not in existing_links:
+                db.add(UserRoleLink(user_id=user.id, role=user.role))
+        db.commit()
         try:
             sync_sepomex_catalog(db)
         except Exception:

@@ -22,11 +22,12 @@ def verify_password(password: str, hashed_password: str) -> bool:
     return computed == digest
 
 
-def create_access_token(subject: str, role: str) -> str:
+def create_access_token(subject: str, role: str, roles: list[str] | None = None) -> str:
     now = datetime.now(timezone.utc)
     payload = {
         "sub": subject,
         "role": role,
+        "roles": roles or [role],
         "iat": int(now.timestamp()),
         "exp": int((now + timedelta(minutes=settings.access_token_expire_minutes)).timestamp()),
     }

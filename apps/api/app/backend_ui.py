@@ -39,6 +39,7 @@ from app.db.models import (
 )
 from app.db.sepomex_sync import sync_sepomex_catalog
 from app.core.security import create_access_token, decode_access_token, hash_password, verify_password
+from app.core.user_roles import ensure_user_roles, get_user_roles_sorted, user_has_role
 from app.db.session import get_db
 from app.services.commissions import close_rider_week, close_station_week, resolve_week_window
 
@@ -743,15 +744,40 @@ def _erp_user_from_request(request: Request, db: Session) -> User | None:
     return db.query(User).filter(User.id == user_id, User.is_active.is_(True)).first()
 
 
-def _role_from_request(request: Request) -> str:
+def _roles_from_request_token(request: Request) -> list[str]:
     token = (request.cookies.get("m24_erp_token") or "").strip()
     if not token:
-        return "guest"
+        return []
     try:
         payload = decode_access_token(token)
-        role = str(payload.get("role") or "").strip().lower()
     except Exception:
+        return []
+    raw_roles = payload.get("roles") or []
+    roles: list[str] = []
+    if isinstance(raw_roles, list):
+        for item in raw_roles:
+            value = str(item or "").strip().lower()
+            if value:
+                roles.append(value)
+    role_single = str(payload.get("role") or "").strip().lower()
+    if role_single:
+        roles.append(role_single)
+    unique_roles: list[str] = []
+    for value in roles:
+        if value not in unique_roles:
+            unique_roles.append(value)
+    return unique_roles
+
+
+def _role_from_request(request: Request) -> str:
+    roles = _roles_from_request_token(request)
+    if not roles:
         return "guest"
+    active_cookie = (request.cookies.get("m24_erp_active_role") or "").strip().lower()
+    if active_cookie and active_cookie in roles:
+        role = active_cookie
+    else:
+        role = next((item for item in ["admin", "station", "rider", "client"] if item in roles), roles[0])
     if role in BLOCKED_ERP_ROLES:
         return role
     return role if role in ROLE_OPTIONS else "guest"
@@ -784,10 +810,11 @@ def _current_operator_label(request: Request | None) -> str:
 
 
 def _role_switcher(current_role: str, return_to: str) -> str:
+    role_pool = [item for item in ROLE_OPTIONS]
     options = "".join(
         [
             f'<option value="{item}" {"selected" if item == current_role else ""}>{ROLE_LABELS.get(item, item)}</option>'
-            for item in ROLE_OPTIONS
+            for item in role_pool
         ]
     )
     return (
@@ -1330,7 +1357,14 @@ def _assigned_rider_for_guide(db: Session, guide_id: str) -> str | None:
 
 @router.post("/role/select")
 def backend_select_role(role: str = Form("admin"), return_to: str = Form("/ERPMande24")) -> RedirectResponse:
-    return _redirect(_safe_erp_next(return_to), "El rol ERP ahora se asigna por inicio de sesion.", "error")
+    safe_next = _safe_erp_next(return_to)
+    response = RedirectResponse(url=safe_next, status_code=303)
+    selected = role.strip().lower()
+    if selected in ROLE_OPTIONS:
+        response.set_cookie("m24_erp_active_role", selected, httponly=False, samesite="lax")
+    else:
+        response.delete_cookie("m24_erp_active_role")
+    return response
 
 
 @router.get("/login", response_class=HTMLResponse)
@@ -1374,15 +1408,27 @@ def backend_login_submit(
     if not user.is_active:
         return RedirectResponse(url="/ERPMande24/login?kind=error&msg=Usuario%20inactivo", status_code=303)
 
-    role_value = user.role.value
+    role_values = get_user_roles_sorted(user)
+    if "admin" in role_values:
+        role_value = "admin"
+    elif "station" in role_values:
+        role_value = "station"
+    elif "client" in role_values:
+        role_value = "client"
+    elif "rider" in role_values:
+        role_value = "rider"
+    else:
+        role_value = user.role.value
+
     if role_value == "client":
         return RedirectResponse(url="/client", status_code=303)
     if role_value == "rider":
         return RedirectResponse(url="/rider", status_code=303)
 
-    token = create_access_token(subject=user.id, role=role_value)
+    token = create_access_token(subject=user.id, role=role_value, roles=role_values)
     response = RedirectResponse(url=safe_next, status_code=303)
     response.set_cookie("m24_erp_token", token, httponly=True, samesite="lax")
+    response.set_cookie("m24_erp_active_role", role_value, httponly=False, samesite="lax")
     response.set_cookie("m24_erpmande24_user_email", user.email, httponly=False, samesite="lax")
     response.set_cookie("m24_erpmande24_user_id", user.id, httponly=False, samesite="lax")
     response.set_cookie("m24_erp_user_name", user.full_name, httponly=False, samesite="lax")
@@ -1396,6 +1442,7 @@ def backend_logout() -> RedirectResponse:
     response.delete_cookie("m24_erpmande24_user_email")
     response.delete_cookie("m24_erpmande24_user_id")
     response.delete_cookie("m24_erp_user_name")
+    response.delete_cookie("m24_erp_active_role")
     response.delete_cookie("m24_erpmande24_role")
     return response
 
@@ -3370,6 +3417,7 @@ def backend_create_rider(
     )
     db.add(user)
     db.flush()
+    ensure_user_roles(db, user, [UserRole.rider])
 
     rider = Rider(
         user_id=user.id,
@@ -3804,6 +3852,7 @@ def backend_create_client(
             )
             db.add(user)
             db.flush()
+            ensure_user_roles(db, user, [UserRole.client])
             user_id = user.id
 
     client = ClientProfile(
@@ -4038,6 +4087,7 @@ def backend_update_client(
             )
             db.add(user)
             db.flush()
+            ensure_user_roles(db, user, [UserRole.client])
             client.user_id = user.id
 
     db.commit()
@@ -4273,6 +4323,8 @@ def backend_create_user(
         is_active=True,
     )
     db.add(user)
+    db.flush()
+    ensure_user_roles(db, user, [role_value])
     db.commit()
 
     return _redirect("/ERPMande24/users", f"Usuario creado: {user.email} ({user.role.value}).")
@@ -4316,6 +4368,7 @@ def backend_update_user_role(
 
     previous_role = user.role
     user.role = role_value
+    ensure_user_roles(db, user, [role_value])
     actor_role = _role_from_request(request)
     actor_user_id, actor_email = _actor_identity_from_request(request)
     db.add(

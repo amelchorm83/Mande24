@@ -3,6 +3,7 @@ from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_current_user, require_roles
+from app.core.user_roles import ensure_user_roles, user_has_role
 from app.core.security import hash_password
 from app.db.geo_seed import seed_geo_catalogs
 from app.db.sepomex_sync import sync_sepomex_catalog
@@ -258,8 +259,9 @@ def create_client_profile(
             )
             db.add(created_user)
             db.flush()
+            ensure_user_roles(db, created_user, [UserRole.client])
             target_user_id = created_user.id
-    elif user.role == UserRole.client:
+    elif user_has_role(user, UserRole.client):
         target_user_id = user.id
 
     profile = ClientProfile(

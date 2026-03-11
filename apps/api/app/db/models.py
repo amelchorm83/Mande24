@@ -53,6 +53,7 @@ class User(Base):
     role: Mapped[UserRole] = mapped_column(SqlEnum(UserRole, name="user_role"), default=UserRole.client)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+    role_links: Mapped[list["UserRoleLink"]] = relationship(back_populates="user", cascade="all, delete-orphan")
 
 
 class UserRoleAudit(Base):
@@ -66,6 +67,18 @@ class UserRoleAudit(Base):
     changed_by_user_id: Mapped[str | None] = mapped_column(String(32), ForeignKey("users.id"), nullable=True)
     changed_by_email: Mapped[str | None] = mapped_column(String(190), nullable=True)
     changed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+
+
+class UserRoleLink(Base):
+    __tablename__ = "user_role_links"
+    __table_args__ = (UniqueConstraint("user_id", "role", name="uq_user_role_links_user_role"),)
+
+    id: Mapped[str] = mapped_column(String(32), primary_key=True, default=lambda: uuid4().hex)
+    user_id: Mapped[str] = mapped_column(String(32), ForeignKey("users.id", ondelete="CASCADE"), index=True)
+    role: Mapped[UserRole] = mapped_column(SqlEnum(UserRole, name="user_role"), index=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+
+    user: Mapped[User] = relationship(back_populates="role_links")
 
 
 class Guide(Base):
