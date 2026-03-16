@@ -35,9 +35,10 @@ jobs:
 
       - name: Run API tests
         id: run_tests
+        shell: bash
         run: |
-          set -o pipefail
-          pytest -q tests | tee pytest-output.txt
+          python -m pytest -q tests 2>&1 | tee pytest-output.txt
+          test ${PIPESTATUS[0]} -eq 0
 
       - name: Build smoke summary
         if: always()
