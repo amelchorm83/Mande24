@@ -72,7 +72,20 @@ jobs:
         shell: pwsh
         run: |
           $reportPath = "${{ github.workspace }}/stagea-smoke-report.json"
-          & "${{ github.workspace }}/scripts/stagea-smoke.ps1" -ApiBase "http://localhost:8000" -ReportPath $reportPath
+          if (Test-Path $reportPath) {
+            Remove-Item $reportPath -Force
+          }
+          pwsh -NoProfile -NonInteractive -File "${{ github.workspace }}/scripts/stagea-smoke.ps1" -ApiBase "http://localhost:8000" -ReportPath $reportPath
+
+      - name: Show smoke report on failure
+        if: failure()
+        shell: bash
+        run: |
+          if [ -f "${{ github.workspace }}/stagea-smoke-report.json" ]; then
+            cat "${{ github.workspace }}/stagea-smoke-report.json"
+          else
+            echo "No stagea-smoke-report.json generated."
+          fi
 
       - name: Upload Stage A smoke report
         if: always()
