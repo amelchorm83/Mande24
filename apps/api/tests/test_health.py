@@ -20,6 +20,42 @@ init_db()
 client = TestClient(app)
 
 
+def _ensure_minimal_geo_data() -> None:
+    db = SessionLocal()
+    try:
+        state = db.query(GeoColony).first()
+        if state:
+            return
+
+        from app.db.models import GeoMunicipality, GeoPostalCode, GeoState
+
+        if not db.query(GeoState).filter(GeoState.code == "SIN").first():
+            db.add(GeoState(code="SIN", name="Sinaloa"))
+
+        if not db.query(GeoMunicipality).filter(GeoMunicipality.code == "SIN001").first():
+            db.add(GeoMunicipality(code="SIN001", state_code="SIN", name="Ahome"))
+
+        if not db.query(GeoPostalCode).filter(GeoPostalCode.code == "81200").first():
+            db.add(GeoPostalCode(code="81200", municipality_code="SIN001", settlement="Centro"))
+
+        if not db.query(GeoColony).filter(GeoColony.id == "SIN001-81200-CENTRO").first():
+            db.add(
+                GeoColony(
+                    id="SIN001-81200-CENTRO",
+                    state_code="SIN",
+                    municipality_code="SIN001",
+                    postal_code="81200",
+                    name="Centro",
+                    settlement_type="Colonia",
+                    sepomex_code="0001",
+                )
+            )
+
+        db.commit()
+    finally:
+        db.close()
+
+
 def _auth_headers(email: str, role: str) -> dict[str, str]:
     password = "Secret123"
     register_payload = {
@@ -119,6 +155,7 @@ def test_catalogs_admin_flow() -> None:
 def test_weekly_commissions() -> None:
     admin_headers = _auth_headers("admin3.demo@mande24.test", "admin")
     service_id, station_id, zone_id = _create_catalog_data(admin_headers)
+    _ensure_minimal_geo_data()
 
     geo_db = SessionLocal()
     try:
