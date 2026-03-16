@@ -1,7 +1,10 @@
 async function getApiStatus() {
   const api = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
   try {
-    const res = await fetch(`${api}/api/v1/health`, { cache: "no-store" });
+    const res = await fetch(`${api}/api/v1/health`, {
+      cache: "no-store",
+      signal: AbortSignal.timeout(2000),
+    });
     if (!res.ok) return "offline";
     const data = await res.json();
     return data.status;
@@ -31,9 +34,9 @@ export default async function HomePage() {
           <a className="nav-link" href="/noticias">Noticias</a>
           <a className="nav-link" href="/nosotros">Nosotros</a>
           <a className="nav-link" href="/contacto">Contacto</a>
-          <a className="nav-link" href="/auth">Portal Auth</a>
+          <a className="nav-link" href="/auth">Portal Acceso</a>
           <a className="nav-link" href="/client">Portal Cliente</a>
-          <a className="nav-link" href="/rider">Portal Rider</a>
+          <a className="nav-link" href="/rider">Portal Repartidor</a>
           <a className="nav-link" href="/station">Portal Estación</a>
         
           <a className="nav-link" href="/cotizador">Cotizador</a>
@@ -42,8 +45,8 @@ export default async function HomePage() {
       </header>
 
       <span className="badge">Inicio</span>
-      <h1>La red logística de Tabasco y Campeche para empresas y familias que necesitan resolver entregas al instante.</h1>
-      <p className="hero-note">Mande24 Logistics integra mensajería, paquetería y mandaditos con monitoreo digital para una operación rápida, confiable y cercana en Tabasco y Campeche.</p>
+      <h1>La red logística del sureste para empresas y familias que necesitan resolver entregas al instante.</h1>
+      <p className="hero-note">Mande24 Logistics integra mensajería, paquetería y mandaditos con monitoreo digital para una operación rápida, confiable y cercana en Tabasco, Campeche, Chiapas, Yucatán y Quintana Roo.</p>
       <img className="hero-banner" src="/brand/banner.svg" alt="Banner operativo Mande24 Logistics" />
 
       <section className="panel hero-strip">
@@ -54,7 +57,7 @@ export default async function HomePage() {
         <div className="inline-actions">
           <a className="btn btn-primary" href="/servicios">Ver Servicios</a>
           <a className="btn" href="/servicios#mandaditos">Mandaditos 24</a>
-          <a className="btn" href="/cobertura">Cobertura Tabasco y Campeche</a>
+          <a className="btn" href="/cobertura">Cobertura Sureste (5 estados)</a>
           <a className="btn" href="/noticias">Noticias</a>
           <a className="btn" href="/contacto">Solicitar cotización</a>
         </div>
@@ -139,7 +142,7 @@ export default async function HomePage() {
         <h2>Mandaditos 24: Servicio Destacado</h2>
         <div className="contact-grid">
           <div>
-            <p className="hero-note">Atendemos compras de último minuto, envío de documentos, olvidos en casa u oficina y entregas urgentes en zonas urbanas de Tabasco.</p>
+            <p className="hero-note">Atendemos compras de último minuto, envío de documentos, olvidos en casa u oficina y entregas urgentes en zonas urbanas del sureste.</p>
             <div className="inline-actions">
               <a className="btn btn-primary" href="/contacto">Solicitar Mandadito</a>
               <a className="btn" href="/servicios#mandaditos">Ver Cobertura y Tiempos</a>
@@ -158,9 +161,9 @@ export default async function HomePage() {
       <section className="panel">
         <h2>Portales Integrados</h2>
         <div className="inline-actions">
-          <a className="btn btn-primary" href="/auth">Portal Auth</a>
+          <a className="btn btn-primary" href="/auth">Portal Acceso</a>
           <a className="btn" href="/client">Portal Cliente</a>
-          <a className="btn" href="/rider">Portal Rider</a>
+          <a className="btn" href="/rider">Portal Repartidor</a>
           <a className="btn" href="/station">Portal Estación</a>
         </div>
         <p className="field-hint">Cada portal organiza procesos por etapas para reducir errores, acelerar captura y facilitar la operación por rol.</p>
@@ -188,8 +191,8 @@ export default async function HomePage() {
             <p>Concentrado semanal de comisiones para riders y estaciones con cierre administrativo controlado.</p>
           </article>
           <article className="card">
-            <h3>Cobertura Tabasco y Campeche</h3>
-            <p>Segmentación geográfica por municipio, código postal y colonia para optimizar asignación de zonas en ambos estados.</p>
+            <h3>Cobertura Sureste: 5 estados</h3>
+            <p>Segmentación geográfica por municipio, código postal y colonia para optimizar asignación de zonas en toda la región.</p>
           </article>
         </div>
       </section>

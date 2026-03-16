@@ -2,7 +2,7 @@ from datetime import date, datetime, timezone
 from enum import Enum
 from uuid import uuid4
 
-from sqlalchemy import Boolean, DateTime, Enum as SqlEnum, Float, ForeignKey, String, Text, UniqueConstraint
+from sqlalchemy import Boolean, DateTime, Enum as SqlEnum, Float, ForeignKey, Integer, String, Text, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
@@ -35,6 +35,12 @@ class RiderState(str, Enum):
     draft = "draft"
     approved = "approved"
     rejected = "rejected"
+
+
+class RiderAccountStatus(str, Enum):
+    active = "active"
+    suspended = "suspended"
+    deactivated = "deactivated"
 
 
 class ClientKind(str, Enum):
@@ -144,6 +150,16 @@ class Zone(Base):
     id: Mapped[str] = mapped_column(String(32), primary_key=True, default=lambda: uuid4().hex)
     name: Mapped[str] = mapped_column(String(120))
     code: Mapped[str] = mapped_column(String(30), unique=True, index=True)
+    region_id: Mapped[str | None] = mapped_column(String(32), ForeignKey("regions.id"), nullable=True, index=True)
+    active: Mapped[bool] = mapped_column(Boolean, default=True)
+
+
+class Region(Base):
+    __tablename__ = "regions"
+
+    id: Mapped[str] = mapped_column(String(32), primary_key=True, default=lambda: uuid4().hex)
+    name: Mapped[str] = mapped_column(String(120), unique=True)
+    code: Mapped[str] = mapped_column(String(30), unique=True, index=True)
     active: Mapped[bool] = mapped_column(Boolean, default=True)
 
 
@@ -155,6 +171,15 @@ class Station(Base):
     zone_id: Mapped[str] = mapped_column(String(32), ForeignKey("zones.id"), index=True)
     landline_phone: Mapped[str] = mapped_column(String(40), default="")
     whatsapp_phone: Mapped[str] = mapped_column(String(40), default="")
+    responsible_name: Mapped[str] = mapped_column(String(150), default="")
+    proof_of_address_file: Mapped[str] = mapped_column(String(255), default="")
+    rfc_file: Mapped[str] = mapped_column(String(255), default="")
+    comprobaciones_file: Mapped[str] = mapped_column(String(255), default="")
+    work_days: Mapped[str] = mapped_column(String(80), default="mon,tue,wed,thu,fri,sat")
+    rest_day: Mapped[str] = mapped_column(String(12), default="sun")
+    opening_time: Mapped[str] = mapped_column(String(5), default="09:00")
+    closing_time: Mapped[str] = mapped_column(String(5), default="18:00")
+    max_active_users: Mapped[int] = mapped_column(Integer, default=3)
     active: Mapped[bool] = mapped_column(Boolean, default=True)
 
 
@@ -164,9 +189,24 @@ class Rider(Base):
     id: Mapped[str] = mapped_column(String(32), primary_key=True, default=lambda: uuid4().hex)
     user_id: Mapped[str] = mapped_column(String(32), ForeignKey("users.id"), unique=True, index=True)
     zone_id: Mapped[str | None] = mapped_column(String(32), ForeignKey("zones.id"), nullable=True)
+    station_id: Mapped[str | None] = mapped_column(String(32), ForeignKey("stations.id"), nullable=True, index=True)
     vehicle_type: Mapped[str] = mapped_column(String(30), default="motorcycle")
     landline_phone: Mapped[str] = mapped_column(String(40), default="")
     whatsapp_phone: Mapped[str] = mapped_column(String(40), default="")
+    license_file: Mapped[str] = mapped_column(String(255), default="")
+    license_expires_at: Mapped[date | None] = mapped_column(nullable=True)
+    circulation_card_file: Mapped[str] = mapped_column(String(255), default="")
+    insurance_policy_file: Mapped[str] = mapped_column(String(255), default="")
+    insurance_expires_at: Mapped[date | None] = mapped_column(nullable=True)
+    contract_file: Mapped[str] = mapped_column(String(255), default="")
+    contract_signed_at: Mapped[date | None] = mapped_column(nullable=True)
+    comprobaciones_file: Mapped[str] = mapped_column(String(255), default="")
+    work_days: Mapped[str] = mapped_column(String(80), default="mon,tue,wed,thu,fri,sat")
+    rest_day: Mapped[str] = mapped_column(String(12), default="sun")
+    is_available: Mapped[bool] = mapped_column(Boolean, default=True)
+    account_status: Mapped[RiderAccountStatus] = mapped_column(
+        SqlEnum(RiderAccountStatus, name="rider_account_status"), default=RiderAccountStatus.active
+    )
     state: Mapped[RiderState] = mapped_column(SqlEnum(RiderState, name="rider_state"), default=RiderState.draft)
     active: Mapped[bool] = mapped_column(Boolean, default=True)
 
@@ -184,6 +224,43 @@ class PricingRule(Base):
     station_fee: Mapped[float] = mapped_column(Float, default=0.0)
     currency: Mapped[str] = mapped_column(String(10), default="MXN")
     active: Mapped[bool] = mapped_column(Boolean, default=True)
+
+
+class QuotePolicyRule(Base):
+    __tablename__ = "quote_policy_rules"
+
+    id: Mapped[str] = mapped_column(String(32), primary_key=True, default=lambda: uuid4().hex)
+    service_type: Mapped[str] = mapped_column(String(40), index=True)
+    fallback_service_type: Mapped[str | None] = mapped_column(String(40), nullable=True)
+    max_distance_km: Mapped[float | None] = mapped_column(Float, nullable=True)
+    service_factor: Mapped[float] = mapped_column(Float, default=1.0)
+    active: Mapped[bool] = mapped_column(Boolean, default=True)
+    valid_from: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+    valid_to: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+
+class ZoneSurchargeRule(Base):
+    __tablename__ = "zone_surcharge_rules"
+
+    id: Mapped[str] = mapped_column(String(32), primary_key=True, default=lambda: uuid4().hex)
+    zone_type: Mapped[str] = mapped_column(String(40), index=True)
+    rural_complexity: Mapped[str | None] = mapped_column(String(20), nullable=True, index=True)
+    zone_factor: Mapped[float] = mapped_column(Float, default=1.0)
+    complexity_factor: Mapped[float] = mapped_column(Float, default=1.0)
+    eta_extra_minutes: Mapped[int] = mapped_column(Integer, default=0)
+    active: Mapped[bool] = mapped_column(Boolean, default=True)
+    valid_from: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+    valid_to: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+
+class OperationalSetting(Base):
+    __tablename__ = "operational_settings"
+
+    key: Mapped[str] = mapped_column(String(80), primary_key=True)
+    value: Mapped[str] = mapped_column(String(255), default="")
+    description: Mapped[str] = mapped_column(String(255), default="")
 
 
 class RiderCommission(Base):
@@ -325,6 +402,28 @@ class ZoneGeoRule(Base):
 
     id: Mapped[str] = mapped_column(String(32), primary_key=True, default=lambda: uuid4().hex)
     zone_id: Mapped[str] = mapped_column(String(32), ForeignKey("zones.id", ondelete="CASCADE"), index=True)
+    state_code: Mapped[str] = mapped_column(String(10), ForeignKey("geo_states.code"), index=True)
+    municipality_code: Mapped[str | None] = mapped_column(String(20), ForeignKey("geo_municipalities.code"), nullable=True, index=True)
+    postal_code: Mapped[str | None] = mapped_column(String(10), ForeignKey("geo_postal_codes.code"), nullable=True, index=True)
+    colony_id: Mapped[str | None] = mapped_column(String(64), ForeignKey("geo_colonies.id"), nullable=True, index=True)
+    active: Mapped[bool] = mapped_column(Boolean, default=True)
+
+
+class StationCoverageRule(Base):
+    __tablename__ = "station_coverage_rules"
+    __table_args__ = (
+        UniqueConstraint(
+            "station_id",
+            "state_code",
+            "municipality_code",
+            "postal_code",
+            "colony_id",
+            name="uq_station_coverage_rule",
+        ),
+    )
+
+    id: Mapped[str] = mapped_column(String(32), primary_key=True, default=lambda: uuid4().hex)
+    station_id: Mapped[str] = mapped_column(String(32), ForeignKey("stations.id", ondelete="CASCADE"), index=True)
     state_code: Mapped[str] = mapped_column(String(10), ForeignKey("geo_states.code"), index=True)
     municipality_code: Mapped[str | None] = mapped_column(String(20), ForeignKey("geo_municipalities.code"), nullable=True, index=True)
     postal_code: Mapped[str | None] = mapped_column(String(10), ForeignKey("geo_postal_codes.code"), nullable=True, index=True)

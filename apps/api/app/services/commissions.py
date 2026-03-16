@@ -4,7 +4,7 @@ from collections import defaultdict
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
-from app.db.models import Delivery, Guide, RiderCommission, RouteLeg, StationCommission, WorkflowStage
+from app.db.models import Guide, RiderCommission, RouteLeg, ServiceType, StationCommission
 
 
 def resolve_week_window(week_start: str | None, previous_week: bool = False) -> tuple[datetime, datetime, date]:
@@ -23,21 +23,46 @@ def resolve_week_window(week_start: str | None, previous_week: bool = False) -> 
 
 def compute_rider_rows(db: Session, start_dt: datetime, end_dt: datetime) -> list[tuple[str, int, float]]:
     rows = (
-        db.query(
-            Delivery.rider_id,
-            func.count(Delivery.id),
-            func.coalesce(func.sum(Delivery.commission_amount), 0.0),
-        )
+        db.query(RouteLeg, Guide)
+        .join(Guide, Guide.id == RouteLeg.guide_id)
         .filter(
-            Delivery.rider_id.is_not(None),
-            Delivery.stage == WorkflowStage.delivered,
-            Delivery.delivered_at >= start_dt,
-            Delivery.delivered_at < end_dt,
+            RouteLeg.assigned_rider_id.is_not(None),
+            RouteLeg.status == "completed",
+            RouteLeg.updated_at >= start_dt,
+            RouteLeg.updated_at < end_dt,
         )
-        .group_by(Delivery.rider_id)
         .all()
     )
-    return [(rider_id, int(count), float(total or 0.0)) for rider_id, count, total in rows]
+
+    pickup_leg_types = {"pickup_to_station", "pickup_to_client", "pickup_to_origin_station"}
+    delivery_leg_types = {"station_to_client", "destination_station_to_client"}
+    totals: dict[str, float] = defaultdict(float)
+    counts: dict[str, int] = defaultdict(int)
+    errand_guide_rider_roles: dict[tuple[str, str], set[str]] = defaultdict(set)
+
+    for route_leg, guide in rows:
+        if not route_leg.assigned_rider_id:
+            continue
+
+        rider_id = route_leg.assigned_rider_id
+        totals[rider_id] += float(route_leg.rider_fee_amount or 0.0)
+        counts[rider_id] += 1
+
+        if guide.service_type == ServiceType.errand.value:
+            key = (guide.id, rider_id)
+            if route_leg.leg_type in pickup_leg_types:
+                errand_guide_rider_roles[key].add("pickup")
+            if route_leg.leg_type in delivery_leg_types:
+                errand_guide_rider_roles[key].add("delivery")
+            if route_leg.leg_type == "pickup_to_client":
+                errand_guide_rider_roles[key].update({"pickup", "delivery"})
+
+    # Errand rule: if same rider performs pickup and delivery, it counts as one tariff event.
+    for (_guide_id, rider_id), roles in errand_guide_rider_roles.items():
+        if "pickup" in roles and "delivery" in roles and counts[rider_id] > 1:
+            counts[rider_id] -= 1
+
+    return [(rider_id, int(counts[rider_id]), float(totals[rider_id])) for rider_id in totals.keys()]
 
 
 def compute_station_rows(db: Session, start_dt: datetime, end_dt: datetime) -> list[tuple[str, int, float]]:
@@ -114,7 +139,14 @@ def compute_station_leg_type_rows(db: Session, start_dt: datetime, end_dt: datet
     ]
 
 
-def close_rider_week(db: Session, monday: date, start_dt: datetime, end_dt: datetime) -> list[tuple[str, int, float]]:
+def close_rider_week(
+    db: Session,
+    monday: date,
+    start_dt: datetime,
+    end_dt: datetime,
+    *,
+    commit: bool = True,
+) -> list[tuple[str, int, float]]:
     rows = compute_rider_rows(db, start_dt, end_dt)
     for rider_id, count, total in rows:
         snapshot = (
@@ -135,11 +167,19 @@ def close_rider_week(db: Session, monday: date, start_dt: datetime, end_dt: date
                     state="confirmed",
                 )
             )
-    db.commit()
+    if commit:
+        db.commit()
     return rows
 
 
-def close_station_week(db: Session, monday: date, start_dt: datetime, end_dt: datetime) -> list[tuple[str, int, float]]:
+def close_station_week(
+    db: Session,
+    monday: date,
+    start_dt: datetime,
+    end_dt: datetime,
+    *,
+    commit: bool = True,
+) -> list[tuple[str, int, float]]:
     rows = compute_station_rows(db, start_dt, end_dt)
     for station_id, count, total in rows:
         snapshot = (
@@ -162,14 +202,20 @@ def close_station_week(db: Session, monday: date, start_dt: datetime, end_dt: da
                     state="confirmed",
                 )
             )
-    db.commit()
+    if commit:
+        db.commit()
     return rows
 
 
 def close_weekly_commissions(db: Session, week_start: str | None = None, previous_week: bool = False) -> dict[str, int]:
     start_dt, end_dt, monday = resolve_week_window(week_start=week_start, previous_week=previous_week)
-    rider_rows = close_rider_week(db, monday, start_dt, end_dt)
-    station_rows = close_station_week(db, monday, start_dt, end_dt)
+    try:
+        rider_rows = close_rider_week(db, monday, start_dt, end_dt, commit=False)
+        station_rows = close_station_week(db, monday, start_dt, end_dt, commit=False)
+        db.commit()
+    except Exception:
+        db.rollback()
+        raise
     return {
         "rider_snapshots": len(rider_rows),
         "station_snapshots": len(station_rows),

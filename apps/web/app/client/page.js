@@ -4,6 +4,42 @@ import { useEffect, useMemo, useState } from "react";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
+const SERVICE_TYPE_LABELS = {
+  messaging: "Mensajeria",
+  package: "Paqueteria",
+  errand: "Mandadito",
+};
+
+const ROUTE_LABELS = {
+  pickup_to_origin_station: "Recoleccion a estacion origen",
+  station_to_station: "Estacion a estacion",
+  destination_station_to_client: "Estacion destino a cliente",
+  pickup_to_station: "Recoleccion a estacion",
+  station_to_client: "Estacion a cliente",
+  pickup_to_client: "Recoleccion a cliente",
+};
+
+const STATUS_LABELS = {
+  planned: "Planeado",
+  assigned: "Asignado",
+  in_progress: "En progreso",
+  completed: "Completado",
+  failed: "Fallido",
+  cancelled: "Cancelado",
+};
+
+function formatServiceType(value) {
+  return SERVICE_TYPE_LABELS[value] || String(value || "-").replaceAll("_", " ");
+}
+
+function formatRouteType(value) {
+  return ROUTE_LABELS[value] || String(value || "-").replaceAll("_", " ");
+}
+
+function formatStatus(value) {
+  return STATUS_LABELS[value] || String(value || "-").replaceAll("_", " ");
+}
+
 export default function ClientPortalPage() {
   const [section, setSection] = useState("acceso");
   const [token, setToken] = useState("");
@@ -49,6 +85,7 @@ export default function ClientPortalPage() {
   const [originStationSuggest, setOriginStationSuggest] = useState("-");
   const [destinationZoneSuggest, setDestinationZoneSuggest] = useState("-");
   const [destinationStationSuggest, setDestinationStationSuggest] = useState("-");
+  const [destinationStationSuggestId, setDestinationStationSuggestId] = useState("");
   const [requesterRole, setRequesterRole] = useState("origin");
   const [originWantsInvoice, setOriginWantsInvoice] = useState(false);
   const [serviceId, setServiceId] = useState("");
@@ -372,6 +409,7 @@ export default function ClientPortalPage() {
 
     setDestinationZoneSuggest(data.zone_name || "-");
     setDestinationStationSuggest(data.station_name || "-");
+    setDestinationStationSuggestId(data.station_id || "");
   }
 
   async function loadMunicipalities(code) {
@@ -501,6 +539,8 @@ export default function ClientPortalPage() {
           origin_wants_invoice: originWantsInvoice,
           service_id: serviceId,
           station_id: stationId,
+          destination_station_id: destinationStationSuggestId || null,
+          use_station_handoff: Boolean(destinationStationSuggestId && destinationStationSuggestId !== stationId),
         }),
       });
       const data = await res.json();
@@ -929,6 +969,8 @@ export default function ClientPortalPage() {
         {guideResult && (
           <div className="result-box">
             <p><strong>Guía:</strong> {guideResult.guide_code}</p>
+            <p><strong>Tipo servicio aplicado:</strong> {formatServiceType(guideResult.service_type)}</p>
+            {guideResult.service_converted && <p><strong>Conversión automática:</strong> Mandadito convertido a paquetería por cambio de cobertura entre estaciones.</p>}
             <p><strong>Venta:</strong> {guideResult.sale_amount} {guideResult.currency}</p>
             {deliveryId && <p><strong>ID de entrega:</strong> {deliveryId}</p>}
             {deliveryId && <p className="field-hint">Siguiente paso: abre el portal de repartidor y utiliza este ID de entrega para actualizar etapas.</p>}
@@ -946,7 +988,7 @@ export default function ClientPortalPage() {
             <tbody>
               {routeLegRows.map((row) => (
                 <tr key={row.id}>
-                  <td>{row.sequence}</td><td>{row.leg_type}</td><td>{row.status}</td><td>{row.assigned_rider_id || "-"}</td><td>{row.rider_fee_amount} {row.currency}</td><td>{row.station_fee_amount} {row.currency}</td>
+                  <td>{row.sequence}</td><td>{formatRouteType(row.leg_type)}</td><td>{formatStatus(row.status)}</td><td>{row.assigned_rider_id || "-"}</td><td>{row.rider_fee_amount} {row.currency}</td><td>{row.station_fee_amount} {row.currency}</td>
                 </tr>
               ))}
             </tbody>

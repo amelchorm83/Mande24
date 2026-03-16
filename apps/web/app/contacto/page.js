@@ -79,7 +79,7 @@ export default function ContactoPage() {
 
       <span className="badge">Contacto</span>
       <h1>Hablemos de tu operación de entregas.</h1>
-      <p className="hero-note">Comparte tus necesidades y te proponemos una solución de última milla para tu negocio en Tabasco y Campeche.</p>
+      <p className="hero-note">Comparte tus necesidades y te proponemos una solución de última milla para tu negocio en Tabasco, Campeche, Chiapas, Yucatán y Quintana Roo.</p>
       <img className="hero-banner" src="/brand/banner.svg" alt="Banner contacto Mande24" />
 
       <section className="panel contact-grid">
@@ -149,7 +149,7 @@ export default function ContactoPage() {
           </article>
           <article className="card">
             <h3>Zonas de operación</h3>
-            <p>Colonias o municipios de Tabasco y Campeche donde necesitas cobertura.</p>
+            <p>Colonias o municipios de Tabasco, Campeche, Chiapas, Yucatán y Quintana Roo donde necesitas cobertura.</p>
           </article>
         </div>
       </section>

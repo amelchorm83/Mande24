@@ -4,6 +4,53 @@ import { useEffect, useState } from "react";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
+const ROUTE_LABELS = {
+  pickup_to_origin_station: "Recoleccion a estacion origen",
+  station_to_station: "Estacion a estacion",
+  destination_station_to_client: "Estacion destino a cliente",
+  pickup_to_station: "Recoleccion a estacion",
+  station_to_client: "Estacion a cliente",
+  pickup_to_client: "Recoleccion a cliente",
+};
+
+const STATUS_LABELS = {
+  planned: "Planeado",
+  assigned: "Asignado",
+  in_progress: "En progreso",
+  completed: "Completado",
+  failed: "Fallido",
+  cancelled: "Cancelado",
+};
+
+const CLIENT_KIND_LABELS = {
+  origin: "Origen",
+  destination: "Destino",
+  both: "Ambos",
+};
+
+const VEHICLE_LABELS = {
+  motorcycle: "Motocicleta",
+  car: "Automovil",
+  bicycle: "Bicicleta",
+  van: "Camioneta",
+};
+
+function formatRouteType(value) {
+  return ROUTE_LABELS[value] || String(value || "-").replaceAll("_", " ");
+}
+
+function formatStatus(value) {
+  return STATUS_LABELS[value] || String(value || "-").replaceAll("_", " ");
+}
+
+function formatClientKind(value) {
+  return CLIENT_KIND_LABELS[value] || value || "-";
+}
+
+function formatVehicle(value) {
+  return VEHICLE_LABELS[value] || value || "-";
+}
+
 export default function StationPortalPage() {
   const [section, setSection] = useState("clientes");
   const [token, setToken] = useState("");
@@ -34,11 +81,16 @@ export default function StationPortalPage() {
   const [newRiderEmail, setNewRiderEmail] = useState("");
   const [newRiderPassword, setNewRiderPassword] = useState("");
   const [newRiderZoneId, setNewRiderZoneId] = useState("");
+  const [newRiderStationId, setNewRiderStationId] = useState("");
   const [newRiderVehicle, setNewRiderVehicle] = useState("motorcycle");
   const [newRiderLandline, setNewRiderLandline] = useState("");
   const [newRiderWhatsapp, setNewRiderWhatsapp] = useState("");
   const [newStationName, setNewStationName] = useState("");
   const [newStationZoneId, setNewStationZoneId] = useState("");
+  const [newStationCoverageStateCode, setNewStationCoverageStateCode] = useState("");
+  const [newStationCoverageMunicipalityCode, setNewStationCoverageMunicipalityCode] = useState("");
+  const [newStationCoveragePostalCode, setNewStationCoveragePostalCode] = useState("");
+  const [newStationCoverageColonyId, setNewStationCoverageColonyId] = useState("");
   const [newStationLandline, setNewStationLandline] = useState("");
   const [newStationWhatsapp, setNewStationWhatsapp] = useState("");
   const [riderCatalogRows, setRiderCatalogRows] = useState([]);
@@ -233,6 +285,7 @@ export default function StationPortalPage() {
       headers: catalogHeaders,
       body: JSON.stringify({
         user_id: match[1],
+        station_id: newRiderStationId || null,
         zone_id: newRiderZoneId || null,
         vehicle_type: newRiderVehicle,
         landline_phone: newRiderLandline,
@@ -261,12 +314,22 @@ export default function StationPortalPage() {
       return;
     }
     const headers = { Authorization: `Bearer ${token}`, "Content-Type": "application/json" };
+    const coverageRows = [];
+    if (newStationCoverageStateCode) {
+      coverageRows.push({
+        state_code: newStationCoverageStateCode,
+        municipality_code: newStationCoverageMunicipalityCode || null,
+        postal_code: newStationCoveragePostalCode || null,
+        colony_id: newStationCoverageColonyId || null,
+      });
+    }
     const res = await fetch(`${API_BASE}/api/v1/catalogs/stations`, {
       method: "POST",
       headers,
       body: JSON.stringify({
         name: newStationName,
         zone_id: newStationZoneId,
+        coverage_rows: coverageRows,
         landline_phone: newStationLandline,
         whatsapp_phone: newStationWhatsapp,
       }),
@@ -278,6 +341,10 @@ export default function StationPortalPage() {
     }
     setMsg("Estación registrada con teléfono fijo y WhatsApp.");
     setNewStationName("");
+    setNewStationCoverageStateCode("");
+    setNewStationCoverageMunicipalityCode("");
+    setNewStationCoveragePostalCode("");
+    setNewStationCoverageColonyId("");
     setNewStationLandline("");
     setNewStationWhatsapp("");
     await loadCatalogRows();
@@ -373,7 +440,7 @@ export default function StationPortalPage() {
         setMsg(`Error actualizando tramo: ${JSON.stringify(data)}`);
         return;
       }
-      setMsg(`Tramo ${data.sequence} actualizado a ${data.status}`);
+      setMsg(`Tramo ${data.sequence} actualizado a ${formatStatus(data.status)}`);
       await loadRouteLegs();
     } catch (error) {
       setMsg(`Error de red: ${error.message}`);
@@ -556,6 +623,13 @@ export default function StationPortalPage() {
             <input type="password" value={newRiderPassword} onChange={(e) => setNewRiderPassword(e.target.value)} required minLength={8} />
           </label>
           <label>
+            Estación base
+            <select value={newRiderStationId} onChange={(e) => setNewRiderStationId(e.target.value)}>
+              <option value="">Sin estación</option>
+              {stationCatalogRows.filter((item) => item.active).map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
+            </select>
+          </label>
+          <label>
             Zona
             <select value={newRiderZoneId} onChange={(e) => setNewRiderZoneId(e.target.value)}>
               <option value="">Sin zona</option>
@@ -593,6 +667,25 @@ export default function StationPortalPage() {
             </select>
           </label>
           <label>
+            Estado cobertura inicial
+            <select value={newStationCoverageStateCode} onChange={(e) => setNewStationCoverageStateCode(e.target.value)}>
+              <option value="">Sin cobertura inicial</option>
+              {states.map((item) => <option key={`cov-st-${item.code}`} value={item.code}>{item.name}</option>)}
+            </select>
+          </label>
+          <label>
+            Municipio cobertura (código)
+            <input value={newStationCoverageMunicipalityCode} onChange={(e) => setNewStationCoverageMunicipalityCode(e.target.value.toUpperCase())} />
+          </label>
+          <label>
+            Código postal cobertura
+            <input value={newStationCoveragePostalCode} onChange={(e) => setNewStationCoveragePostalCode(e.target.value)} />
+          </label>
+          <label>
+            Colonia cobertura (id)
+            <input value={newStationCoverageColonyId} onChange={(e) => setNewStationCoverageColonyId(e.target.value)} />
+          </label>
+          <label>
             Teléfono fijo
             <input value={newStationLandline} onChange={(e) => setNewStationLandline(e.target.value)} />
           </label>
@@ -627,7 +720,7 @@ export default function StationPortalPage() {
             <select value={routeLegId} onChange={(e) => setRouteLegId(e.target.value)}>
               <option value="">Selecciona tramo</option>
               {routeLegRows.map((row) => (
-                <option key={row.id} value={row.id}>#{row.sequence} {row.leg_type} | {row.status}</option>
+                <option key={row.id} value={row.id}>#{row.sequence} {formatRouteType(row.leg_type)} | {formatStatus(row.status)}</option>
               ))}
             </select>
           </label>
@@ -658,7 +751,7 @@ export default function StationPortalPage() {
             <thead><tr><th>Secuencia</th><th>Tipo</th><th>Estado</th><th>Repartidor</th><th>Est. origen</th><th>Est. destino</th></tr></thead>
             <tbody>
               {routeLegRows.map((row) => (
-                <tr key={row.id}><td>{row.sequence}</td><td>{row.leg_type}</td><td>{row.status}</td><td>{row.assigned_rider_id || "-"}</td><td>{row.origin_station_id || "-"}</td><td>{row.destination_station_id || "-"}</td></tr>
+                <tr key={row.id}><td>{row.sequence}</td><td>{formatRouteType(row.leg_type)}</td><td>{formatStatus(row.status)}</td><td>{row.assigned_rider_id || "-"}</td><td>{row.origin_station_id || "-"}</td><td>{row.destination_station_id || "-"}</td></tr>
               ))}
             </tbody>
           </table>
@@ -727,7 +820,7 @@ export default function StationPortalPage() {
             </thead>
             <tbody>
               {riderLegRows.map((row, idx) => (
-                <tr key={`${row.rider_id}-${row.leg_type}-${idx}`}><td>{row.rider_id}</td><td>{row.leg_type}</td><td>{row.leg_count}</td><td>{row.total_amount}</td></tr>
+                <tr key={`${row.rider_id}-${row.leg_type}-${idx}`}><td>{row.rider_id}</td><td>{formatRouteType(row.leg_type)}</td><td>{row.leg_count}</td><td>{row.total_amount}</td></tr>
               ))}
             </tbody>
           </table>
@@ -743,7 +836,7 @@ export default function StationPortalPage() {
             </thead>
             <tbody>
               {stationLegRows.map((row, idx) => (
-                <tr key={`${row.station_id}-${row.leg_type}-${idx}`}><td>{row.station_id}</td><td>{row.leg_type}</td><td>{row.leg_count}</td><td>{row.total_amount}</td></tr>
+                <tr key={`${row.station_id}-${row.leg_type}-${idx}`}><td>{row.station_id}</td><td>{formatRouteType(row.leg_type)}</td><td>{row.leg_count}</td><td>{row.total_amount}</td></tr>
               ))}
             </tbody>
           </table>
@@ -760,7 +853,7 @@ export default function StationPortalPage() {
             <tbody>
               {profiles.map((row) => (
                 <tr key={row.id}>
-                  <td>{row.display_name}</td><td>{row.client_kind}</td><td>{row.state_code}</td><td>{row.municipality_code}</td><td>{row.postal_code}</td><td>{row.colony_name || "-"}</td><td>{row.landline_phone || "-"}</td><td>{row.whatsapp_phone || "-"}</td><td>{row.wants_invoice ? "Sí" : "No"}</td>
+                  <td>{row.display_name}</td><td>{formatClientKind(row.client_kind)}</td><td>{row.state_code}</td><td>{row.municipality_code}</td><td>{row.postal_code}</td><td>{row.colony_name || "-"}</td><td>{row.landline_phone || "-"}</td><td>{row.whatsapp_phone || "-"}</td><td>{row.wants_invoice ? "Sí" : "No"}</td>
                 </tr>
               ))}
             </tbody>
@@ -773,11 +866,11 @@ export default function StationPortalPage() {
         <div className="table-wrap">
           <table>
             <thead>
-              <tr><th>ID</th><th>ID usuario</th><th>Zona</th><th>Telefono fijo</th><th>WhatsApp</th><th>Vehiculo</th><th>Activo</th></tr>
+              <tr><th>ID</th><th>ID usuario</th><th>Estación</th><th>Zona</th><th>Telefono fijo</th><th>WhatsApp</th><th>Vehiculo</th><th>Activo</th></tr>
             </thead>
             <tbody>
               {riderCatalogRows.map((row) => (
-                <tr key={row.id}><td>{row.id}</td><td>{row.user_id}</td><td>{row.zone_id || "-"}</td><td>{row.landline_phone || "-"}</td><td>{row.whatsapp_phone || "-"}</td><td>{row.vehicle_type}</td><td>{row.active ? "Sí" : "No"}</td></tr>
+                <tr key={row.id}><td>{row.id}</td><td>{row.user_id}</td><td>{row.station_id || "-"}</td><td>{row.zone_id || "-"}</td><td>{row.landline_phone || "-"}</td><td>{row.whatsapp_phone || "-"}</td><td>{formatVehicle(row.vehicle_type)}</td><td>{row.active ? "Sí" : "No"}</td></tr>
               ))}
             </tbody>
           </table>

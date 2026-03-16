@@ -14,10 +14,19 @@ function Assert-Status {
         [string]$Name,
         [string]$Url,
         [int]$Expected = 200,
-        [hashtable]$Headers = @{}
+        [hashtable]$Headers = @{},
+        [Microsoft.PowerShell.Commands.WebRequestSession]$WebSession = $null
     )
 
-    $response = Invoke-WebRequest -Uri $Url -Headers $Headers -UseBasicParsing
+    $requestArgs = @{
+        Uri             = $Url
+        Headers         = $Headers
+        UseBasicParsing = $true
+    }
+    if ($WebSession) {
+        $requestArgs.WebSession = $WebSession
+    }
+    $response = Invoke-WebRequest @requestArgs
     if ($response.StatusCode -ne $Expected) {
         throw "$Name failed. Expected $Expected, got $($response.StatusCode). URL: $Url"
     }
@@ -30,11 +39,24 @@ function Assert-Redirect {
         [string]$Name,
         [string]$Url,
         [hashtable]$Body,
-        [hashtable]$Headers = @{}
+        [hashtable]$Headers = @{},
+        [Microsoft.PowerShell.Commands.WebRequestSession]$WebSession = $null
     )
 
+    $requestArgs = @{
+        Uri                = $Url
+        Method             = "Post"
+        Body               = $Body
+        Headers            = $Headers
+        MaximumRedirection = 0
+        UseBasicParsing    = $true
+    }
+    if ($WebSession) {
+        $requestArgs.WebSession = $WebSession
+    }
+
     try {
-        $response = Invoke-WebRequest -Uri $Url -Method Post -Body $Body -Headers $Headers -MaximumRedirection 0 -UseBasicParsing
+        $response = Invoke-WebRequest @requestArgs
         if ($response.StatusCode -ne 303) {
             throw "$Name expected 303, got $($response.StatusCode)."
         }
@@ -58,15 +80,73 @@ function Assert-RedirectSuccess {
         [string]$Name,
         [string]$Url,
         [hashtable]$Body,
-        [hashtable]$Headers = @{}
+        [hashtable]$Headers = @{},
+        [Microsoft.PowerShell.Commands.WebRequestSession]$WebSession = $null
     )
 
-    $response = Assert-Redirect -Name $Name -Url $Url -Body $Body -Headers $Headers
+    $response = Assert-Redirect -Name $Name -Url $Url -Body $Body -Headers $Headers -WebSession $WebSession
     $location = $response.Headers['Location']
     if ($location -match "kind=error") {
         throw "$Name returned error redirect: $location"
     }
     return $response
+}
+
+function Ensure-ErpAdminSession {
+    param(
+        [string]$ApiBase,
+        [Microsoft.PowerShell.Commands.WebRequestSession]$WebSession
+    )
+
+    $seed = Invoke-RestMethod -Uri "$ApiBase/ERPMande24/demo/seed" -Method Post
+    if (-not $seed.service_id -or -not $seed.station_id) {
+        throw "Seed demo data did not return service_id/station_id."
+    }
+
+    $smokeEmail = "smoke.erp.admin@mande24.test"
+    $smokePassword = "SmokeAdmin123"
+
+    $registerPayload = @{
+        email     = $smokeEmail
+        full_name = "Smoke ERP Admin"
+        password  = $smokePassword
+        role      = "admin"
+    } | ConvertTo-Json
+
+    $apiLogin = $null
+    try {
+        $apiLogin = Invoke-RestMethod -Uri "$ApiBase/api/v1/auth/login" -Method Post -ContentType "application/json" -Body (@{ email = $smokeEmail; password = $smokePassword } | ConvertTo-Json)
+    } catch {
+        $apiLogin = $null
+    }
+
+    if (-not $apiLogin -or -not $apiLogin.access_token) {
+        try {
+            Invoke-RestMethod -Uri "$ApiBase/api/v1/auth/register" -Method Post -ContentType "application/json" -Body $registerPayload | Out-Null
+        } catch {
+            $errorText = $_.ErrorDetails.Message
+            if (-not ($errorText -match "Email already exists")) {
+                throw
+            }
+        }
+        $apiLogin = Invoke-RestMethod -Uri "$ApiBase/api/v1/auth/login" -Method Post -ContentType "application/json" -Body (@{ email = $smokeEmail; password = $smokePassword } | ConvertTo-Json)
+    }
+
+    if (-not $apiLogin.access_token) {
+        throw "API login did not return access_token for smoke admin."
+    }
+
+    # Load login page first so session picks up base cookies if needed.
+    Invoke-WebRequest -Uri "$ApiBase/ERPMande24/login" -WebSession $WebSession -UseBasicParsing | Out-Null
+
+    $loginBody = @{
+        email    = $smokeEmail
+        password = $smokePassword
+        next     = "/ERPMande24"
+    }
+    Assert-RedirectSuccess -Name "ERP login" -Url "$ApiBase/ERPMande24/login" -Body $loginBody -WebSession $WebSession | Out-Null
+
+    return $seed
 }
 
 function Cleanup-SmokeData {
@@ -106,6 +186,42 @@ finally:
     }
     Write-Output "[INFO] Smoke cleanup result:"
     Write-Output $cleanupOutput.Trim()
+}
+
+function Get-SmokeGeoData {
+    param(
+        [string]$ApiBase,
+        [Microsoft.PowerShell.Commands.WebRequestSession]$WebSession
+    )
+
+    $stateCandidates = @("SIN", "TAB", "CAM", "CHP", "CHIS")
+    foreach ($stateCode in $stateCandidates) {
+        $municipalities = Invoke-RestMethod -Uri "$ApiBase/ERPMande24/geo/municipalities?state_code=$stateCode" -WebSession $WebSession -Method Get
+        if (-not $municipalities -or -not $municipalities[0].code) {
+            continue
+        }
+
+        $municipalityCode = $municipalities[0].code
+        $postalCodes = Invoke-RestMethod -Uri "$ApiBase/ERPMande24/geo/postal-codes?municipality_code=$municipalityCode" -WebSession $WebSession -Method Get
+        if (-not $postalCodes -or -not $postalCodes[0].code) {
+            continue
+        }
+
+        $postalCode = $postalCodes[0].code
+        $colonies = Invoke-RestMethod -Uri "$ApiBase/ERPMande24/geo/colonies?state_code=$stateCode&municipality_code=$municipalityCode&postal_code=$postalCode" -WebSession $WebSession -Method Get
+        if (-not $colonies -or -not $colonies[0].id) {
+            continue
+        }
+
+        return @{
+            state_code = $stateCode
+            municipality_code = $municipalityCode
+            postal_code = $postalCode
+            colony_id = $colonies[0].id
+        }
+    }
+
+    throw "No se pudieron obtener datos geo para smoke guide flow."
 }
 
 $repoRoot = Resolve-Path (Join-Path $PSScriptRoot "..")
@@ -152,12 +268,9 @@ try {
 
     if (-not $SkipGuideFlow) {
         Write-Output "[STEP] ERPMande24 guide creation smoke flow"
-        $roleHeaders = @{ Cookie = "m24_erpmande24_role=admin" }
-
-        $seedResponse = Invoke-RestMethod -Uri "$ApiBase/ERPMande24/demo/seed" -Method Post -Headers $roleHeaders
-        if (-not $seedResponse.service_id -or -not $seedResponse.station_id) {
-            throw "Seed demo data did not return service_id/station_id."
-        }
+        $erpSession = New-Object Microsoft.PowerShell.Commands.WebRequestSession
+        $seedResponse = Ensure-ErpAdminSession -ApiBase $ApiBase -WebSession $erpSession
+        $geo = Get-SmokeGeoData -ApiBase $ApiBase -WebSession $erpSession
         Write-Output "[OK] Seed demo data"
 
         $createBody = @{
@@ -165,15 +278,29 @@ try {
             destination_name = "Smoke Dest"
             service_id = $seedResponse.service_id
             station_id = $seedResponse.station_id
+            origin_whatsapp_phone = "5511111111"
+            origin_email = "smoke.origin@mande24.test"
+            origin_state_code = $geo.state_code
+            origin_municipality_code = $geo.municipality_code
+            origin_postal_code = $geo.postal_code
+            origin_colony_id = $geo.colony_id
+            origin_address_line = "Calle Smoke Origen 101"
+            destination_whatsapp_phone = "5522222222"
+            destination_email = "smoke.destino@mande24.test"
+            destination_state_code = $geo.state_code
+            destination_municipality_code = $geo.municipality_code
+            destination_postal_code = $geo.postal_code
+            destination_colony_id = $geo.colony_id
+            destination_address_line = "Calle Smoke Destino 202"
         }
 
         # Keep demo catalogs active so the guide creation smoke flow is deterministic.
-        Assert-RedirectSuccess -Name "Activate demo service" -Url "$ApiBase/ERPMande24/catalogs/services/$($seedResponse.service_id)/toggle" -Body @{ active = "true" } -Headers $roleHeaders | Out-Null
-        Assert-RedirectSuccess -Name "Activate demo station" -Url "$ApiBase/ERPMande24/catalogs/stations/$($seedResponse.station_id)/toggle" -Body @{ active = "true" } -Headers $roleHeaders | Out-Null
-        Assert-RedirectSuccess -Name "Create backend guide" -Url "$ApiBase/ERPMande24/guides/create" -Body $createBody -Headers $roleHeaders | Out-Null
+        Assert-RedirectSuccess -Name "Activate demo service" -Url "$ApiBase/ERPMande24/catalogs/services/$($seedResponse.service_id)/toggle" -Body @{ active = "true" } -WebSession $erpSession | Out-Null
+        Assert-RedirectSuccess -Name "Activate demo station" -Url "$ApiBase/ERPMande24/catalogs/stations/$($seedResponse.station_id)/toggle" -Body @{ active = "true" } -WebSession $erpSession | Out-Null
+        Assert-RedirectSuccess -Name "Create backend guide" -Url "$ApiBase/ERPMande24/guides/create" -Body $createBody -WebSession $erpSession | Out-Null
 
         $guidesQuery = [System.Uri]::EscapeDataString("Smoke Script")
-        $guidesPage = Assert-Status -Name "Guides list" -Url "$ApiBase/ERPMande24/guides?q=$guidesQuery" -Headers $roleHeaders
+        $guidesPage = Assert-Status -Name "Guides list" -Url "$ApiBase/ERPMande24/guides?q=$guidesQuery" -WebSession $erpSession
         if ($guidesPage.Content -notmatch "Smoke Script") {
             throw "Guides list does not show 'Smoke Script'."
         }

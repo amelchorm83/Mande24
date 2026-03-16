@@ -40,9 +40,9 @@ export default function NoticiasPage() {
           <a className="nav-link active" href="/noticias">Noticias</a>
           <a className="nav-link" href="/nosotros">Nosotros</a>
           <a className="nav-link" href="/contacto">Contacto</a>
-          <a className="nav-link" href="/auth">Portal Auth</a>
+          <a className="nav-link" href="/auth">Portal Acceso</a>
           <a className="nav-link" href="/client">Portal Cliente</a>
-          <a className="nav-link" href="/rider">Portal Rider</a>
+          <a className="nav-link" href="/rider">Portal Repartidor</a>
           <a className="nav-link" href="/station">Portal Estación</a>
         
           <a className="nav-link" href="/cotizador">Cotizador</a>

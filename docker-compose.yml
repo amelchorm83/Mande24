@@ -3,6 +3,7 @@ services:
     build:
       context: ./apps/api
     container_name: mande24-api
+    restart: unless-stopped
     env_file:
       - .env
     ports:
@@ -15,6 +16,7 @@ services:
     build:
       context: ./apps/web
     container_name: mande24-web
+    restart: unless-stopped
     env_file:
       - .env
     ports:

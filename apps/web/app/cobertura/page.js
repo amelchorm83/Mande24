@@ -3,6 +3,7 @@ const coverageByState = [
     state: "Tabasco",
     zones: [
       { zone: "Centro", municipalities: "Centro, Nacajuca, Jalpa de Méndez" },
+      { zone: "Pantanos", municipalities: "Centla, Jonuta, Macuspana" },
       { zone: "Chontalpa", municipalities: "Comalcalco, Cárdenas, Huimanguillo" },
       { zone: "Sierra", municipalities: "Teapa, Tacotalpa, Jalapa" },
       { zone: "Ríos", municipalities: "Balancán, Tenosique, Emiliano Zapata" },
@@ -15,6 +16,33 @@ const coverageByState = [
       { zone: "Carmen", municipalities: "Ciudad del Carmen, Sabancuy" },
       { zone: "Norte", municipalities: "Calkiní, Hecelchakán, Tenabo" },
       { zone: "Oriente", municipalities: "Champotón, Escárcega" },
+    ],
+  },
+  {
+    state: "Chiapas",
+    zones: [
+      { zone: "Centro", municipalities: "Tuxtla Gutiérrez, Chiapa de Corzo, Berriozábal" },
+      { zone: "Altos", municipalities: "San Cristóbal de las Casas, Teopisca" },
+      { zone: "Soconusco", municipalities: "Tapachula, Huixtla, Suchiate" },
+      { zone: "Frailesca", municipalities: "Villaflores, Villa Corzo" },
+    ],
+  },
+  {
+    state: "Yucatán",
+    zones: [
+      { zone: "Mérida Metropolitana", municipalities: "Mérida, Kanasín, Umán" },
+      { zone: "Costa", municipalities: "Progreso, Chicxulub Puerto, Telchac Puerto" },
+      { zone: "Oriente", municipalities: "Valladolid, Tizimín" },
+      { zone: "Sur", municipalities: "Ticul, Tekax" },
+    ],
+  },
+  {
+    state: "Quintana Roo",
+    zones: [
+      { zone: "Benito Juárez", municipalities: "Cancún, Puerto Morelos" },
+      { zone: "Riviera Maya", municipalities: "Playa del Carmen, Tulum" },
+      { zone: "Sur", municipalities: "Chetumal, Bacalar" },
+      { zone: "Norte", municipalities: "Cozumel, Isla Mujeres" },
     ],
   },
 ];
@@ -38,9 +66,9 @@ export default function CoberturaPage() {
           <a className="nav-link" href="/noticias">Noticias</a>
           <a className="nav-link" href="/nosotros">Nosotros</a>
           <a className="nav-link" href="/contacto">Contacto</a>
-          <a className="nav-link" href="/auth">Portal Auth</a>
+          <a className="nav-link" href="/auth">Portal Acceso</a>
           <a className="nav-link" href="/client">Portal Cliente</a>
-          <a className="nav-link" href="/rider">Portal Rider</a>
+          <a className="nav-link" href="/rider">Portal Repartidor</a>
           <a className="nav-link" href="/station">Portal Estación</a>
         
           <a className="nav-link" href="/cotizador">Cotizador</a>
@@ -49,7 +77,7 @@ export default function CoberturaPage() {
       </header>
 
       <span className="badge">Cobertura</span>
-      <h1>Cobertura activa en Tabasco y Campeche con enfoque operativo por zonas.</h1>
+      <h1>Cobertura activa en el sureste: Tabasco, Campeche, Chiapas, Yucatán y Quintana Roo.</h1>
       <p className="hero-note">La cobertura se gestiona por zonas, municipios y capacidad operativa para mantener tiempos confiables y mejor experiencia para cliente final.</p>
       <img className="hero-banner" src="/brand/banner.svg" alt="Banner de cobertura Mande24" />
 
@@ -57,7 +85,7 @@ export default function CoberturaPage() {
         <h2>Mapa de Cobertura</h2>
         <div className="media-grid">
           <article className="media-card">
-            <img src="/brand/photo-map.svg" alt="Mapa de cobertura de Tabasco" />
+            <img src="/brand/photo-map.svg" alt="Mapa de cobertura del sureste de México" />
             <div>
               <h3>Operación Regional</h3>
               <p className="hero-note">Cobertura definida por municipio, código postal y colonia para una asignación más precisa.</p>
@@ -96,7 +124,7 @@ export default function CoberturaPage() {
           </article>
           <article className="card">
             <h3>Programado intermunicipal</h3>
-            <p>Ventanas horarias para entregas entre municipios de Tabasco y Campeche.</p>
+            <p>Ventanas horarias para entregas entre municipios de Tabasco, Campeche, Chiapas, Yucatán y Quintana Roo.</p>
           </article>
           <article className="card">
             <h3>Rutas recurrentes</h3>
@@ -108,7 +136,7 @@ export default function CoberturaPage() {
       <section className="panel">
         <h2>Plan de Expansión</h2>
         <ol className="flow-list">
-          <li>Consolidar cobertura por colonia y código postal en municipios activos de Tabasco y Campeche.</li>
+          <li>Consolidar cobertura por colonia y código postal en municipios activos de los cinco estados del sureste.</li>
           <li>Escalar a corredores regionales colindantes con demanda sostenida en sureste.</li>
           <li>Automatizar asignación por zonas geográficas dentro del ERP para mejorar tiempos de respuesta.</li>
         </ol>

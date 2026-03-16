@@ -46,7 +46,7 @@ export default function IndustriasPage() {
 
       <span className="badge">Soluciones por Industria</span>
       <h1>Esquemas operativos para sectores con necesidades distintas.</h1>
-      <p className="hero-note">Mande24 adapta SLA, frecuencia y cobertura por giro para maximizar cumplimiento en Tabasco y Campeche.</p>
+      <p className="hero-note">Mande24 adapta SLA, frecuencia y cobertura por giro para maximizar cumplimiento en Tabasco, Campeche, Chiapas, Yucatán y Quintana Roo.</p>
 
       <section className="panel">
         <h2>Diagnóstico rápido por giro</h2>

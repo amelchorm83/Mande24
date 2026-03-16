@@ -28,12 +28,22 @@ def user_has_any_role(user: User, allowed: set[str]) -> bool:
     return bool(get_user_role_values(user).intersection(allowed))
 
 
-def ensure_user_roles(db: Session, user: User, roles: list[UserRole]) -> None:
+def ensure_user_roles(
+    db: Session,
+    user: User,
+    roles: list[UserRole],
+    *,
+    replace_existing: bool = False,
+) -> None:
     desired = {item.value for item in roles}
-    existing = {
-        item.role.value
-        for item in db.query(UserRoleLink).filter(UserRoleLink.user_id == user.id).all()
-    }
+    existing_links = db.query(UserRoleLink).filter(UserRoleLink.user_id == user.id).all()
+    existing = {item.role.value for item in existing_links}
+
+    if replace_existing:
+        for link in existing_links:
+            if link.role.value not in desired:
+                db.delete(link)
+
     missing = desired - existing
     for value in missing:
         db.add(UserRoleLink(user_id=user.id, role=UserRole(value)))

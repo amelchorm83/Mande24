@@ -40,7 +40,7 @@ export default function TarifasPoliticasPage() {
 
       <span className="badge">Tarifas y Políticas</span>
       <h1>Reglas claras para cotizar y operar con mayor confianza.</h1>
-      <p className="hero-note">Aquí encuentras criterios generales para estimación comercial y política de servicio en Tabasco y Campeche.</p>
+      <p className="hero-note">Aquí encuentras criterios generales para estimación comercial y política de servicio en Tabasco, Campeche, Chiapas, Yucatán y Quintana Roo.</p>
 
       <section className="panel">
         <h2>Lineamientos principales</h2>

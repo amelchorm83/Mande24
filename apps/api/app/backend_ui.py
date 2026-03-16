@@ -23,12 +23,17 @@ from app.db.models import (
     Guide,
     GuideParty,
     PricingRule,
+    OperationalSetting,
+    QuotePolicyRule,
+    Region,
     Rider,
+    RiderAccountStatus,
     RiderCommission,
     RouteLeg,
     Service,
     ServiceType,
     Station,
+    StationCoverageRule,
     StationCommission,
     User,
     UserRoleAudit,
@@ -36,6 +41,7 @@ from app.db.models import (
     WorkflowStage,
     Zone,
     ZoneGeoRule,
+    ZoneSurchargeRule,
 )
 from app.db.sepomex_sync import sync_sepomex_catalog
 from app.core.security import create_access_token, decode_access_token, hash_password, verify_password
@@ -53,12 +59,14 @@ MENU = [
     ("routes", "Rutas", "/ERPMande24/routes"),
     ("deliveries", "Entregas", "/ERPMande24/deliveries"),
     ("services", "Servicios", "/ERPMande24/catalogs/services"),
+    ("regions", "Regiones", "/ERPMande24/catalogs/regions"),
     ("zones", "Zonas", "/ERPMande24/catalogs/zones"),
     ("stations", "Estaciones", "/ERPMande24/catalogs/stations"),
     ("riders", "Repartidores", "/ERPMande24/catalogs/riders"),
     ("clients", "Clientes", "/ERPMande24/catalogs/clients"),
     ("leads", "Leads Contacto", "/ERPMande24/leads"),
     ("pricing", "Tarifas", "/ERPMande24/catalogs/pricing-rules"),
+    ("quote_policy", "Reglas Cotizacion", "/ERPMande24/catalogs/quote-policy"),
     ("users", "Usuarios", "/ERPMande24/users"),
     ("comm_rider", "Comisiones Repartidor", "/ERPMande24/commissions/riders"),
     ("comm_station", "Comisiones Estacion", "/ERPMande24/commissions/stations"),
@@ -70,6 +78,33 @@ ROLE_LABELS = {
     "station": "Estacion",
     "rider": "Repartidor",
 }
+SERVICE_TYPE_LABELS = {
+    "messaging": "Mensajeria",
+    "package": "Paqueteria",
+    "errand": "Mandadito",
+}
+ROUTE_STATUS_LABELS = {
+    "planned": "Planeado",
+    "assigned": "Asignado",
+    "in_progress": "En progreso",
+    "completed": "Completado",
+    "failed": "Fallido",
+    "cancelled": "Cancelado",
+}
+WORKFLOW_STAGE_LABELS = {
+    "assigned": "Asignado",
+    "picked_up": "Recolectado",
+    "in_transit": "En transito",
+    "at_station": "En estacion",
+    "out_for_delivery": "En ruta de entrega",
+    "delivered": "Entregado",
+    "failed": "Fallido",
+}
+RIDER_STATE_LABELS = {
+    "draft": "Borrador",
+    "approved": "Aprobado",
+    "rejected": "Rechazado",
+}
 BLOCKED_ERP_ROLES = {"client", "rider"}
 
 MODULE_ICON_SVG = {
@@ -79,12 +114,14 @@ MODULE_ICON_SVG = {
     "routes": "<circle cx='6' cy='12' r='2'/><circle cx='12' cy='12' r='2'/><circle cx='18' cy='12' r='2'/><path d='M8 12h2.5M13.5 12H16'/>",
     "deliveries": "<path d='M3 9h11v7H3z'/><path d='M14 11h3l4 4v1h-7z'/><circle cx='7.5' cy='18' r='1.5'/><circle cx='17.5' cy='18' r='1.5'/>",
     "services": "<path d='M6 4h12l2 4-8 4-8-4z'/><path d='M4 8v8l8 4 8-4V8'/>",
+    "regions": "<path d='M3 7l9-4 9 4-9 4z'/><path d='M3 12l9 4 9-4'/><path d='M3 17l9 4 9-4'/>",
     "zones": "<path d='M12 21s6-5.8 6-10.1a6 6 0 1 0-12 0C6 15.2 12 21 12 21z'/><circle cx='12' cy='11' r='2.2'/>",
     "stations": "<path d='M4 20h16'/><rect x='6' y='5' width='12' height='15' rx='2'/><path d='M9 9h2M13 9h2M9 13h2M13 13h2'/>",
     "riders": "<circle cx='10' cy='7.5' r='2'/><path d='M10 10v4l3 2.2'/><path d='M8 13.5l-2.5 2.5'/><circle cx='7' cy='18' r='2'/><circle cx='17' cy='18' r='2'/><path d='M12.5 14.2h2.7L18 18'/>",
     "clients": "<circle cx='8.5' cy='9' r='2.3'/><circle cx='15.8' cy='9.8' r='2'/><path d='M4.5 18c.9-2 2.4-3.1 4-3.1S11.7 16 12.6 18'/><path d='M12.8 18c.6-1.4 1.7-2.2 3.1-2.2 1.2 0 2.2.5 2.9 1.5'/>",
     "leads": "<path d='M4 6h16v12H4z'/><path d='M4 8l8 5 8-5'/><circle cx='18.2' cy='6' r='2.2'/>",
     "pricing": "<circle cx='12' cy='12' r='8'/><path d='M14.8 9.2c-.6-.7-1.5-1.1-2.7-1.1-1.7 0-2.9.9-2.9 2.2 0 1.3 1 1.9 2.6 2.2l1 .2c.9.2 1.4.5 1.4 1.1 0 .7-.7 1.3-1.9 1.3-1 0-1.9-.4-2.7-1.1'/><path d='M12 7v10'/>",
+    "quote_policy": "<path d='M4 7h16'/><path d='M4 12h12'/><path d='M4 17h9'/><circle cx='18' cy='12' r='3'/><path d='M18 10.7v2.6'/><path d='M16.7 12h2.6'/>",
     "users": "<path d='M12 3l7 3v5c0 5-3 8-7 10-4-2-7-5-7-10V6z'/><circle cx='12' cy='10' r='2.1'/><path d='M9.3 14.6c.8-1.1 1.7-1.7 2.7-1.7s1.9.6 2.7 1.7'/>",
     "comm_rider": "<circle cx='12' cy='12' r='8'/><path d='M8.8 10.2h4.5a1.6 1.6 0 1 1 0 3.2h-2.4a1.6 1.6 0 1 0 0 3.2h4.3'/><path d='M11.7 8.6v7.8'/><path d='M16.6 7.4l1.6-1.6'/><path d='M16.6 16.6l1.6 1.6'/>",
     "comm_station": "<path d='M4 20h16'/><path d='M6 20V9l6-4 6 4v11'/><path d='M9 14h6'/><path d='M12 11v6'/>",
@@ -98,12 +135,14 @@ MODULE_GROUP = {
     "routes": "Operacion",
     "deliveries": "Operacion",
     "services": "Catalogos",
+    "regions": "Catalogos",
     "zones": "Catalogos",
     "stations": "Catalogos",
     "riders": "Catalogos",
     "clients": "Clientes",
     "leads": "Clientes",
     "pricing": "Comercial",
+    "quote_policy": "Comercial",
     "users": "Seguridad",
     "comm_rider": "Finanzas",
     "comm_station": "Finanzas",
@@ -1169,6 +1208,30 @@ def _service_type_value(service_type: object) -> str:
     return str(raw or "").strip().lower()
 
 
+def _label_from_map(value: object, mapping: dict[str, str]) -> str:
+    raw = getattr(value, "value", value)
+    key = str(raw or "").strip().lower()
+    if not key:
+        return "-"
+    return mapping.get(key, key.replace("_", " ").title())
+
+
+def _service_type_label(value: object) -> str:
+    return _label_from_map(value, SERVICE_TYPE_LABELS)
+
+
+def _route_status_label(value: object) -> str:
+    return _label_from_map(value, ROUTE_STATUS_LABELS)
+
+
+def _workflow_stage_label(value: object) -> str:
+    return _label_from_map(value, WORKFLOW_STAGE_LABELS)
+
+
+def _rider_state_label(value: object) -> str:
+    return _label_from_map(value, RIDER_STATE_LABELS)
+
+
 def _is_errand_service(service_type: object) -> bool:
     return _service_type_value(service_type) == ServiceType.errand.value
 
@@ -1758,7 +1821,7 @@ def backend_new_guide_page(db: Session = Depends(get_db), msg: str = "", kind: s
     riders = db.query(Rider).filter(Rider.active.is_(True)).order_by(Rider.id.desc()).limit(100).all()
     users = {item.id: item for item in db.query(User).all()}
 
-    service_options = "".join([f'<option value="{item.id}">{escape(item.name)} ({item.service_type.value})</option>' for item in services])
+    service_options = "".join([f'<option value="{item.id}">{escape(item.name)} ({escape(_service_type_label(item.service_type))})</option>' for item in services])
     state_options = "".join([f'<option value="{item.code}">{escape(item.name)} ({escape(item.code)})</option>' for item in states])
     station_options = "".join(
         [
@@ -2209,7 +2272,7 @@ def backend_guides(
                 f'<a href="/ERPMande24/guides/{escape(item.guide_code)}">{escape(item.guide_code)}</a>',
                 escape(item.customer_name),
                 escape(item.destination_name),
-                escape(item.service_type),
+                escape(_service_type_label(item.service_type)),
                 f"{item.sale_amount:.2f} {escape(item.currency)}",
                 item.created_at.strftime("%Y-%m-%d %H:%M"),
             ]
@@ -2254,7 +2317,7 @@ def backend_guide_detail(guide_code: str, request: Request, db: Session = Depend
     delivery_rows = [
         [
             f'<a href="/ERPMande24/deliveries/{escape(item.id)}">{escape(item.id)}</a>',
-            escape(item.stage.value),
+            escape(_workflow_stage_label(item.stage)),
             "si" if item.has_evidence else "no",
             "si" if item.has_signature else "no",
             item.updated_at.strftime("%Y-%m-%d %H:%M"),
@@ -2268,8 +2331,8 @@ def backend_guide_detail(guide_code: str, request: Request, db: Session = Depend
         route_leg_rows.append(
             [
                 str(leg.sequence),
-                escape(leg.leg_type),
-                escape(leg.status),
+                escape(_route_status_label(leg.leg_type)),
+                escape(_route_status_label(leg.status)),
                 escape(rider_user.full_name if rider_user else "-"),
                 f"{leg.rider_fee_amount:.2f} {escape(leg.currency)}",
                 f"{leg.station_fee_amount:.2f} {escape(leg.currency)}",
@@ -2278,7 +2341,7 @@ def backend_guide_detail(guide_code: str, request: Request, db: Session = Depend
 
     timeline_events = [(guide.created_at.strftime("%Y-%m-%d %H:%M"), f"Guia creada ({guide.guide_code})")]
     for item in deliveries:
-        label = f"Delivery {item.id} -> {item.stage.value}"
+        label = f"Delivery {item.id} -> {_workflow_stage_label(item.stage)}"
         if item.delivered_at:
             label = f"{label} (entregada)"
         timeline_events.append((item.updated_at.strftime("%Y-%m-%d %H:%M"), label))
@@ -2425,7 +2488,7 @@ def backend_guide_printable(guide_code: str, db: Session = Depends(get_db)) -> s
         "<div class='no-print' style='margin-bottom:12px;'><button onclick='window.print()'>Imprimir / Guardar PDF</button></div>"
         f"<h1>Guia {escape(guide.guide_code)}</h1>"
         f"<div class='grid'><div class='card'><strong>Cliente:</strong> {escape(guide.customer_name)}<br><strong>Destino:</strong> {escape(guide.destination_name)}</div>"
-        f"<div class='card'><strong>Servicio:</strong> {escape(guide.service_type)}<br><strong>Monto:</strong> {guide.sale_amount:.2f} {escape(guide.currency)}<br><strong>Etapa:</strong> {escape(stage_label)}</div></div>"
+        f"<div class='card'><strong>Servicio:</strong> {escape(_service_type_label(guide.service_type))}<br><strong>Monto:</strong> {guide.sale_amount:.2f} {escape(guide.currency)}<br><strong>Etapa:</strong> {escape(_workflow_stage_label(stage_label))}</div></div>"
         "<h2>Contactos Operativos</h2>"
         "<table><thead><tr><th>Rol</th><th>Nombre</th><th>Telefono fijo</th><th>WhatsApp</th><th>Email</th><th>Direccion</th></tr></thead><tbody>"
         f"{contact_rows}</tbody></table>"
@@ -2486,7 +2549,7 @@ def backend_routes(
                 f'<a href="/ERPMande24/guides/{escape(guide.guide_code)}">{escape(guide.guide_code)}</a>',
                 str(leg.sequence),
                 escape(leg.leg_type),
-                escape(leg.status),
+                escape(_route_status_label(leg.status)),
                 escape(leg.assigned_rider_id or "-"),
                 escape(leg.id),
                 leg.updated_at.strftime("%Y-%m-%d %H:%M"),
@@ -2494,7 +2557,7 @@ def backend_routes(
         )
 
     status_options = "".join(
-        [f'<option value="{item}" {"selected" if status == item else ""}>{item}</option>' for item in sorted(BACKEND_ROUTE_STATUSES)]
+        [f'<option value="{item}" {"selected" if status == item else ""}>{escape(_route_status_label(item))}</option>' for item in sorted(BACKEND_ROUTE_STATUSES)]
     )
 
     pager_params: dict[str, str] = {}
@@ -2682,7 +2745,7 @@ def backend_deliveries(
             [
                 f'<a href="/ERPMande24/deliveries/{escape(item.id)}">{escape(item.id)}</a>',
                 f'<a href="/ERPMande24/guides/{escape(item.guide.guide_code if item.guide else "")}">{escape(item.guide.guide_code if item.guide else "-")}</a>',
-                f"<span class=\"badge\">{escape(item.stage.value)}</span>",
+                f"<span class=\"badge\">{escape(_workflow_stage_label(item.stage))}</span>",
                 "si" if item.has_evidence else "no",
                 "si" if item.has_signature else "no",
                 item.updated_at.strftime("%Y-%m-%d %H:%M"),
@@ -2694,10 +2757,10 @@ def backend_deliveries(
         "<form class=\"grid\" method=\"post\" action=\"/ERPMande24/deliveries/stage\">"
         "<label>Delivery ID<input name=\"delivery_id\" required /></label>"
         "<label>Etapa<select name=\"stage\">"
-        "<option value=\"assigned\">assigned</option><option value=\"picked_up\">picked_up</option>"
-        "<option value=\"in_transit\">in_transit</option><option value=\"at_station\">at_station</option>"
-        "<option value=\"out_for_delivery\">out_for_delivery</option><option value=\"delivered\">delivered</option>"
-        "<option value=\"failed\">failed</option></select></label>"
+        "<option value=\"assigned\">Asignado</option><option value=\"picked_up\">Recolectado</option>"
+        "<option value=\"in_transit\">En transito</option><option value=\"at_station\">En estacion</option>"
+        "<option value=\"out_for_delivery\">En ruta de entrega</option><option value=\"delivered\">Entregado</option>"
+        "<option value=\"failed\">Fallido</option></select></label>"
         "<label class=\"full\">Nota<textarea name=\"note\" placeholder=\"Opcional\"></textarea></label>"
         "<label><input type=\"checkbox\" name=\"has_evidence\" /> Tiene evidencia</label>"
         "<label><input type=\"checkbox\" name=\"has_signature\" /> Tiene firma</label>"
@@ -2707,7 +2770,7 @@ def backend_deliveries(
 
     stage_options = "".join(
         [
-            f'<option value="{item.value}" {"selected" if stage == item.value else ""}>{item.value}</option>'
+            f'<option value="{item.value}" {"selected" if stage == item.value else ""}>{escape(_workflow_stage_label(item.value))}</option>'
             for item in WorkflowStage
         ]
     )
@@ -2753,7 +2816,7 @@ def backend_delivery_detail(delivery_id: str, request: Request, db: Session = De
         timeline_events.append((item.delivered_at.strftime("%Y-%m-%d %H:%M"), "Marcada como delivered"))
     if item.note:
         timeline_events.append((item.updated_at.strftime("%Y-%m-%d %H:%M"), f"Nota: {item.note}"))
-    timeline_events.append((item.updated_at.strftime("%Y-%m-%d %H:%M"), f"Etapa actual: {item.stage.value}"))
+    timeline_events.append((item.updated_at.strftime("%Y-%m-%d %H:%M"), f"Etapa actual: {_workflow_stage_label(item.stage)}"))
 
     details = (
         f"{_tabs([('resumen', 'Resumen'), ('timeline', 'Timeline'), ('operacion', 'Operacion')])}"
@@ -2761,7 +2824,7 @@ def backend_delivery_detail(delivery_id: str, request: Request, db: Session = De
         "<div class=\"kpi-grid\">"
         f"<article class=\"kpi\"><small>Delivery ID</small><strong>{escape(item.id)}</strong></article>"
         f"<article class=\"kpi\"><small>Guia</small><strong><a href=\"/ERPMande24/guides/{escape(item.guide.guide_code if item.guide else '')}\">{escape(item.guide.guide_code if item.guide else '-')}</a></strong></article>"
-        f"<article class=\"kpi\"><small>Etapa</small><strong>{escape(item.stage.value)}</strong></article>"
+        f"<article class=\"kpi\"><small>Etapa</small><strong>{escape(_workflow_stage_label(item.stage))}</strong></article>"
         f"<article class=\"kpi\"><small>Evidencia/Firma</small><strong>{'si' if item.has_evidence else 'no'} / {'si' if item.has_signature else 'no'}</strong></article>"
         "</div></section>"
         f"<section id=\"timeline\" class=\"panel\"><h3>Timeline</h3>{_timeline(timeline_events)}</section>"
@@ -2806,7 +2869,7 @@ def backend_update_delivery_stage(
     delivery.updated_at = datetime.now(timezone.utc)
     db.commit()
 
-    return _redirect("/ERPMande24/deliveries", f"Delivery {delivery.id} actualizado a {delivery.stage.value}.")
+    return _redirect("/ERPMande24/deliveries", f"Delivery {delivery.id} actualizado a {_workflow_stage_label(delivery.stage)}.")
 
 
 @router.get("/catalogs/services", response_class=HTMLResponse)
@@ -2820,7 +2883,7 @@ def backend_services(db: Session = Depends(get_db), q: str = "", msg: str = "", 
             f'<input type="checkbox" name="ids" value="{escape(item.id)}" form="bulk-services" />',
             escape(item.id),
             f'<a href="/ERPMande24/catalogs/services/{escape(item.id)}">{escape(item.name)}</a>',
-            escape(item.service_type.value),
+            escape(_service_type_label(item.service_type)),
             "activo" if item.active else "inactivo",
             (
                 f'<form class="inline-form" method="post" action="/ERPMande24/catalogs/services/{escape(item.id)}/toggle">'
@@ -2835,7 +2898,7 @@ def backend_services(db: Session = Depends(get_db), q: str = "", msg: str = "", 
         "<section class=\"panel\"><h3>Nuevo Servicio</h3>"
         "<form class=\"grid\" method=\"post\" action=\"/ERPMande24/catalogs/services/create\">"
         "<label>Nombre<input name=\"name\" required minlength=\"2\" maxlength=\"120\" /></label>"
-        "<label>Tipo<select name=\"service_type\"><option value=\"messaging\">messaging</option><option value=\"package\">package</option><option value=\"errand\">errand</option></select></label>"
+        "<label>Tipo<select name=\"service_type\"><option value=\"messaging\">Mensajeria</option><option value=\"package\">Paqueteria</option><option value=\"errand\">Mandadito</option></select></label>"
         "<label class=\"full\">Descripcion<textarea name=\"description\"></textarea></label>"
         "<div class=\"full actions\"><button class=\"primary\" type=\"submit\">Crear Servicio</button></div>"
         "</form></section>"
@@ -2856,7 +2919,7 @@ def backend_service_detail(service_id: str, db: Session = Depends(get_db), msg: 
         "<div class=\"kpi-grid\">"
         f"<article class=\"kpi\"><small>ID</small><strong>{escape(service.id)}</strong></article>"
         f"<article class=\"kpi\"><small>Nombre</small><strong>{escape(service.name)}</strong></article>"
-        f"<article class=\"kpi\"><small>Tipo</small><strong>{escape(service.service_type.value)}</strong></article>"
+        f"<article class=\"kpi\"><small>Tipo</small><strong>{escape(_service_type_label(service.service_type))}</strong></article>"
         f"<article class=\"kpi\"><small>Estado</small><strong>{'activo' if service.active else 'inactivo'}</strong></article>"
         "</div></section>"
         "<section id=\"operacion\" class=\"panel\"><h3>Operacion</h3><div class=\"actions\"><a class=\"btn\" href=\"/ERPMande24/catalogs/services\">Volver a servicios</a></div></section>"
@@ -2925,8 +2988,89 @@ def backend_create_service(
     return _redirect("/ERPMande24/catalogs/services", f"Servicio {service.name} creado.")
 
 
+@router.get("/catalogs/regions", response_class=HTMLResponse)
+def backend_regions(db: Session = Depends(get_db), q: str = "", msg: str = "", kind: str = "ok") -> str:
+    rows_query = db.query(Region)
+    if q.strip():
+        term = f"%{q.strip()}%"
+        rows_query = rows_query.filter(Region.name.ilike(term) | Region.code.ilike(term))
+    rows_db = rows_query.order_by(Region.name.asc()).all()
+    rows = [
+        [
+            f'<input type="checkbox" name="ids" value="{escape(item.id)}" form="bulk-regions" />',
+            escape(item.id),
+            escape(item.name),
+            escape(item.code),
+            "activa" if item.active else "inactiva",
+            (
+                f'<form class="inline-form" method="post" action="/ERPMande24/catalogs/regions/{escape(item.id)}/toggle">'
+                f'<input type="hidden" name="active" value="{"false" if item.active else "true"}" />'
+                f'<button type="submit">{"Desactivar" if item.active else "Activar"}</button></form>'
+            ),
+        ]
+        for item in rows_db
+    ]
+
+    form = (
+        "<section class=\"panel\"><h3>Nueva Region</h3>"
+        "<form class=\"grid\" method=\"post\" action=\"/ERPMande24/catalogs/regions/create\">"
+        "<label>Nombre<input name=\"name\" required minlength=\"2\" maxlength=\"120\" /></label>"
+        "<label>Codigo<input name=\"code\" required minlength=\"2\" maxlength=\"30\" /></label>"
+        "<div class=\"full actions\"><button class=\"primary\" type=\"submit\">Crear Region</button></div>"
+        "</form></section>"
+    )
+    content = form + f"<section class=\"panel\"><h3>Lista de Regiones</h3>{_querybox('/ERPMande24/catalogs/regions', 'Buscar por nombre o codigo', q)}{_bulk_form('bulk-regions', '/ERPMande24/catalogs/regions/bulk-toggle', 'Aplicar cambios')}{_table(['Sel', 'ID', 'Nombre', 'Codigo', 'Estado', 'Accion'], rows)}</section>"
+    return _render_layout("regions", "Catalogo de Regiones", "Regiones para relacionar zonas.", content, msg, kind)
+
+
+@router.post("/catalogs/regions/create")
+def backend_create_region(name: str = Form(...), code: str = Form(...), request: Request = None, db: Session = Depends(get_db)) -> RedirectResponse:
+    forbidden = _require_manage(request, "/ERPMande24/catalogs/regions", "crear region")
+    if forbidden:
+        return forbidden
+    code_value = code.strip().upper()
+    if db.query(Region).filter(Region.code == code_value).first():
+        return _redirect("/ERPMande24/catalogs/regions", "Ya existe una region con ese codigo.", "error")
+    row = Region(name=name.strip(), code=code_value, active=True)
+    db.add(row)
+    db.commit()
+    return _redirect("/ERPMande24/catalogs/regions", f"Region {row.name} creada.")
+
+
+@router.post("/catalogs/regions/{region_id}/toggle")
+def backend_toggle_region(region_id: str, active: str = Form(...), request: Request = None, db: Session = Depends(get_db)) -> RedirectResponse:
+    forbidden = _require_manage(request, "/ERPMande24/catalogs/regions", "editar region")
+    if forbidden:
+        return forbidden
+    row = db.query(Region).filter(Region.id == region_id).first()
+    if not row:
+        return _redirect("/ERPMande24/catalogs/regions", "Region no encontrada.", "error")
+    row.active = active == "true"
+    db.commit()
+    return _redirect("/ERPMande24/catalogs/regions", f"Region {row.name} actualizada.")
+
+
+@router.post("/catalogs/regions/bulk-toggle")
+def backend_bulk_toggle_regions(
+    ids: list[str] = Form(default=[]),
+    active: str = Form(...),
+    request: Request = None,
+    db: Session = Depends(get_db),
+) -> RedirectResponse:
+    forbidden = _require_manage(request, "/ERPMande24/catalogs/regions", "editar regiones")
+    if forbidden:
+        return forbidden
+    if not ids:
+        return _redirect("/ERPMande24/catalogs/regions", "Selecciona al menos una region.", "error")
+    value = active == "true"
+    updated = db.query(Region).filter(Region.id.in_(ids)).update({Region.active: value}, synchronize_session=False)
+    db.commit()
+    return _redirect("/ERPMande24/catalogs/regions", f"Regiones actualizadas: {updated}.")
+
+
 @router.get("/catalogs/zones", response_class=HTMLResponse)
 def backend_zones(db: Session = Depends(get_db), q: str = "", msg: str = "", kind: str = "ok") -> str:
+    regions = {item.id: item for item in db.query(Region).filter(Region.active.is_(True)).order_by(Region.name.asc()).all()}
     zones_query = db.query(Zone)
     if q.strip():
         term = f"%{q.strip()}%"
@@ -2938,6 +3082,7 @@ def backend_zones(db: Session = Depends(get_db), q: str = "", msg: str = "", kin
             escape(item.id),
             f'<a href="/ERPMande24/catalogs/zones/{escape(item.id)}">{escape(item.name)}</a>',
             escape(item.code),
+            escape(regions[item.region_id].name if item.region_id and item.region_id in regions else "-"),
             "activo" if item.active else "inactivo",
             (
                 f'<form class="inline-form" method="post" action="/ERPMande24/catalogs/zones/{escape(item.id)}/toggle">'
@@ -2953,11 +3098,12 @@ def backend_zones(db: Session = Depends(get_db), q: str = "", msg: str = "", kin
         "<form class=\"grid\" method=\"post\" action=\"/ERPMande24/catalogs/zones/create\">"
         "<label>Nombre<input name=\"name\" required minlength=\"2\" maxlength=\"120\" /></label>"
         "<label>Codigo<input name=\"code\" required minlength=\"2\" maxlength=\"30\" /></label>"
+        f"<label>Region<select name=\"region_id\"><option value=\"\">Sin region</option>{''.join([f'<option value=\"{escape(item.id)}\">{escape(item.name)} ({escape(item.code)})</option>' for item in regions.values()])}</select></label>"
         "<div class=\"full actions\"><button class=\"primary\" type=\"submit\">Crear Zona</button></div>"
         "</form></section>"
     )
 
-    content = form + f"<section class=\"panel\"><h3>Lista de Zonas</h3>{_querybox('/ERPMande24/catalogs/zones', 'Buscar por nombre o codigo', q)}<div class=\"actions\"><a class=\"btn\" href=\"/ERPMande24/export/zones.csv\">Exportar CSV</a></div>{_bulk_form('bulk-zones', '/ERPMande24/catalogs/zones/bulk-toggle', 'Aplicar cambios')}{_table(['Sel', 'ID', 'Nombre', 'Codigo', 'Estado', 'Accion'], rows)}</section>"
+    content = form + f"<section class=\"panel\"><h3>Lista de Zonas</h3>{_querybox('/ERPMande24/catalogs/zones', 'Buscar por nombre o codigo', q)}<div class=\"actions\"><a class=\"btn\" href=\"/ERPMande24/export/zones.csv\">Exportar CSV</a></div>{_bulk_form('bulk-zones', '/ERPMande24/catalogs/zones/bulk-toggle', 'Aplicar cambios')}{_table(['Sel', 'ID', 'Nombre', 'Codigo', 'Region', 'Estado', 'Accion'], rows)}</section>"
     return _render_layout("zones", "Catalogo de Zonas", "Mantenimiento de zonas logisticas.", content, msg, kind)
 
 
@@ -3187,7 +3333,7 @@ def backend_zone_delete_coverage(zone_id: str, coverage_id: str, request: Reques
 
 
 @router.post("/catalogs/zones/create")
-def backend_create_zone(name: str = Form(...), code: str = Form(...), request: Request = None, db: Session = Depends(get_db)) -> RedirectResponse:
+def backend_create_zone(name: str = Form(...), code: str = Form(...), region_id: str = Form(""), request: Request = None, db: Session = Depends(get_db)) -> RedirectResponse:
     forbidden = _require_manage(request, "/ERPMande24/catalogs/zones", "crear zona")
     if forbidden:
         return forbidden
@@ -3195,7 +3341,11 @@ def backend_create_zone(name: str = Form(...), code: str = Form(...), request: R
     if db.query(Zone).filter(Zone.code == code_value).first():
         return _redirect("/ERPMande24/catalogs/zones", "Ya existe una zona con ese codigo.", "error")
 
-    zone = Zone(name=name.strip(), code=code_value, active=True)
+    region_value = region_id.strip() or None
+    if region_value and not db.query(Region).filter(Region.id == region_value, Region.active.is_(True)).first():
+        return _redirect("/ERPMande24/catalogs/zones", "Region no valida.", "error")
+
+    zone = Zone(name=name.strip(), code=code_value, region_id=region_value, active=True)
     db.add(zone)
     db.commit()
     return _redirect("/ERPMande24/catalogs/zones", f"Zona {zone.name} creada.")
@@ -3204,12 +3354,14 @@ def backend_create_zone(name: str = Form(...), code: str = Form(...), request: R
 @router.get("/catalogs/stations", response_class=HTMLResponse)
 def backend_stations(db: Session = Depends(get_db), q: str = "", msg: str = "", kind: str = "ok") -> str:
     zones = db.query(Zone).order_by(Zone.name.asc()).all()
+    states = db.query(GeoState).order_by(GeoState.name.asc()).all()
     stations_query = db.query(Station)
     if q.strip():
         stations_query = stations_query.filter(Station.name.ilike(f"%{q.strip()}%"))
     stations = stations_query.order_by(Station.name.asc()).all()
 
     zone_options = "".join([f'<option value="{item.id}">{escape(item.name)} ({escape(item.code)})</option>' for item in zones])
+    state_options = "".join([f'<option value="{item.code}">{escape(item.name)}</option>' for item in states])
     rows = []
     zone_map = {item.id: item for item in zones}
     for item in stations:
@@ -3223,6 +3375,9 @@ def backend_stations(db: Session = Depends(get_db), q: str = "", msg: str = "", 
                 escape(zone_label),
                 escape(item.landline_phone or "-"),
                 escape(item.whatsapp_phone or "-"),
+                escape(item.responsible_name or "-"),
+                escape(item.work_days or "-"),
+                escape(item.rest_day or "-"),
                 "activo" if item.active else "inactivo",
                 (
                     f'<form class="inline-form" method="post" action="/ERPMande24/catalogs/stations/{escape(item.id)}/toggle">'
@@ -3237,13 +3392,26 @@ def backend_stations(db: Session = Depends(get_db), q: str = "", msg: str = "", 
         "<form class=\"grid\" method=\"post\" action=\"/ERPMande24/catalogs/stations/create\">"
         "<label>Nombre<input name=\"name\" required minlength=\"2\" maxlength=\"120\" /></label>"
         f"<label>Zona<select name=\"zone_id\" required><option value=\"\">Selecciona</option>{zone_options}</select></label>"
+        f"<label>Estado cobertura<select name=\"coverage_state_code\"><option value=\"\">Sin cobertura inicial</option>{state_options}</select></label>"
+        "<label>Municipio cobertura (opcional)<input name=\"coverage_municipality_code\" maxlength=\"20\" /></label>"
+        "<label>CP cobertura (opcional)<input name=\"coverage_postal_code\" maxlength=\"10\" /></label>"
+        "<label>Colonia cobertura (opcional)<input name=\"coverage_colony_id\" maxlength=\"64\" /></label>"
         "<label>Telefono fijo<input name=\"landline_phone\" maxlength=\"40\" /></label>"
         "<label>WhatsApp<input name=\"whatsapp_phone\" maxlength=\"40\" /></label>"
+        "<label>Responsable<input name=\"responsible_name\" maxlength=\"150\" /></label>"
+        "<label>Comprobante domicilio (archivo/url)<input name=\"proof_of_address_file\" maxlength=\"255\" /></label>"
+        "<label>RFC (archivo/url)<input name=\"rfc_file\" maxlength=\"255\" /></label>"
+        "<label>Comprobaciones (archivo/url)<input name=\"comprobaciones_file\" maxlength=\"255\" /></label>"
+        "<label>Dias laborales (csv)<input name=\"work_days\" value=\"mon,tue,wed,thu,fri,sat\" maxlength=\"80\" /></label>"
+        "<label>Dia descanso<input name=\"rest_day\" value=\"sun\" maxlength=\"12\" /></label>"
+        "<label>Hora apertura<input name=\"opening_time\" value=\"09:00\" maxlength=\"5\" /></label>"
+        "<label>Hora cierre<input name=\"closing_time\" value=\"18:00\" maxlength=\"5\" /></label>"
+        "<label>Max usuarios activos<input name=\"max_active_users\" type=\"number\" min=\"1\" max=\"3\" value=\"3\" /></label>"
         "<div class=\"full actions\"><button class=\"primary\" type=\"submit\">Crear Estacion</button></div>"
         "</form></section>"
     )
 
-    content = form + f"<section class=\"panel\"><h3>Lista de Estaciones</h3>{_querybox('/ERPMande24/catalogs/stations', 'Buscar estacion por nombre', q)}<div class=\"actions\"><a class=\"btn\" href=\"/ERPMande24/export/stations.csv\">Exportar CSV</a></div>{_bulk_form('bulk-stations', '/ERPMande24/catalogs/stations/bulk-toggle', 'Aplicar cambios')}{_table(['Sel', 'ID', 'Nombre', 'Zona', 'Telefono fijo', 'WhatsApp', 'Estado', 'Accion'], rows)}</section>"
+    content = form + f"<section class=\"panel\"><h3>Lista de Estaciones</h3>{_querybox('/ERPMande24/catalogs/stations', 'Buscar estacion por nombre', q)}<div class=\"actions\"><a class=\"btn\" href=\"/ERPMande24/export/stations.csv\">Exportar CSV</a></div>{_bulk_form('bulk-stations', '/ERPMande24/catalogs/stations/bulk-toggle', 'Aplicar cambios')}{_table(['Sel', 'ID', 'Nombre', 'Zona', 'Telefono fijo', 'WhatsApp', 'Responsable', 'Dias', 'Descanso', 'Estado', 'Accion'], rows)}</section>"
     return _render_layout("stations", "Catalogo de Estaciones", "Mantenimiento de estaciones por zona.", content, msg, kind)
 
 
@@ -3287,7 +3455,7 @@ def backend_station_detail(station_id: str, db: Session = Depends(get_db), msg: 
     guides = db.query(Guide).filter(Guide.station_id == station.id).order_by(Guide.created_at.desc()).limit(20).all()
     guide_rows = [[f'<a href="/ERPMande24/guides/{escape(item.guide_code)}">{escape(item.guide_code)}</a>', escape(item.customer_name), f"{item.sale_amount:.2f} {escape(item.currency)}", item.created_at.strftime("%Y-%m-%d %H:%M")] for item in guides]
     content = (
-        f"{_tabs([('resumen', 'Resumen'), ('guias', 'Guias')])}"
+        f"{_tabs([('resumen', 'Resumen'), ('datos', 'Datos y Documentos'), ('guias', 'Guias')])}"
         "<section id=\"resumen\" class=\"panel\"><h3>Ficha de Estacion</h3>"
         "<div class=\"kpi-grid\">"
         f"<article class=\"kpi\"><small>ID</small><strong>{escape(station.id)}</strong></article>"
@@ -3295,8 +3463,30 @@ def backend_station_detail(station_id: str, db: Session = Depends(get_db), msg: 
         f"<article class=\"kpi\"><small>Zona</small><strong>{escape(zone.name if zone else '-')}</strong></article>"
         f"<article class=\"kpi\"><small>Telefono fijo</small><strong>{escape(station.landline_phone or '-')}</strong></article>"
         f"<article class=\"kpi\"><small>WhatsApp</small><strong>{escape(station.whatsapp_phone or '-')}</strong></article>"
+        f"<article class=\"kpi\"><small>Responsable</small><strong>{escape(station.responsible_name or '-')}</strong></article>"
+        f"<article class=\"kpi\"><small>Horario</small><strong>{escape(station.opening_time)} - {escape(station.closing_time)}</strong></article>"
+        f"<article class=\"kpi\"><small>Dias</small><strong>{escape(station.work_days)}</strong></article>"
+        f"<article class=\"kpi\"><small>Descanso</small><strong>{escape(station.rest_day)}</strong></article>"
         f"<article class=\"kpi\"><small>Estado</small><strong>{'activa' if station.active else 'inactiva'}</strong></article>"
         "</div></section>"
+    )
+    content += (
+        "<section id=\"datos\" class=\"panel\"><h3>Editar Datos de Estacion</h3>"
+        f"<form class=\"grid\" method=\"post\" action=\"/ERPMande24/catalogs/stations/{escape(station.id)}/update\">"
+        f"<label>Nombre<input name=\"name\" value=\"{escape(station.name)}\" required /></label>"
+        f"<label>Telefono fijo<input name=\"landline_phone\" value=\"{escape(station.landline_phone or '')}\" /></label>"
+        f"<label>WhatsApp<input name=\"whatsapp_phone\" value=\"{escape(station.whatsapp_phone or '')}\" /></label>"
+        f"<label>Responsable<input name=\"responsible_name\" value=\"{escape(station.responsible_name or '')}\" /></label>"
+        f"<label>Comprobante domicilio (archivo/url)<input name=\"proof_of_address_file\" value=\"{escape(station.proof_of_address_file or '')}\" /></label>"
+        f"<label>RFC (archivo/url)<input name=\"rfc_file\" value=\"{escape(station.rfc_file or '')}\" /></label>"
+        f"<label>Comprobaciones (archivo/url)<input name=\"comprobaciones_file\" value=\"{escape(station.comprobaciones_file or '')}\" /></label>"
+        f"<label>Dias laborales (csv)<input name=\"work_days\" value=\"{escape(station.work_days)}\" /></label>"
+        f"<label>Dia descanso<input name=\"rest_day\" value=\"{escape(station.rest_day)}\" /></label>"
+        f"<label>Hora apertura<input name=\"opening_time\" value=\"{escape(station.opening_time)}\" maxlength=\"5\" /></label>"
+        f"<label>Hora cierre<input name=\"closing_time\" value=\"{escape(station.closing_time)}\" maxlength=\"5\" /></label>"
+        f"<label>Max usuarios activos<input name=\"max_active_users\" type=\"number\" min=\"1\" max=\"3\" value=\"{station.max_active_users}\" /></label>"
+        "<div class=\"full actions\"><button class=\"primary\" type=\"submit\">Guardar cambios</button></div>"
+        "</form></section>"
     )
     content += f"<section id=\"guias\" class=\"panel\"><h3>Ultimas Guias de la Estacion</h3>{_table(['Guia', 'Cliente', 'Monto', 'Creada'], guide_rows)}</section>"
     return _render_layout("stations", f"Estacion {station.name}", "Vista detalle tipo formulario.", content, msg, kind)
@@ -3306,8 +3496,21 @@ def backend_station_detail(station_id: str, db: Session = Depends(get_db), msg: 
 def backend_create_station(
     name: str = Form(...),
     zone_id: str = Form(...),
+    coverage_state_code: str = Form(""),
+    coverage_municipality_code: str = Form(""),
+    coverage_postal_code: str = Form(""),
+    coverage_colony_id: str = Form(""),
     landline_phone: str = Form(""),
     whatsapp_phone: str = Form(""),
+    responsible_name: str = Form(""),
+    proof_of_address_file: str = Form(""),
+    rfc_file: str = Form(""),
+    comprobaciones_file: str = Form(""),
+    work_days: str = Form("mon,tue,wed,thu,fri,sat"),
+    rest_day: str = Form("sun"),
+    opening_time: str = Form("09:00"),
+    closing_time: str = Form("18:00"),
+    max_active_users: int = Form(3),
     request: Request = None,
     db: Session = Depends(get_db),
 ) -> RedirectResponse:
@@ -3325,11 +3528,83 @@ def backend_create_station(
         zone_id=zone_id,
         landline_phone=landline_phone.strip(),
         whatsapp_phone=whatsapp_phone.strip(),
+        responsible_name=responsible_name.strip(),
+        proof_of_address_file=proof_of_address_file.strip(),
+        rfc_file=rfc_file.strip(),
+        comprobaciones_file=comprobaciones_file.strip(),
+        work_days=work_days.strip(),
+        rest_day=rest_day.strip().lower(),
+        opening_time=opening_time.strip(),
+        closing_time=closing_time.strip(),
+        max_active_users=max(1, min(3, max_active_users)),
         active=True,
     )
     db.add(station)
+    db.flush()
+
+    state_value = coverage_state_code.strip().upper()
+    municipality_value = coverage_municipality_code.strip().upper() or None
+    postal_value = coverage_postal_code.strip() or None
+    colony_value = coverage_colony_id.strip() or None
+    if state_value:
+        if not db.query(GeoState).filter(GeoState.code == state_value).first():
+            db.rollback()
+            return _redirect("/ERPMande24/catalogs/stations", "Estado de cobertura no valido.", "error")
+        db.add(
+            StationCoverageRule(
+                station_id=station.id,
+                state_code=state_value,
+                municipality_code=municipality_value,
+                postal_code=postal_value,
+                colony_id=colony_value,
+                active=True,
+            )
+        )
+
     db.commit()
     return _redirect("/ERPMande24/catalogs/stations", f"Estacion {station.name} creada.")
+
+
+@router.post("/catalogs/stations/{station_id}/update")
+def backend_update_station(
+    station_id: str,
+    name: str = Form(...),
+    landline_phone: str = Form(""),
+    whatsapp_phone: str = Form(""),
+    responsible_name: str = Form(""),
+    proof_of_address_file: str = Form(""),
+    rfc_file: str = Form(""),
+    comprobaciones_file: str = Form(""),
+    work_days: str = Form("mon,tue,wed,thu,fri,sat"),
+    rest_day: str = Form("sun"),
+    opening_time: str = Form("09:00"),
+    closing_time: str = Form("18:00"),
+    max_active_users: int = Form(3),
+    request: Request = None,
+    db: Session = Depends(get_db),
+) -> RedirectResponse:
+    forbidden = _require_manage(request, f"/ERPMande24/catalogs/stations/{station_id}", "editar estacion")
+    if forbidden:
+        return forbidden
+    station = db.query(Station).filter(Station.id == station_id).first()
+    if not station:
+        return _redirect("/ERPMande24/catalogs/stations", "Estacion no encontrada.", "error")
+
+    station.name = name.strip()
+    station.landline_phone = landline_phone.strip()
+    station.whatsapp_phone = whatsapp_phone.strip()
+    station.responsible_name = responsible_name.strip()
+    station.proof_of_address_file = proof_of_address_file.strip()
+    station.rfc_file = rfc_file.strip()
+    station.comprobaciones_file = comprobaciones_file.strip()
+    station.work_days = work_days.strip()
+    station.rest_day = rest_day.strip().lower()
+    station.opening_time = opening_time.strip()
+    station.closing_time = closing_time.strip()
+    station.max_active_users = max(1, min(3, max_active_users))
+
+    db.commit()
+    return _redirect(f"/ERPMande24/catalogs/stations/{station_id}", "Estacion actualizada correctamente.")
 
 
 @router.get("/catalogs/riders", response_class=HTMLResponse)
@@ -3343,23 +3618,29 @@ def backend_riders(db: Session = Depends(get_db), q: str = "", msg: str = "", ki
     riders = riders_query.order_by(Rider.id.desc()).limit(200).all()
     users = {item.id: item for item in db.query(User).all()}
     zones = {item.id: item for item in db.query(Zone).all()}
+    stations = {item.id: item for item in db.query(Station).all()}
     zone_options = "".join([f'<option value="{escape(item.id)}">{escape(item.name)} ({escape(item.code)})</option>' for item in zones.values()])
+    station_options = "".join([f'<option value="{escape(item.id)}">{escape(item.name)}</option>' for item in stations.values()])
 
     rows = []
     for item in riders:
         user = users.get(item.user_id)
         zone = zones.get(item.zone_id) if item.zone_id else None
+        station = stations.get(item.station_id) if item.station_id else None
         rows.append(
             [
                 f'<input type="checkbox" name="ids" value="{escape(item.id)}" form="bulk-riders" />',
                 f'<a href="/ERPMande24/catalogs/riders/{escape(item.id)}">{escape(item.id)}</a>',
                 escape(user.full_name if user else "-"),
                 escape(user.email if user else "-"),
+                escape(station.name if station else "-"),
                 escape(zone.name if zone else "-"),
                 escape(item.landline_phone or "-"),
                 escape(item.whatsapp_phone or "-"),
                 escape(item.vehicle_type),
-                escape(item.state.value),
+                "si" if item.is_available else "no",
+                escape(item.account_status.value if hasattr(item.account_status, "value") else str(item.account_status)),
+                escape(_rider_state_label(item.state)),
                 "activo" if item.active else "inactivo",
                 (
                     f'<form class="inline-form" method="post" action="/ERPMande24/catalogs/riders/{escape(item.id)}/toggle">'
@@ -3375,14 +3656,27 @@ def backend_riders(db: Session = Depends(get_db), q: str = "", msg: str = "", ki
         "<label>Nombre completo<input name=\"full_name\" required minlength=\"2\" maxlength=\"150\" /></label>"
         "<label>Email<input name=\"email\" type=\"email\" required /></label>"
         "<label>Password<input name=\"password\" type=\"password\" required minlength=\"8\" /></label>"
+        f"<label>Estacion<select name=\"station_id\"><option value=\"\">Sin estacion</option>{station_options}</select></label>"
         f"<label>Zona<select name=\"zone_id\"><option value=\"\">Sin zona</option>{zone_options}</select></label>"
         "<label>Telefono fijo<input name=\"landline_phone\" maxlength=\"40\" /></label>"
         "<label>WhatsApp<input name=\"whatsapp_phone\" maxlength=\"40\" /></label>"
         "<label>Vehiculo<input name=\"vehicle_type\" value=\"motorcycle\" minlength=\"2\" maxlength=\"30\" /></label>"
+        "<label>Licencia (archivo/url)<input name=\"license_file\" maxlength=\"255\" /></label>"
+        "<label>Vigencia licencia<input name=\"license_expires_at\" type=\"date\" /></label>"
+        "<label>Tarjeta circulacion (archivo/url)<input name=\"circulation_card_file\" maxlength=\"255\" /></label>"
+        "<label>Poliza seguro (archivo/url)<input name=\"insurance_policy_file\" maxlength=\"255\" /></label>"
+        "<label>Vigencia seguro<input name=\"insurance_expires_at\" type=\"date\" /></label>"
+        "<label>Contrato firmado (archivo/url)<input name=\"contract_file\" maxlength=\"255\" /></label>"
+        "<label>Fecha contrato<input name=\"contract_signed_at\" type=\"date\" /></label>"
+        "<label>Comprobaciones<input name=\"comprobaciones_file\" maxlength=\"255\" /></label>"
+        "<label>Dias laborales (csv)<input name=\"work_days\" value=\"mon,tue,wed,thu,fri,sat\" maxlength=\"80\" /></label>"
+        "<label>Dia descanso<input name=\"rest_day\" value=\"sun\" maxlength=\"12\" /></label>"
+        "<label>Disponible<select name=\"is_available\"><option value=\"true\">Si</option><option value=\"false\">No</option></select></label>"
+        "<label>Estatus cuenta<select name=\"account_status\"><option value=\"active\">Activa</option><option value=\"suspended\">Suspendida</option><option value=\"deactivated\">Desactivada</option></select></label>"
         "<div class=\"full actions\"><button class=\"primary\" type=\"submit\">Crear Rider</button></div>"
         "</form></section>"
     )
-    content = create_form + f"<section class=\"panel\"><h3>Lista de Riders</h3>{_querybox('/ERPMande24/catalogs/riders', 'Buscar rider por ID, nombre o email', q)}<div class=\"actions\"><a class=\"btn\" href=\"/ERPMande24/export/riders.csv\">Exportar CSV</a></div>{_bulk_form('bulk-riders', '/ERPMande24/catalogs/riders/bulk-toggle', 'Aplicar cambios')}{_table(['Sel', 'ID', 'Nombre', 'Email', 'Zona', 'Telefono fijo', 'WhatsApp', 'Vehiculo', 'Estado', 'Activo', 'Accion'], rows)}</section>"
+    content = create_form + f"<section class=\"panel\"><h3>Lista de Riders</h3>{_querybox('/ERPMande24/catalogs/riders', 'Buscar rider por ID, nombre o email', q)}<div class=\"actions\"><a class=\"btn\" href=\"/ERPMande24/export/riders.csv\">Exportar CSV</a></div>{_bulk_form('bulk-riders', '/ERPMande24/catalogs/riders/bulk-toggle', 'Aplicar cambios')}{_table(['Sel', 'ID', 'Nombre', 'Email', 'Estacion', 'Zona', 'Telefono fijo', 'WhatsApp', 'Vehiculo', 'Disponible', 'Cuenta', 'Estado', 'Activo', 'Accion'], rows)}</section>"
     return _render_layout("riders", "Catalogo de Riders", "Vista de riders y su estado operativo.", content, msg, kind)
 
 
@@ -3391,10 +3685,23 @@ def backend_create_rider(
     full_name: str = Form(...),
     email: str = Form(...),
     password: str = Form(...),
+    station_id: str = Form(""),
     zone_id: str = Form(""),
     landline_phone: str = Form(""),
     whatsapp_phone: str = Form(""),
     vehicle_type: str = Form("motorcycle"),
+    license_file: str = Form(""),
+    license_expires_at: str = Form(""),
+    circulation_card_file: str = Form(""),
+    insurance_policy_file: str = Form(""),
+    insurance_expires_at: str = Form(""),
+    contract_file: str = Form(""),
+    contract_signed_at: str = Form(""),
+    comprobaciones_file: str = Form(""),
+    work_days: str = Form("mon,tue,wed,thu,fri,sat"),
+    rest_day: str = Form("sun"),
+    is_available: str = Form("true"),
+    account_status: str = Form("active"),
     request: Request = None,
     db: Session = Depends(get_db),
 ) -> RedirectResponse:
@@ -3405,7 +3712,17 @@ def backend_create_rider(
     if db.query(User).filter(User.email == clean_email).first():
         return _redirect("/ERPMande24/catalogs/riders", "Ese email ya existe.", "error")
 
-    if zone_id.strip() and not db.query(Zone).filter(Zone.id == zone_id.strip()).first():
+    station_value = station_id.strip()
+    zone_value = zone_id.strip()
+    if station_value:
+        station = db.query(Station).filter(Station.id == station_value).first()
+        if not station:
+            return _redirect("/ERPMande24/catalogs/riders", "Estacion no encontrada.", "error")
+        if zone_value and zone_value != station.zone_id:
+            return _redirect("/ERPMande24/catalogs/riders", "La zona no coincide con la estacion.", "error")
+        zone_value = station.zone_id
+
+    if zone_value and not db.query(Zone).filter(Zone.id == zone_value).first():
         return _redirect("/ERPMande24/catalogs/riders", "Zona no encontrada.", "error")
 
     user = User(
@@ -3419,17 +3736,105 @@ def backend_create_rider(
     db.flush()
     ensure_user_roles(db, user, [UserRole.rider])
 
+    try:
+        account_status_value = RiderAccountStatus(account_status.strip().lower())
+    except ValueError:
+        return _redirect("/ERPMande24/catalogs/riders", "Estatus de cuenta invalido.", "error")
+
+    try:
+        license_expiry_value = datetime.strptime(license_expires_at, "%Y-%m-%d").date() if license_expires_at.strip() else None
+        insurance_expiry_value = datetime.strptime(insurance_expires_at, "%Y-%m-%d").date() if insurance_expires_at.strip() else None
+        contract_signed_value = datetime.strptime(contract_signed_at, "%Y-%m-%d").date() if contract_signed_at.strip() else None
+    except ValueError:
+        return _redirect("/ERPMande24/catalogs/riders", "Formato de fecha invalido en documentos.", "error")
+
     rider = Rider(
         user_id=user.id,
-        zone_id=zone_id.strip() or None,
+        zone_id=zone_value or None,
+        station_id=station_value or None,
         landline_phone=landline_phone.strip(),
         whatsapp_phone=whatsapp_phone.strip(),
         vehicle_type=vehicle_type.strip() or "motorcycle",
+        license_file=license_file.strip(),
+        license_expires_at=license_expiry_value,
+        circulation_card_file=circulation_card_file.strip(),
+        insurance_policy_file=insurance_policy_file.strip(),
+        insurance_expires_at=insurance_expiry_value,
+        contract_file=contract_file.strip(),
+        contract_signed_at=contract_signed_value,
+        comprobaciones_file=comprobaciones_file.strip(),
+        work_days=work_days.strip(),
+        rest_day=rest_day.strip().lower(),
+        is_available=(is_available == "true"),
+        account_status=account_status_value,
         active=True,
     )
     db.add(rider)
     db.commit()
     return _redirect("/ERPMande24/catalogs/riders", f"Rider creado: {rider.id} ({user.email}).")
+
+
+@router.post("/catalogs/riders/{rider_id}/update")
+def backend_update_rider(
+    rider_id: str,
+    full_name: str = Form(...),
+    landline_phone: str = Form(""),
+    whatsapp_phone: str = Form(""),
+    vehicle_type: str = Form("motorcycle"),
+    license_file: str = Form(""),
+    license_expires_at: str = Form(""),
+    circulation_card_file: str = Form(""),
+    insurance_policy_file: str = Form(""),
+    insurance_expires_at: str = Form(""),
+    contract_file: str = Form(""),
+    contract_signed_at: str = Form(""),
+    comprobaciones_file: str = Form(""),
+    work_days: str = Form("mon,tue,wed,thu,fri,sat"),
+    rest_day: str = Form("sun"),
+    is_available: str = Form("true"),
+    account_status: str = Form("active"),
+    request: Request = None,
+    db: Session = Depends(get_db),
+) -> RedirectResponse:
+    forbidden = _require_manage(request, f"/ERPMande24/catalogs/riders/{rider_id}", "editar rider")
+    if forbidden:
+        return forbidden
+    rider = db.query(Rider).filter(Rider.id == rider_id).first()
+    if not rider:
+        return _redirect("/ERPMande24/catalogs/riders", "Rider no encontrado.", "error")
+    user = db.query(User).filter(User.id == rider.user_id).first()
+    if not user:
+        return _redirect("/ERPMande24/catalogs/riders", "Usuario de rider no encontrado.", "error")
+
+    try:
+        account_status_value = RiderAccountStatus(account_status.strip().lower())
+    except ValueError:
+        return _redirect(f"/ERPMande24/catalogs/riders/{rider_id}", "Estatus de cuenta invalido.", "error")
+
+    try:
+        rider.license_expires_at = datetime.strptime(license_expires_at, "%Y-%m-%d").date() if license_expires_at.strip() else None
+        rider.insurance_expires_at = datetime.strptime(insurance_expires_at, "%Y-%m-%d").date() if insurance_expires_at.strip() else None
+        rider.contract_signed_at = datetime.strptime(contract_signed_at, "%Y-%m-%d").date() if contract_signed_at.strip() else None
+    except ValueError:
+        return _redirect(f"/ERPMande24/catalogs/riders/{rider_id}", "Formato de fecha invalido en documentos.", "error")
+
+    user.full_name = full_name.strip()
+    rider.landline_phone = landline_phone.strip()
+    rider.whatsapp_phone = whatsapp_phone.strip()
+    rider.vehicle_type = vehicle_type.strip() or "motorcycle"
+    rider.license_file = license_file.strip()
+    rider.circulation_card_file = circulation_card_file.strip()
+    rider.insurance_policy_file = insurance_policy_file.strip()
+    rider.contract_file = contract_file.strip()
+    rider.comprobaciones_file = comprobaciones_file.strip()
+    rider.work_days = work_days.strip()
+    rider.rest_day = rest_day.strip().lower()
+    rider.is_available = is_available == "true"
+    rider.account_status = account_status_value
+    rider.active = account_status_value == RiderAccountStatus.active
+
+    db.commit()
+    return _redirect(f"/ERPMande24/catalogs/riders/{rider_id}", "Rider actualizado correctamente.")
 
 
 @router.post("/catalogs/riders/{rider_id}/toggle")
@@ -3471,9 +3876,9 @@ def backend_rider_detail(rider_id: str, db: Session = Depends(get_db), msg: str 
     user = db.query(User).filter(User.id == rider.user_id).first()
     zone = db.query(Zone).filter(Zone.id == rider.zone_id).first() if rider.zone_id else None
     deliveries = db.query(Delivery).filter(Delivery.rider_id == rider.id).order_by(Delivery.updated_at.desc()).limit(20).all()
-    delivery_rows = [[f'<a href="/ERPMande24/deliveries/{escape(item.id)}">{escape(item.id)}</a>', escape(item.guide.guide_code if item.guide else '-'), escape(item.stage.value), item.updated_at.strftime('%Y-%m-%d %H:%M')] for item in deliveries]
+    delivery_rows = [[f'<a href="/ERPMande24/deliveries/{escape(item.id)}">{escape(item.id)}</a>', escape(item.guide.guide_code if item.guide else '-'), escape(_workflow_stage_label(item.stage)), item.updated_at.strftime('%Y-%m-%d %H:%M')] for item in deliveries]
     content = (
-        f"{_tabs([('resumen', 'Resumen'), ('entregas', 'Entregas')])}"
+        f"{_tabs([('resumen', 'Resumen'), ('datos', 'Datos y Documentos'), ('entregas', 'Entregas')])}"
         "<section id=\"resumen\" class=\"panel\"><h3>Ficha de Rider</h3>"
         "<div class=\"kpi-grid\">"
         f"<article class=\"kpi\"><small>ID</small><strong>{escape(rider.id)}</strong></article>"
@@ -3483,8 +3888,34 @@ def backend_rider_detail(rider_id: str, db: Session = Depends(get_db), msg: str 
         f"<article class=\"kpi\"><small>Telefono fijo</small><strong>{escape(rider.landline_phone or '-')}</strong></article>"
         f"<article class=\"kpi\"><small>WhatsApp</small><strong>{escape(rider.whatsapp_phone or '-')}</strong></article>"
         f"<article class=\"kpi\"><small>Vehiculo</small><strong>{escape(rider.vehicle_type)}</strong></article>"
-        f"<article class=\"kpi\"><small>Estado</small><strong>{escape(rider.state.value)}</strong></article>"
+        f"<article class=\"kpi\"><small>Disponible</small><strong>{'si' if rider.is_available else 'no'}</strong></article>"
+        f"<article class=\"kpi\"><small>Cuenta</small><strong>{escape(rider.account_status.value if hasattr(rider.account_status, 'value') else str(rider.account_status))}</strong></article>"
+        f"<article class=\"kpi\"><small>Dias</small><strong>{escape(rider.work_days)}</strong></article>"
+        f"<article class=\"kpi\"><small>Descanso</small><strong>{escape(rider.rest_day)}</strong></article>"
+        f"<article class=\"kpi\"><small>Estado</small><strong>{escape(_rider_state_label(rider.state))}</strong></article>"
         "</div></section>"
+    )
+    content += (
+        "<section id=\"datos\" class=\"panel\"><h3>Editar Datos Rider</h3>"
+        f"<form class=\"grid\" method=\"post\" action=\"/ERPMande24/catalogs/riders/{escape(rider.id)}/update\">"
+        f"<label>Nombre completo<input name=\"full_name\" value=\"{escape(user.full_name if user else '')}\" required /></label>"
+        f"<label>Telefono fijo<input name=\"landline_phone\" value=\"{escape(rider.landline_phone or '')}\" /></label>"
+        f"<label>WhatsApp<input name=\"whatsapp_phone\" value=\"{escape(rider.whatsapp_phone or '')}\" /></label>"
+        f"<label>Vehiculo<input name=\"vehicle_type\" value=\"{escape(rider.vehicle_type)}\" /></label>"
+        f"<label>Licencia (archivo/url)<input name=\"license_file\" value=\"{escape(rider.license_file or '')}\" /></label>"
+        f"<label>Vigencia licencia<input name=\"license_expires_at\" type=\"date\" value=\"{rider.license_expires_at.isoformat() if rider.license_expires_at else ''}\" /></label>"
+        f"<label>Tarjeta circulacion (archivo/url)<input name=\"circulation_card_file\" value=\"{escape(rider.circulation_card_file or '')}\" /></label>"
+        f"<label>Poliza seguro (archivo/url)<input name=\"insurance_policy_file\" value=\"{escape(rider.insurance_policy_file or '')}\" /></label>"
+        f"<label>Vigencia seguro<input name=\"insurance_expires_at\" type=\"date\" value=\"{rider.insurance_expires_at.isoformat() if rider.insurance_expires_at else ''}\" /></label>"
+        f"<label>Contrato firmado (archivo/url)<input name=\"contract_file\" value=\"{escape(rider.contract_file or '')}\" /></label>"
+        f"<label>Fecha contrato<input name=\"contract_signed_at\" type=\"date\" value=\"{rider.contract_signed_at.isoformat() if rider.contract_signed_at else ''}\" /></label>"
+        f"<label>Comprobaciones<input name=\"comprobaciones_file\" value=\"{escape(rider.comprobaciones_file or '')}\" /></label>"
+        f"<label>Dias laborales (csv)<input name=\"work_days\" value=\"{escape(rider.work_days)}\" /></label>"
+        f"<label>Dia descanso<input name=\"rest_day\" value=\"{escape(rider.rest_day)}\" /></label>"
+        f"<label>Disponible<select name=\"is_available\"><option value=\"true\" {'selected' if rider.is_available else ''}>Si</option><option value=\"false\" {'selected' if not rider.is_available else ''}>No</option></select></label>"
+        f"<label>Estatus cuenta<select name=\"account_status\"><option value=\"active\" {'selected' if str(rider.account_status) == 'RiderAccountStatus.active' or getattr(rider.account_status, 'value', '') == 'active' else ''}>Activa</option><option value=\"suspended\" {'selected' if getattr(rider.account_status, 'value', '') == 'suspended' else ''}>Suspendida</option><option value=\"deactivated\" {'selected' if getattr(rider.account_status, 'value', '') == 'deactivated' else ''}>Desactivada</option></select></label>"
+        "<div class=\"full actions\"><button class=\"primary\" type=\"submit\">Guardar cambios</button></div>"
+        "</form></section>"
     )
     content += f"<section id=\"entregas\" class=\"panel\"><h3>Entregas Asignadas</h3>{_table(['Delivery', 'Guia', 'Etapa', 'Actualizada'], delivery_rows)}</section>"
     return _render_layout("riders", f"Rider {rider.id}", "Vista detalle tipo formulario.", content, msg, kind)
@@ -3545,6 +3976,42 @@ def backend_geo_service_coverage(
 
     if not state_clean or not municipality_clean or not postal_clean:
         return JSONResponse({"zone_id": None, "zone_name": None, "station_id": None, "station_name": None})
+
+    station_candidates = (
+        db.query(StationCoverageRule)
+        .filter(
+            StationCoverageRule.active.is_(True),
+            StationCoverageRule.state_code == state_clean,
+            or_(StationCoverageRule.municipality_code.is_(None), StationCoverageRule.municipality_code == municipality_clean),
+            or_(StationCoverageRule.postal_code.is_(None), StationCoverageRule.postal_code == postal_clean),
+            or_(StationCoverageRule.colony_id.is_(None), StationCoverageRule.colony_id == colony_clean),
+        )
+        .all()
+    )
+
+    if station_candidates:
+        station_candidates.sort(
+            key=lambda item: (
+                1 if item.colony_id else 0,
+                1 if item.postal_code else 0,
+                1 if item.municipality_code else 0,
+                1 if item.state_code else 0,
+            ),
+            reverse=True,
+        )
+        for rule in station_candidates:
+            station = db.query(Station).filter(Station.id == rule.station_id, Station.active.is_(True)).first()
+            if not station:
+                continue
+            zone = db.query(Zone).filter(Zone.id == station.zone_id, Zone.active.is_(True)).first()
+            return JSONResponse(
+                {
+                    "zone_id": (zone.id if zone else None),
+                    "zone_name": (zone.name if zone else None),
+                    "station_id": station.id,
+                    "station_name": station.name,
+                }
+            )
 
     candidates = (
         db.query(ZoneGeoRule)
@@ -4201,6 +4668,313 @@ def backend_bulk_toggle_pricing_rules(
     return _redirect("/ERPMande24/catalogs/pricing-rules", f"Tarifas actualizadas: {updated}.")
 
 
+@router.get("/catalogs/quote-policy", response_class=HTMLResponse)
+def backend_quote_policy_rules(
+    request: Request,
+    db: Session = Depends(get_db),
+    msg: str = "",
+    kind: str = "ok",
+) -> str:
+    role = _role_from_request(request)
+    if role != "admin":
+        return _render_layout(
+            "dashboard",
+            "Acceso restringido",
+            "Solo administradores pueden gestionar reglas de cotizacion.",
+            '<section class="panel"><div class="empty">No tienes permisos para ver este modulo.</div></section>',
+            "",
+            "error",
+            request=request,
+        )
+
+    quote_rules = db.query(QuotePolicyRule).order_by(QuotePolicyRule.service_type.asc(), QuotePolicyRule.valid_from.desc()).all()
+    zone_rules = (
+        db.query(ZoneSurchargeRule)
+        .order_by(ZoneSurchargeRule.zone_type.asc(), ZoneSurchargeRule.rural_complexity.asc(), ZoneSurchargeRule.valid_from.desc())
+        .all()
+    )
+    op_settings = db.query(OperationalSetting).order_by(OperationalSetting.key.asc()).all()
+
+    quote_rows = []
+    for item in quote_rules:
+        quote_rows.append(
+            [
+                escape(item.id),
+                escape(item.service_type),
+                escape(item.fallback_service_type or "-"),
+                f"{item.max_distance_km:.2f}" if item.max_distance_km is not None else "-",
+                f"{item.service_factor:.2f}",
+                item.valid_from.strftime("%Y-%m-%d %H:%M"),
+                item.valid_to.strftime("%Y-%m-%d %H:%M") if item.valid_to else "-",
+                "activa" if item.active else "inactiva",
+                (
+                    f'<form class="inline-form" method="post" action="/ERPMande24/catalogs/quote-policy/{escape(item.id)}/toggle">'
+                    f'<input type="hidden" name="active" value="{"false" if item.active else "true"}" />'
+                    f'<button type="submit">{"Desactivar" if item.active else "Activar"}</button></form>'
+                ),
+            ]
+        )
+
+    zone_rows = []
+    for item in zone_rules:
+        zone_rows.append(
+            [
+                escape(item.id),
+                escape(item.zone_type),
+                escape(item.rural_complexity or "-"),
+                f"{item.zone_factor:.2f}",
+                f"{item.complexity_factor:.2f}",
+                str(item.eta_extra_minutes),
+                item.valid_from.strftime("%Y-%m-%d %H:%M"),
+                item.valid_to.strftime("%Y-%m-%d %H:%M") if item.valid_to else "-",
+                "activa" if item.active else "inactiva",
+                (
+                    f'<form class="inline-form" method="post" action="/ERPMande24/catalogs/zone-surcharge/{escape(item.id)}/toggle">'
+                    f'<input type="hidden" name="active" value="{"false" if item.active else "true"}" />'
+                    f'<button type="submit">{"Desactivar" if item.active else "Activar"}</button></form>'
+                ),
+            ]
+        )
+
+    service_form = (
+        "<section class=\"panel\"><h3>Nueva Regla de Servicio</h3>"
+        "<form class=\"grid\" method=\"post\" action=\"/ERPMande24/catalogs/quote-policy/create\">"
+        "<label>Tipo servicio<select name=\"service_type\" required>"
+        "<option value=\"mandaditos\">mandaditos</option>"
+        "<option value=\"paqueteria\">paqueteria</option>"
+        "<option value=\"express\">express</option>"
+        "<option value=\"programado\">programado</option>"
+        "<option value=\"recurrente\">recurrente</option>"
+        "</select></label>"
+        "<label>Servicio fallback<select name=\"fallback_service_type\">"
+        "<option value=\"\">Sin fallback</option>"
+        "<option value=\"paqueteria\">paqueteria</option>"
+        "<option value=\"mandaditos\">mandaditos</option>"
+        "<option value=\"express\">express</option>"
+        "<option value=\"programado\">programado</option>"
+        "<option value=\"recurrente\">recurrente</option>"
+        "</select></label>"
+        "<label>Max km<input name=\"max_distance_km\" type=\"number\" step=\"0.1\" min=\"0\" /></label>"
+        "<label>Factor servicio<input name=\"service_factor\" type=\"number\" step=\"0.01\" min=\"0.1\" required value=\"1.00\" /></label>"
+        "<label>Notas<input name=\"notes\" maxlength=\"300\" /></label>"
+        "<div class=\"full actions\"><button class=\"primary\" type=\"submit\">Crear regla servicio</button></div>"
+        "</form></section>"
+    )
+
+    zone_form = (
+        "<section class=\"panel\"><h3>Nueva Regla de Zona</h3>"
+        "<form class=\"grid\" method=\"post\" action=\"/ERPMande24/catalogs/zone-surcharge/create\">"
+        "<label>Zona<select name=\"zone_type\" required>"
+        "<option value=\"urbana\">urbana</option>"
+        "<option value=\"metropolitana\">metropolitana</option>"
+        "<option value=\"intermunicipal\">intermunicipal</option>"
+        "<option value=\"rural\">rural</option>"
+        "</select></label>"
+        "<label>Complejidad rural<select name=\"rural_complexity\">"
+        "<option value=\"\">No aplica</option>"
+        "<option value=\"baja\">baja</option>"
+        "<option value=\"media\">media</option>"
+        "<option value=\"alta\">alta</option>"
+        "</select></label>"
+        "<label>Factor zona<input name=\"zone_factor\" type=\"number\" step=\"0.01\" min=\"0.1\" required value=\"1.00\" /></label>"
+        "<label>Factor complejidad<input name=\"complexity_factor\" type=\"number\" step=\"0.01\" min=\"0.1\" required value=\"1.00\" /></label>"
+        "<label>ETA extra (min)<input name=\"eta_extra_minutes\" type=\"number\" min=\"0\" required value=\"0\" /></label>"
+        "<label>Notas<input name=\"notes\" maxlength=\"300\" /></label>"
+        "<div class=\"full actions\"><button class=\"primary\" type=\"submit\">Crear regla zona</button></div>"
+        "</form></section>"
+    )
+
+    settings_rows = []
+    for item in op_settings:
+        settings_rows.append(
+            [
+                escape(item.key),
+                escape(item.value),
+                escape(item.description or "-"),
+                (
+                    f'<form class="inline-form" method="post" action="/ERPMande24/catalogs/quote-policy/settings/upsert">'
+                    f'<input type="hidden" name="key" value="{escape(item.key)}" />'
+                    f'<input name="value" value="{escape(item.value)}" />'
+                    '<button type="submit">Guardar</button></form>'
+                ),
+            ]
+        )
+
+    settings_form = (
+        "<section class=\"panel\"><h3>Ajustes Operativos Configurables</h3>"
+        "<form class=\"grid\" method=\"post\" action=\"/ERPMande24/catalogs/quote-policy/settings/upsert\">"
+        "<label>Clave<select name=\"key\">"
+        "<option value=\"errand_24_7\">errand_24_7</option>"
+        "<option value=\"night_start_hour\">night_start_hour</option>"
+        "<option value=\"night_end_hour\">night_end_hour</option>"
+        "<option value=\"night_surcharge_factor\">night_surcharge_factor</option>"
+        "</select></label>"
+        "<label>Valor<input name=\"value\" required /></label>"
+        "<label>Descripcion<input name=\"description\" maxlength=\"255\" /></label>"
+        "<div class=\"full actions\"><button class=\"primary\" type=\"submit\">Guardar ajuste</button></div>"
+        "</form></section>"
+    )
+
+    content = (
+        service_form
+        + zone_form
+        + settings_form
+        + f"<section class=\"panel\"><h3>Reglas de Servicio</h3>{_table(['ID', 'Servicio', 'Fallback', 'Max KM', 'Factor', 'Vigencia desde', 'Vigencia hasta', 'Estado', 'Accion'], quote_rows)}</section>"
+        + f"<section class=\"panel\"><h3>Reglas de Zona</h3>{_table(['ID', 'Zona', 'Complejidad', 'Factor zona', 'Factor complejidad', 'ETA extra', 'Vigencia desde', 'Vigencia hasta', 'Estado', 'Accion'], zone_rows)}</section>"
+        + f"<section class=\"panel\"><h3>Ajustes Actuales</h3>{_table(['Clave', 'Valor', 'Descripcion', 'Accion'], settings_rows)}</section>"
+    )
+    return _render_layout(
+        "quote_policy",
+        "Reglas de Cotizacion",
+        "Administra conversion por distancia y recargos por zona sin usar Swagger.",
+        content,
+        msg,
+        kind,
+        request=request,
+    )
+
+
+@router.post("/catalogs/quote-policy/create")
+def backend_create_quote_policy_rule(
+    service_type: str = Form(...),
+    fallback_service_type: str = Form(""),
+    max_distance_km: str = Form(""),
+    service_factor: float = Form(...),
+    notes: str = Form(""),
+    request: Request = None,
+    db: Session = Depends(get_db),
+) -> RedirectResponse:
+    forbidden = _require_manage(request, "/ERPMande24/catalogs/quote-policy", "crear regla de cotizacion")
+    if forbidden:
+        return forbidden
+
+    service_clean = service_type.strip().lower()
+    fallback_clean = fallback_service_type.strip().lower() or None
+    if service_factor <= 0:
+        return _redirect("/ERPMande24/catalogs/quote-policy", "El factor de servicio debe ser mayor a cero.", "error")
+
+    max_km = None
+    if max_distance_km.strip():
+        try:
+            max_km = float(max_distance_km)
+        except ValueError:
+            return _redirect("/ERPMande24/catalogs/quote-policy", "Max km invalido.", "error")
+        if max_km < 0:
+            return _redirect("/ERPMande24/catalogs/quote-policy", "Max km no puede ser negativo.", "error")
+
+    row = QuotePolicyRule(
+        service_type=service_clean,
+        fallback_service_type=fallback_clean,
+        max_distance_km=max_km,
+        service_factor=service_factor,
+        active=True,
+        valid_from=datetime.now(timezone.utc),
+        valid_to=None,
+        notes=notes.strip() or None,
+    )
+    db.add(row)
+    db.commit()
+    return _redirect("/ERPMande24/catalogs/quote-policy", "Regla de servicio creada correctamente.")
+
+
+@router.post("/catalogs/zone-surcharge/create")
+def backend_create_zone_surcharge_rule(
+    zone_type: str = Form(...),
+    rural_complexity: str = Form(""),
+    zone_factor: float = Form(...),
+    complexity_factor: float = Form(...),
+    eta_extra_minutes: int = Form(...),
+    notes: str = Form(""),
+    request: Request = None,
+    db: Session = Depends(get_db),
+) -> RedirectResponse:
+    forbidden = _require_manage(request, "/ERPMande24/catalogs/quote-policy", "crear regla de recargo por zona")
+    if forbidden:
+        return forbidden
+
+    zone_clean = zone_type.strip().lower()
+    complexity_clean = rural_complexity.strip().lower() or None
+    if zone_factor <= 0 or complexity_factor <= 0:
+        return _redirect("/ERPMande24/catalogs/quote-policy", "Los factores deben ser mayores a cero.", "error")
+    if eta_extra_minutes < 0:
+        return _redirect("/ERPMande24/catalogs/quote-policy", "ETA extra no puede ser negativo.", "error")
+
+    row = ZoneSurchargeRule(
+        zone_type=zone_clean,
+        rural_complexity=complexity_clean,
+        zone_factor=zone_factor,
+        complexity_factor=complexity_factor,
+        eta_extra_minutes=eta_extra_minutes,
+        active=True,
+        valid_from=datetime.now(timezone.utc),
+        valid_to=None,
+        notes=notes.strip() or None,
+    )
+    db.add(row)
+    db.commit()
+    return _redirect("/ERPMande24/catalogs/quote-policy", "Regla de zona creada correctamente.")
+
+
+@router.post("/catalogs/quote-policy/{rule_id}/toggle")
+def backend_toggle_quote_policy_rule(
+    rule_id: str,
+    active: str = Form(...),
+    request: Request = None,
+    db: Session = Depends(get_db),
+) -> RedirectResponse:
+    forbidden = _require_manage(request, "/ERPMande24/catalogs/quote-policy", "editar regla de cotizacion")
+    if forbidden:
+        return forbidden
+    row = db.query(QuotePolicyRule).filter(QuotePolicyRule.id == rule_id).first()
+    if not row:
+        return _redirect("/ERPMande24/catalogs/quote-policy", "Regla de servicio no encontrada.", "error")
+    row.active = active == "true"
+    db.commit()
+    return _redirect("/ERPMande24/catalogs/quote-policy", "Estado de regla de servicio actualizado.")
+
+
+@router.post("/catalogs/zone-surcharge/{rule_id}/toggle")
+def backend_toggle_zone_surcharge_rule(
+    rule_id: str,
+    active: str = Form(...),
+    request: Request = None,
+    db: Session = Depends(get_db),
+) -> RedirectResponse:
+    forbidden = _require_manage(request, "/ERPMande24/catalogs/quote-policy", "editar regla de zona")
+    if forbidden:
+        return forbidden
+    row = db.query(ZoneSurchargeRule).filter(ZoneSurchargeRule.id == rule_id).first()
+    if not row:
+        return _redirect("/ERPMande24/catalogs/quote-policy", "Regla de zona no encontrada.", "error")
+    row.active = active == "true"
+    db.commit()
+    return _redirect("/ERPMande24/catalogs/quote-policy", "Estado de regla de zona actualizado.")
+
+
+@router.post("/catalogs/quote-policy/settings/upsert")
+def backend_upsert_operational_setting(
+    key: str = Form(...),
+    value: str = Form(...),
+    description: str = Form(""),
+    request: Request = None,
+    db: Session = Depends(get_db),
+) -> RedirectResponse:
+    forbidden = _require_manage(request, "/ERPMande24/catalogs/quote-policy", "editar ajustes operativos")
+    if forbidden:
+        return forbidden
+    key_clean = key.strip()
+    row = db.query(OperationalSetting).filter(OperationalSetting.key == key_clean).first()
+    if not row:
+        row = OperationalSetting(key=key_clean, value=value.strip(), description=description.strip())
+        db.add(row)
+    else:
+        row.value = value.strip()
+        if description.strip():
+            row.description = description.strip()
+    db.commit()
+    return _redirect("/ERPMande24/catalogs/quote-policy", f"Ajuste {key_clean} actualizado.")
+
+
 @router.get("/users", response_class=HTMLResponse)
 def backend_users(
     request: Request,
@@ -4368,7 +5142,7 @@ def backend_update_user_role(
 
     previous_role = user.role
     user.role = role_value
-    ensure_user_roles(db, user, [role_value])
+    ensure_user_roles(db, user, [role_value], replace_existing=True)
     actor_role = _role_from_request(request)
     actor_user_id, actor_email = _actor_identity_from_request(request)
     db.add(
@@ -4383,6 +5157,69 @@ def backend_update_user_role(
     )
     db.commit()
     return _redirect(f"/ERPMande24/users/{user_id}", f"Rol actualizado a {user.role.value}.")
+
+
+@router.post("/users/{user_id}/roles")
+def backend_replace_user_roles(
+    user_id: str,
+    roles: list[str] = Form(default=[]),
+    primary_role: str = Form(""),
+    request: Request = None,
+    db: Session = Depends(get_db),
+) -> RedirectResponse:
+    forbidden = _require_manage(request, f"/ERPMande24/users/{user_id}", "editar roles de usuario")
+    if forbidden:
+        return forbidden
+
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        return _redirect("/ERPMande24/users", "Usuario no encontrado.", "error")
+
+    clean_values: list[str] = []
+    for raw in roles:
+        value = (raw or "").strip().lower()
+        if value and value not in clean_values:
+            clean_values.append(value)
+
+    if not clean_values:
+        return _redirect(f"/ERPMande24/users/{user_id}", "Selecciona al menos un rol.", "error")
+
+    desired_roles: list[UserRole] = []
+    for value in clean_values:
+        try:
+            desired_roles.append(UserRole(value))
+        except ValueError:
+            return _redirect(f"/ERPMande24/users/{user_id}", f"Rol no valido: {value}", "error")
+
+    desired_values = [item.value for item in desired_roles]
+    selected_primary = (primary_role or "").strip().lower()
+    if selected_primary not in desired_values:
+        selected_primary = desired_values[0]
+    role_value = UserRole(selected_primary)
+
+    previous_role = user.role
+    user.role = role_value
+    ensure_user_roles(db, user, desired_roles, replace_existing=True)
+
+    actor_role = _role_from_request(request)
+    actor_user_id, actor_email = _actor_identity_from_request(request)
+    db.add(
+        UserRoleAudit(
+            user_id=user.id,
+            old_role=previous_role,
+            new_role=role_value,
+            changed_by_role=actor_role,
+            changed_by_user_id=actor_user_id,
+            changed_by_email=actor_email,
+        )
+    )
+    db.commit()
+
+    labels = ", ".join([ROLE_LABELS.get(value, value) for value in desired_values])
+    return _redirect(
+        f"/ERPMande24/users/{user_id}",
+        f"Roles actualizados. Primario: {role_value.value}. Roles: {labels}.",
+    )
 
 
 @router.post("/users/bulk-toggle")
@@ -4436,6 +5273,25 @@ def backend_user_detail(user_id: str, request: Request, db: Session = Depends(ge
             for item in UserRole
         ]
     )
+    assigned_role_values = set(get_user_roles_sorted(user))
+    role_primary_options = "".join(
+        [
+            f'<option value="{item.value}" {"selected" if user.role == item else ""}>{escape(ROLE_LABELS.get(item.value, item.value.title()))}</option>'
+            for item in UserRole
+        ]
+    )
+    role_checkbox_items = "".join(
+        [
+            (
+                '<label style="display:flex;align-items:center;gap:0.55rem;">'
+                f'<input type="checkbox" name="roles" value="{item.value}" {"checked" if item.value in assigned_role_values else ""} />'
+                f'{escape(ROLE_LABELS.get(item.value, item.value.title()))}'
+                '</label>'
+            )
+            for item in UserRole
+        ]
+    )
+    roles_badge = ", ".join([ROLE_LABELS.get(item, item.title()) for item in get_user_roles_sorted(user)])
 
     content = (
         f"{_tabs([('resumen', 'Resumen'), ('timeline', 'Timeline'), ('operacion', 'Operacion')])}"
@@ -4444,7 +5300,8 @@ def backend_user_detail(user_id: str, request: Request, db: Session = Depends(ge
         f"<article class=\"kpi\"><small>ID</small><strong>{escape(user.id)}</strong></article>"
         f"<article class=\"kpi\"><small>Nombre</small><strong>{escape(user.full_name)}</strong></article>"
         f"<article class=\"kpi\"><small>Email</small><strong>{escape(user.email)}</strong></article>"
-        f"<article class=\"kpi\"><small>Rol</small><strong>{escape(user.role.value)}</strong></article>"
+        f"<article class=\"kpi\"><small>Rol Primario</small><strong>{escape(ROLE_LABELS.get(user.role.value, user.role.value))}</strong></article>"
+        f"<article class=\"kpi\"><small>Roles Asignados</small><strong>{escape(roles_badge)}</strong></article>"
         f"<article class=\"kpi\"><small>Estado</small><strong>{'activo' if user.is_active else 'inactivo'}</strong></article>"
         f"<article class=\"kpi\"><small>Rider Relacionado</small><strong>{escape(rider.id if rider else 'N/A')}</strong></article>"
         "</div></section>"
@@ -4454,6 +5311,14 @@ def backend_user_detail(user_id: str, request: Request, db: Session = Depends(ge
         f"<label>Rol del usuario<select name=\"role\">{role_options}</select></label>"
         "<div class=\"actions\"><button class=\"primary\" type=\"submit\">Guardar rol</button>"
         "<a class=\"btn\" href=\"/ERPMande24/users\">Volver a usuarios</a></div>"
+        "</form>"
+        f"<form class=\"grid\" method=\"post\" action=\"/ERPMande24/users/{escape(user.id)}/roles\">"
+        f"<label>Rol primario<select name=\"primary_role\">{role_primary_options}</select></label>"
+        "<fieldset style=\"border:1px solid #d7dee7;border-radius:10px;padding:0.7rem;\">"
+        "<legend>Roles asignados</legend>"
+        f"<div style=\"display:grid;gap:0.45rem;\">{role_checkbox_items}</div>"
+        "</fieldset>"
+        "<div class=\"actions\"><button class=\"primary\" type=\"submit\">Guardar roles (reemplazar)</button></div>"
         "</form></section>"
     )
     return _render_layout("users", f"Usuario {user.email}", "Vista detalle tipo formulario.", content, msg, kind, request=request)

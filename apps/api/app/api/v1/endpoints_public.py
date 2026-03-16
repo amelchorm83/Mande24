@@ -1,11 +1,12 @@
 import smtplib
+from datetime import datetime
 from email.message import EmailMessage
 
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
-from app.db.models import ContactLead, Delivery, Guide
+from app.db.models import ContactLead, Delivery, Guide, OperationalSetting
 from app.db.session import get_db
 from app.models.schemas import (
     ContactLeadCreate,
@@ -14,24 +15,11 @@ from app.models.schemas import (
     PublicQuoteResponse,
     PublicTrackingResponse,
 )
+from app.services.quote_policy import resolve_quote_policy
 
 router = APIRouter(prefix="/public", tags=["public"])
 
-ALLOWED_SERVICE_TYPES = {"express", "programada", "recurrente", "mandaditos"}
-ALLOWED_QUOTE_ZONE_TYPES = {"urbana", "metropolitana", "intermunicipal"}
-
-ZONE_FACTORS = {
-    "urbana": 1.0,
-    "metropolitana": 1.18,
-    "intermunicipal": 1.35,
-}
-
-SERVICE_FACTORS = {
-    "programado": 1.0,
-    "express": 1.3,
-    "recurrente": 0.9,
-    "mandaditos": 1.12,
-}
+ALLOWED_SERVICE_TYPES = {"express", "programada", "recurrente", "mandaditos", "paqueteria"}
 
 
 def _send_contact_email_notification(lead: ContactLead) -> None:
@@ -99,36 +87,71 @@ def create_contact_lead(payload: ContactLeadCreate, db: Session = Depends(get_db
 
 
 @router.post("/quote", response_model=PublicQuoteResponse)
-def estimate_public_quote(payload: PublicQuoteRequest) -> PublicQuoteResponse:
-    zone_type = payload.zone_type.strip().lower()
-    service_type = payload.service_type.strip().lower()
-
-    if zone_type not in ALLOWED_QUOTE_ZONE_TYPES:
-        zone_type = "urbana"
-    if service_type not in SERVICE_FACTORS:
-        service_type = "programado"
+def estimate_public_quote(payload: PublicQuoteRequest, db: Session = Depends(get_db)) -> PublicQuoteResponse:
+    decision = resolve_quote_policy(
+        db=db,
+        requested_service_type=payload.service_type,
+        distance_km=payload.distance_km,
+        zone_type=payload.zone_type,
+        rural_complexity=payload.rural_complexity,
+    )
 
     base = 49.0
     per_km = 7.5
     stop_extra = max(0, payload.stops - 1) * 14.0
     distance_cost = payload.distance_km * per_km
-    subtotal = (base + distance_cost + stop_extra) * ZONE_FACTORS[zone_type] * SERVICE_FACTORS[service_type]
+    subtotal = (
+        (base + distance_cost + stop_extra)
+        * decision.zone_factor
+        * decision.service_factor
+        * decision.complexity_factor
+    )
+
+    settings_map = {item.key: item.value for item in db.query(OperationalSetting).all()}
+    try:
+        night_start = int(settings_map.get("night_start_hour", "22"))
+        night_end = int(settings_map.get("night_end_hour", "7"))
+        night_factor = float(settings_map.get("night_surcharge_factor", "1.15"))
+    except ValueError:
+        night_start = 22
+        night_end = 7
+        night_factor = 1.15
+
+    now_hour = datetime.now().hour
+    is_night = now_hour >= night_start or now_hour < night_end
+    if is_night and night_factor > 0:
+        subtotal *= night_factor
+        decision.policy_notes.append(
+            f"Tarifa nocturna aplicada por ventana {night_start}:00-{night_end}:00 (factor {night_factor:.2f})."
+        )
+
     total = round(subtotal, 2)
-    eta_minutes = max(25, int(round(payload.distance_km * 5 + payload.stops * 8)))
+    eta_base = payload.distance_km * 5 + payload.stops * 8
+    eta_base += decision.eta_extra_minutes
+    eta_minutes = max(25, int(round(eta_base)))
+
+    message = "Cotizacion referencial calculada con parametros operativos actuales."
+    if decision.service_converted:
+        message = "Mandadito convertido a paqueteria por politica de distancia maxima."
 
     return PublicQuoteResponse(
         status="ok",
         currency="MXN",
         total_estimate=total,
         eta_minutes=eta_minutes,
+        requested_service_type=decision.requested_service_type,
+        applied_service_type=decision.applied_service_type,
+        service_converted=decision.service_converted,
         breakdown={
             "base": round(base, 2),
             "distance_cost": round(distance_cost, 2),
             "stops_extra": round(stop_extra, 2),
-            "zone_factor": round(ZONE_FACTORS[zone_type], 2),
-            "service_factor": round(SERVICE_FACTORS[service_type], 2),
+            "zone_factor": round(decision.zone_factor, 2),
+            "service_factor": round(decision.service_factor, 2),
+            "area_complexity_factor": round(decision.complexity_factor, 2),
         },
-        message="Cotizacion referencial calculada con parametros operativos actuales.",
+        policy_notes=decision.policy_notes,
+        message=message,
     )
 
 

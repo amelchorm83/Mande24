@@ -1,6 +1,8 @@
+from datetime import datetime, timezone
+
 from app.db.base import Base
 from app.db.geo_seed import seed_geo_catalogs
-from app.db.models import User, UserRoleLink
+from app.db.models import QuotePolicyRule, User, UserRoleLink, ZoneSurchargeRule
 from app.db.sepomex_sync import sync_sepomex_catalog
 from app.db.session import engine
 from app.db.session import SessionLocal
@@ -48,6 +50,8 @@ def _ensure_runtime_schema() -> None:
                 conn.execute(text("ALTER TABLE riders ADD COLUMN landline_phone VARCHAR(40) DEFAULT ''"))
             if "whatsapp_phone" not in rider_columns:
                 conn.execute(text("ALTER TABLE riders ADD COLUMN whatsapp_phone VARCHAR(40) DEFAULT ''"))
+            if "station_id" not in rider_columns:
+                conn.execute(text("ALTER TABLE riders ADD COLUMN station_id VARCHAR(32)"))
 
     if "stations" in tables:
         station_columns = {col["name"] for col in inspector.get_columns("stations")}
@@ -116,6 +120,8 @@ def _ensure_runtime_schema() -> None:
                 conn.execute(text("ALTER TABLE guide_parties ADD COLUMN destination_address_line VARCHAR(255) DEFAULT ''"))
 
     if "contact_leads" not in tables:
+        if "station_coverage_rules" not in tables:
+            Base.metadata.tables["station_coverage_rules"].create(bind=engine, checkfirst=True)
         return
 
     lead_columns = {col["name"] for col in inspector.get_columns("contact_leads")}
@@ -126,6 +132,9 @@ def _ensure_runtime_schema() -> None:
         if "updated_at" not in lead_columns:
             conn.execute(text("ALTER TABLE contact_leads ADD COLUMN updated_at TIMESTAMP WITH TIME ZONE"))
             conn.execute(text("UPDATE contact_leads SET updated_at = created_at WHERE updated_at IS NULL"))
+
+    if "station_coverage_rules" not in tables:
+        Base.metadata.tables["station_coverage_rules"].create(bind=engine, checkfirst=True)
 
 
 def init_db() -> None:
@@ -143,6 +152,66 @@ def init_db() -> None:
             key = (user.id, user.role.value)
             if key not in existing_links:
                 db.add(UserRoleLink(user_id=user.id, role=user.role))
+
+        has_quote_rules = db.query(QuotePolicyRule.id).first() is not None
+        if not has_quote_rules:
+            now = datetime.now(timezone.utc)
+            db.add_all(
+                [
+                    QuotePolicyRule(
+                        service_type="programado",
+                        service_factor=1.0,
+                        active=True,
+                        valid_from=now,
+                        notes="Semilla inicial",
+                    ),
+                    QuotePolicyRule(
+                        service_type="express",
+                        service_factor=1.3,
+                        active=True,
+                        valid_from=now,
+                        notes="Semilla inicial",
+                    ),
+                    QuotePolicyRule(
+                        service_type="recurrente",
+                        service_factor=0.9,
+                        active=True,
+                        valid_from=now,
+                        notes="Semilla inicial",
+                    ),
+                    QuotePolicyRule(
+                        service_type="mandaditos",
+                        fallback_service_type="paqueteria",
+                        max_distance_km=10.0,
+                        service_factor=1.12,
+                        active=True,
+                        valid_from=now,
+                        notes="Semilla inicial",
+                    ),
+                    QuotePolicyRule(
+                        service_type="paqueteria",
+                        service_factor=1.2,
+                        active=True,
+                        valid_from=now,
+                        notes="Semilla inicial",
+                    ),
+                ]
+            )
+
+        has_zone_rules = db.query(ZoneSurchargeRule.id).first() is not None
+        if not has_zone_rules:
+            now = datetime.now(timezone.utc)
+            db.add_all(
+                [
+                    ZoneSurchargeRule(zone_type="urbana", zone_factor=1.0, complexity_factor=1.0, eta_extra_minutes=0, active=True, valid_from=now, notes="Semilla inicial"),
+                    ZoneSurchargeRule(zone_type="metropolitana", zone_factor=1.18, complexity_factor=1.0, eta_extra_minutes=0, active=True, valid_from=now, notes="Semilla inicial"),
+                    ZoneSurchargeRule(zone_type="intermunicipal", zone_factor=1.35, complexity_factor=1.0, eta_extra_minutes=18, active=True, valid_from=now, notes="Semilla inicial"),
+                    ZoneSurchargeRule(zone_type="rural", rural_complexity="baja", zone_factor=1.45, complexity_factor=1.04, eta_extra_minutes=28, active=True, valid_from=now, notes="Semilla inicial"),
+                    ZoneSurchargeRule(zone_type="rural", rural_complexity="media", zone_factor=1.45, complexity_factor=1.12, eta_extra_minutes=28, active=True, valid_from=now, notes="Semilla inicial"),
+                    ZoneSurchargeRule(zone_type="rural", rural_complexity="alta", zone_factor=1.45, complexity_factor=1.25, eta_extra_minutes=28, active=True, valid_from=now, notes="Semilla inicial"),
+                ]
+            )
+
         db.commit()
         try:
             sync_sepomex_catalog(db)

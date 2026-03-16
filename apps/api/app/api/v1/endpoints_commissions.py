@@ -1,6 +1,6 @@
 from datetime import timedelta
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from app.api.deps import require_roles
@@ -31,13 +31,20 @@ from app.services.commissions import (
 router = APIRouter(prefix="/commissions", tags=["commissions"])
 
 
+def _resolve_week_window_or_422(week_start: str | None):
+    try:
+        return resolve_week_window(week_start)
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail="Invalid week_start. Expected YYYY-MM-DD") from exc
+
+
 @router.get("/riders/weekly", response_model=RiderWeeklyCommissionResponse)
 def rider_weekly_commissions(
     week_start: str | None = None,
     db: Session = Depends(get_db),
     _user: User = Depends(require_roles(UserRole.admin, UserRole.station)),
 ) -> RiderWeeklyCommissionResponse:
-    start_dt, end_dt, monday = resolve_week_window(week_start)
+    start_dt, end_dt, monday = _resolve_week_window_or_422(week_start)
     tuples = compute_rider_rows(db, start_dt, end_dt)
     rows = [
         RiderWeeklyCommissionRow(rider_id=rider_id, delivery_count=count, total_amount=total)
@@ -56,7 +63,7 @@ def rider_weekly_commissions_by_leg(
     db: Session = Depends(get_db),
     _user: User = Depends(require_roles(UserRole.admin, UserRole.station)),
 ) -> RiderLegTypeWeeklyCommissionResponse:
-    start_dt, end_dt, monday = resolve_week_window(week_start)
+    start_dt, end_dt, monday = _resolve_week_window_or_422(week_start)
     tuples = compute_rider_leg_type_rows(db, start_dt, end_dt)
     rows = [
         RiderLegTypeWeeklyCommissionRow(
@@ -80,7 +87,7 @@ def close_rider_weekly_commissions(
     db: Session = Depends(get_db),
     _user: User = Depends(require_roles(UserRole.admin)),
 ) -> RiderWeeklyCommissionResponse:
-    start_dt, end_dt, monday = resolve_week_window(week_start)
+    start_dt, end_dt, monday = _resolve_week_window_or_422(week_start)
     tuples = close_rider_week(db, monday, start_dt, end_dt)
     rows = [
         RiderWeeklyCommissionRow(rider_id=rider_id, delivery_count=count, total_amount=total)
@@ -118,7 +125,7 @@ def station_weekly_commissions(
     db: Session = Depends(get_db),
     _user: User = Depends(require_roles(UserRole.admin, UserRole.station)),
 ) -> StationWeeklyCommissionResponse:
-    start_dt, end_dt, monday = resolve_week_window(week_start)
+    start_dt, end_dt, monday = _resolve_week_window_or_422(week_start)
     tuples = compute_station_rows(db, start_dt, end_dt)
     rows = [
         StationWeeklyCommissionRow(
@@ -142,7 +149,7 @@ def station_weekly_commissions_by_leg(
     db: Session = Depends(get_db),
     _user: User = Depends(require_roles(UserRole.admin, UserRole.station)),
 ) -> StationLegTypeWeeklyCommissionResponse:
-    start_dt, end_dt, monday = resolve_week_window(week_start)
+    start_dt, end_dt, monday = _resolve_week_window_or_422(week_start)
     tuples = compute_station_leg_type_rows(db, start_dt, end_dt)
     rows = [
         StationLegTypeWeeklyCommissionRow(
@@ -166,7 +173,7 @@ def close_station_weekly_commissions(
     db: Session = Depends(get_db),
     _user: User = Depends(require_roles(UserRole.admin)),
 ) -> StationWeeklyCommissionResponse:
-    start_dt, end_dt, monday = resolve_week_window(week_start)
+    start_dt, end_dt, monday = _resolve_week_window_or_422(week_start)
     tuples = close_station_week(db, monday, start_dt, end_dt)
     rows = [
         StationWeeklyCommissionRow(

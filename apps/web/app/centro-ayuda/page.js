@@ -9,7 +9,7 @@ const faqs = [
   },
   {
     q: "¿Atienden servicios fuera de ciudad?",
-    a: "Sí, con planeación intermunicipal según cobertura activa en Tabasco y Campeche.",
+    a: "Sí, con planeación intermunicipal según cobertura activa en Tabasco, Campeche, Chiapas, Yucatán y Quintana Roo.",
   },
   {
     q: "¿Qué pasa si no reciben el paquete?",

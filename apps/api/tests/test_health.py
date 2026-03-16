@@ -1,6 +1,7 @@
 import os
+from uuid import uuid4
 
-TEST_DB_PATH = "./test_mande24.db"
+TEST_DB_PATH = f"./test_mande24_{uuid4().hex}.db"
 if os.path.exists(TEST_DB_PATH):
     os.remove(TEST_DB_PATH)
 
@@ -9,7 +10,7 @@ os.environ["JWT_SECRET_KEY"] = "test_secret"
 
 from fastapi.testclient import TestClient
 
-from app.db.models import Delivery, RiderCommission, StationCommission
+from app.db.models import Delivery, GeoColony, RiderCommission, StationCommission
 from app.db.session import SessionLocal
 from app.db.init_db import init_db
 from app.main import app
@@ -119,18 +120,45 @@ def test_weekly_commissions() -> None:
     admin_headers = _auth_headers("admin3.demo@mande24.test", "admin")
     service_id, station_id, zone_id = _create_catalog_data(admin_headers)
 
+    geo_db = SessionLocal()
+    try:
+        colony = geo_db.query(GeoColony).first()
+        assert colony is not None
+        origin_state_code = colony.state_code
+        origin_municipality_code = colony.municipality_code
+        origin_postal_code = colony.postal_code
+        origin_colony_id = colony.id
+    finally:
+        geo_db.close()
+
     client_headers = _auth_headers("cliente2.demo@mande24.test", "client")
     guide_payload = {
         "customer_name": "Cliente Comisiones",
         "destination_name": "Destino Comisiones",
         "service_id": service_id,
         "station_id": station_id,
+        "origin_whatsapp_phone": "5511111111",
+        "origin_email": "origin.demo@mande24.test",
+        "origin_state_code": origin_state_code,
+        "origin_municipality_code": origin_municipality_code,
+        "origin_postal_code": origin_postal_code,
+        "origin_colony_id": origin_colony_id,
+        "origin_address_line": "Calle Origen 123",
+        "destination_whatsapp_phone": "5522222222",
+        "destination_email": "destination.demo@mande24.test",
+        "destination_state_code": origin_state_code,
+        "destination_municipality_code": origin_municipality_code,
+        "destination_postal_code": origin_postal_code,
+        "destination_colony_id": origin_colony_id,
+        "destination_address_line": "Calle Destino 456",
     }
     create_response = client.post("/api/v1/guides", json=guide_payload, headers=client_headers)
     assert create_response.status_code == 200
 
     rider_user_email = "rider.demo@mande24.test"
     rider_headers = _auth_headers(rider_user_email, "rider")
+    intruder_rider_email = "rider.unauthorized@mande24.test"
+    intruder_rider_headers = _auth_headers(intruder_rider_email, "rider")
     rider_register = client.post(
         "/api/v1/auth/register",
         json={"email": rider_user_email, "full_name": "Rider Demo", "password": "Secret123", "role": "rider"},
@@ -155,6 +183,19 @@ def test_weekly_commissions() -> None:
 
             rider = users_db.query(Rider).filter(Rider.user_id == rider_user.id).first()
             assert rider is not None
+        else:
+            rider = existing_rider
+
+        intruder_user = users_db.query(User).filter(User.email == intruder_rider_email).first()
+        assert intruder_user is not None
+        intruder_rider = users_db.query(Rider).filter(Rider.user_id == intruder_user.id).first()
+        if not intruder_rider:
+            create_intruder_rider_response = client.post(
+                "/api/v1/catalogs/riders",
+                json={"user_id": intruder_user.id, "zone_id": zone_id, "vehicle_type": "motorcycle"},
+                headers=admin_headers,
+            )
+            assert create_intruder_rider_response.status_code in (200, 409)
 
         guide_code = create_response.json()["guide_code"]
         guide_fetch = client.get(f"/api/v1/guides/{guide_code}", headers=client_headers)
@@ -205,12 +246,22 @@ def test_weekly_commissions() -> None:
     finally:
         users_db.close()
 
+    unauthorized_stage_update = client.patch(
+        f"/api/v1/guides/deliveries/{delivery_id}/stage",
+        json={"stage": "delivered", "has_evidence": True, "has_signature": True},
+        headers=intruder_rider_headers,
+    )
+    assert unauthorized_stage_update.status_code == 403
+
     stage_update = client.patch(
         f"/api/v1/guides/deliveries/{delivery_id}/stage",
         json={"stage": "delivered", "has_evidence": True, "has_signature": True},
         headers=rider_headers,
     )
     assert stage_update.status_code == 200
+
+    invalid_week = client.get("/api/v1/commissions/riders/weekly?week_start=invalid-date", headers=admin_headers)
+    assert invalid_week.status_code == 422
 
     rider_commissions = client.get("/api/v1/commissions/riders/weekly", headers=admin_headers)
     assert rider_commissions.status_code == 200

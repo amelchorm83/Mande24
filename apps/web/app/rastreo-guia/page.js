@@ -6,7 +6,16 @@ const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
 function formatStage(stage) {
   if (!stage) return "Sin estado";
-  return stage.replaceAll("_", " ");
+  const labels = {
+    assigned: "Asignado",
+    picked_up: "Recolectado",
+    in_transit: "En transito",
+    at_station: "En estacion",
+    out_for_delivery: "En ruta de entrega",
+    delivered: "Entregado",
+    failed: "Fallido",
+  };
+  return labels[stage] || stage.replaceAll("_", " ");
 }
 
 export default function RastreoGuiaPage() {

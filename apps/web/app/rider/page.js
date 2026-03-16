@@ -4,6 +4,35 @@ import { useEffect, useState } from "react";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
+const ROUTE_LABELS = {
+  pickup_to_origin_station: "Recoleccion a estacion origen",
+  station_to_station: "Estacion a estacion",
+  destination_station_to_client: "Estacion destino a cliente",
+  pickup_to_station: "Recoleccion a estacion",
+  station_to_client: "Estacion a cliente",
+  pickup_to_client: "Recoleccion a cliente",
+};
+
+const STATUS_LABELS = {
+  assigned: "Asignado",
+  picked_up: "Recolectado",
+  in_transit: "En transito",
+  at_station: "En estacion",
+  out_for_delivery: "En ruta de entrega",
+  delivered: "Entregado",
+  in_progress: "En progreso",
+  completed: "Completado",
+  failed: "Fallido",
+};
+
+function formatRouteType(value) {
+  return ROUTE_LABELS[value] || String(value || "-").replaceAll("_", " ");
+}
+
+function formatStatus(value) {
+  return STATUS_LABELS[value] || String(value || "-").replaceAll("_", " ");
+}
+
 export default function RiderPortalPage() {
   const [section, setSection] = useState("actualizar");
   const [token, setToken] = useState("");
@@ -40,7 +69,7 @@ export default function RiderPortalPage() {
         setMsg(`Error: ${JSON.stringify(data)}`);
         return;
       }
-      setMsg(`Entrega actualizada: ${data.stage}`);
+      setMsg(`Entrega actualizada: ${formatStatus(data.stage)}`);
     } catch (error) {
       setMsg(`Error de red: ${error.message}`);
     }
@@ -107,7 +136,7 @@ export default function RiderPortalPage() {
         setMsg(`Error tramo: ${JSON.stringify(data)}`);
         return;
       }
-      setMsg(`Tramo ${data.sequence} actualizado a ${data.status}`);
+      setMsg(`Tramo ${data.sequence} actualizado a ${formatStatus(data.status)}`);
       await loadGuideRouteLegs();
       await loadMyRouteLegs();
     } catch (error) {
@@ -225,7 +254,7 @@ export default function RiderPortalPage() {
               <option value="">Selecciona tramo</option>
               {routeLegRows.map((item) => (
                 <option key={item.id} value={item.id}>
-                  #{item.sequence} {item.leg_type} | {item.status}
+                  #{item.sequence} {formatRouteType(item.leg_type)} | {formatStatus(item.status)}
                 </option>
               ))}
             </select>
@@ -248,7 +277,7 @@ export default function RiderPortalPage() {
             <tbody>
               {routeLegRows.map((item) => (
                 <tr key={item.id}>
-                  <td>{item.sequence}</td><td>{item.leg_type}</td><td>{item.status}</td><td>{item.assigned_rider_id || "-"}</td><td>{item.origin_station_id || "-"}</td><td>{item.destination_station_id || "-"}</td>
+                  <td>{item.sequence}</td><td>{formatRouteType(item.leg_type)}</td><td>{formatStatus(item.status)}</td><td>{item.assigned_rider_id || "-"}</td><td>{item.origin_station_id || "-"}</td><td>{item.destination_station_id || "-"}</td>
                 </tr>
               ))}
             </tbody>
@@ -261,7 +290,7 @@ export default function RiderPortalPage() {
             <thead><tr><th>Guía</th><th>Seq</th><th>Tipo</th><th>Estado</th><th>Actualizado</th></tr></thead>
             <tbody>
               {myRouteLegRows.map((item) => (
-                <tr key={item.id}><td>{item.guide_code}</td><td>{item.sequence}</td><td>{item.leg_type}</td><td>{item.status}</td><td>{new Date(item.updated_at).toLocaleString()}</td></tr>
+                <tr key={item.id}><td>{item.guide_code}</td><td>{item.sequence}</td><td>{formatRouteType(item.leg_type)}</td><td>{formatStatus(item.status)}</td><td>{new Date(item.updated_at).toLocaleString()}</td></tr>
               ))}
             </tbody>
           </table>

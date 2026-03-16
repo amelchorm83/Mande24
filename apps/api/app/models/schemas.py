@@ -1,7 +1,7 @@
-from datetime import datetime
+from datetime import date, datetime
 
 from pydantic import BaseModel, Field
-from app.db.models import ClientKind, RiderState, ServiceType, UserRole, WorkflowStage
+from app.db.models import ClientKind, RiderAccountStatus, RiderState, ServiceType, UserRole, WorkflowStage
 
 
 class RegisterRequest(BaseModel):
@@ -47,9 +47,23 @@ class ServiceResponse(BaseModel):
 class ZoneCreate(BaseModel):
     name: str = Field(min_length=2, max_length=120)
     code: str = Field(min_length=2, max_length=30)
+    region_id: str | None = None
 
 
 class ZoneResponse(BaseModel):
+    id: str
+    name: str
+    code: str
+    region_id: str | None
+    active: bool
+
+
+class RegionCreate(BaseModel):
+    name: str = Field(min_length=2, max_length=120)
+    code: str = Field(min_length=2, max_length=30)
+
+
+class RegionResponse(BaseModel):
     id: str
     name: str
     code: str
@@ -61,6 +75,16 @@ class StationCreate(BaseModel):
     zone_id: str
     landline_phone: str = Field(default="", max_length=40)
     whatsapp_phone: str = Field(default="", max_length=40)
+    responsible_name: str = Field(default="", max_length=150)
+    proof_of_address_file: str = Field(default="", max_length=255)
+    rfc_file: str = Field(default="", max_length=255)
+    comprobaciones_file: str = Field(default="", max_length=255)
+    work_days: str = Field(default="mon,tue,wed,thu,fri,sat", max_length=80)
+    rest_day: str = Field(default="sun", max_length=12)
+    opening_time: str = Field(default="09:00", max_length=5)
+    closing_time: str = Field(default="18:00", max_length=5)
+    max_active_users: int = Field(default=3, ge=1, le=3)
+    coverage_rows: list["CoverageRuleCreate"] = Field(default_factory=list)
 
 
 class StationResponse(BaseModel):
@@ -69,26 +93,85 @@ class StationResponse(BaseModel):
     zone_id: str
     landline_phone: str
     whatsapp_phone: str
+    responsible_name: str
+    proof_of_address_file: str
+    rfc_file: str
+    comprobaciones_file: str
+    work_days: str
+    rest_day: str
+    opening_time: str
+    closing_time: str
+    max_active_users: int
     active: bool
 
 
 class RiderCreate(BaseModel):
     user_id: str
     zone_id: str | None = None
+    station_id: str | None = None
     vehicle_type: str = Field(default="motorcycle", min_length=2, max_length=30)
     landline_phone: str = Field(default="", max_length=40)
     whatsapp_phone: str = Field(default="", max_length=40)
+    license_file: str = Field(default="", max_length=255)
+    license_expires_at: date | None = None
+    circulation_card_file: str = Field(default="", max_length=255)
+    insurance_policy_file: str = Field(default="", max_length=255)
+    insurance_expires_at: date | None = None
+    contract_file: str = Field(default="", max_length=255)
+    contract_signed_at: date | None = None
+    comprobaciones_file: str = Field(default="", max_length=255)
+    work_days: str = Field(default="mon,tue,wed,thu,fri,sat", max_length=80)
+    rest_day: str = Field(default="sun", max_length=12)
+    is_available: bool = True
+    account_status: RiderAccountStatus = RiderAccountStatus.active
 
 
 class RiderResponse(BaseModel):
     id: str
     user_id: str
     zone_id: str | None
+    station_id: str | None
     vehicle_type: str
     landline_phone: str
     whatsapp_phone: str
+    license_file: str
+    license_expires_at: date | None
+    circulation_card_file: str
+    insurance_policy_file: str
+    insurance_expires_at: date | None
+    contract_file: str
+    contract_signed_at: date | None
+    comprobaciones_file: str
+    work_days: str
+    rest_day: str
+    is_available: bool
+    account_status: RiderAccountStatus
     state: RiderState
     active: bool
+
+
+class RiderProfileUpdate(BaseModel):
+    full_name: str = Field(min_length=2, max_length=150)
+    landline_phone: str = Field(default="", max_length=40)
+    whatsapp_phone: str = Field(default="", max_length=40)
+    vehicle_type: str = Field(default="motorcycle", min_length=2, max_length=30)
+    license_file: str = Field(default="", max_length=255)
+    license_expires_at: date | None = None
+    circulation_card_file: str = Field(default="", max_length=255)
+    insurance_policy_file: str = Field(default="", max_length=255)
+    insurance_expires_at: date | None = None
+    contract_file: str = Field(default="", max_length=255)
+    contract_signed_at: date | None = None
+    comprobaciones_file: str = Field(default="", max_length=255)
+    work_days: str = Field(default="mon,tue,wed,thu,fri,sat", max_length=80)
+    rest_day: str = Field(default="sun", max_length=12)
+
+
+class CoverageRuleCreate(BaseModel):
+    state_code: str = Field(min_length=2, max_length=10)
+    municipality_code: str | None = Field(default=None, max_length=20)
+    postal_code: str | None = Field(default=None, max_length=10)
+    colony_id: str | None = Field(default=None, max_length=64)
 
 
 class PricingRuleCreate(BaseModel):
@@ -113,6 +196,75 @@ class PricingRuleResponse(BaseModel):
     station_fee: float
     currency: str
     active: bool
+
+
+class QuotePolicyRuleCreate(BaseModel):
+    service_type: str = Field(min_length=2, max_length=40)
+    fallback_service_type: str | None = Field(default=None, max_length=40)
+    max_distance_km: float | None = Field(default=None, gt=0, le=1000)
+    service_factor: float = Field(default=1.0, ge=0.1, le=10)
+    active: bool = True
+    valid_from: datetime | None = None
+    valid_to: datetime | None = None
+    notes: str | None = Field(default=None, max_length=2000)
+
+
+class QuotePolicyRuleUpdate(BaseModel):
+    fallback_service_type: str | None = Field(default=None, max_length=40)
+    max_distance_km: float | None = Field(default=None, gt=0, le=1000)
+    service_factor: float | None = Field(default=None, ge=0.1, le=10)
+    active: bool | None = None
+    valid_from: datetime | None = None
+    valid_to: datetime | None = None
+    notes: str | None = Field(default=None, max_length=2000)
+
+
+class QuotePolicyRuleResponse(BaseModel):
+    id: str
+    service_type: str
+    fallback_service_type: str | None
+    max_distance_km: float | None
+    service_factor: float
+    active: bool
+    valid_from: datetime
+    valid_to: datetime | None
+    notes: str | None
+
+
+class ZoneSurchargeRuleCreate(BaseModel):
+    zone_type: str = Field(min_length=2, max_length=40)
+    rural_complexity: str | None = Field(default=None, max_length=20)
+    zone_factor: float = Field(default=1.0, ge=0.1, le=10)
+    complexity_factor: float = Field(default=1.0, ge=0.1, le=10)
+    eta_extra_minutes: int = Field(default=0, ge=0, le=240)
+    active: bool = True
+    valid_from: datetime | None = None
+    valid_to: datetime | None = None
+    notes: str | None = Field(default=None, max_length=2000)
+
+
+class ZoneSurchargeRuleUpdate(BaseModel):
+    rural_complexity: str | None = Field(default=None, max_length=20)
+    zone_factor: float | None = Field(default=None, ge=0.1, le=10)
+    complexity_factor: float | None = Field(default=None, ge=0.1, le=10)
+    eta_extra_minutes: int | None = Field(default=None, ge=0, le=240)
+    active: bool | None = None
+    valid_from: datetime | None = None
+    valid_to: datetime | None = None
+    notes: str | None = Field(default=None, max_length=2000)
+
+
+class ZoneSurchargeRuleResponse(BaseModel):
+    id: str
+    zone_type: str
+    rural_complexity: str | None
+    zone_factor: float
+    complexity_factor: float
+    eta_extra_minutes: int
+    active: bool
+    valid_from: datetime
+    valid_to: datetime | None
+    notes: str | None
 
 
 class GuideCreate(BaseModel):
@@ -141,6 +293,7 @@ class GuideCreate(BaseModel):
     service_id: str
     station_id: str
     destination_station_id: str | None = None
+    distance_km: float | None = Field(default=None, gt=0, le=500)
     use_station_handoff: bool = False
 
 
@@ -149,6 +302,8 @@ class GuideResponse(BaseModel):
     customer_name: str
     destination_name: str
     service_type: str
+    requested_service_type: str | None = None
+    service_converted: bool = False
     service_id: str | None
     station_id: str | None
     destination_station_id: str | None
@@ -363,6 +518,7 @@ class PublicQuoteRequest(BaseModel):
     stops: int = Field(ge=1, le=20)
     zone_type: str = Field(default="urbana", max_length=40)
     service_type: str = Field(default="programado", max_length=40)
+    rural_complexity: str = Field(default="media", max_length=20)
 
 
 class PublicQuoteResponse(BaseModel):
@@ -370,7 +526,11 @@ class PublicQuoteResponse(BaseModel):
     currency: str
     total_estimate: float
     eta_minutes: int
+    requested_service_type: str
+    applied_service_type: str
+    service_converted: bool = False
     breakdown: dict[str, float]
+    policy_notes: list[str] = Field(default_factory=list)
     message: str
 
 

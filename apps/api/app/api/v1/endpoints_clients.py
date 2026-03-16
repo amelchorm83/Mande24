@@ -18,6 +18,7 @@ from app.db.models import (
     Guide,
     GuideParty,
     Station,
+    StationCoverageRule,
     User,
     UserRole,
     Zone,
@@ -149,6 +150,39 @@ def resolve_geo_service_coverage(
     municipality_clean = municipality_code.strip().upper()
     postal_clean = postal_code.strip()
     colony_clean = colony_id.strip()
+
+    station_candidates = (
+        db.query(StationCoverageRule)
+        .filter(
+            StationCoverageRule.active.is_(True),
+            StationCoverageRule.state_code == state_clean,
+            or_(StationCoverageRule.municipality_code.is_(None), StationCoverageRule.municipality_code == municipality_clean),
+            or_(StationCoverageRule.postal_code.is_(None), StationCoverageRule.postal_code == postal_clean),
+            or_(StationCoverageRule.colony_id.is_(None), StationCoverageRule.colony_id == colony_clean),
+        )
+        .all()
+    )
+
+    def _score_station(rule: StationCoverageRule) -> tuple[int, int, int, int]:
+        return (
+            1 if rule.colony_id else 0,
+            1 if rule.postal_code else 0,
+            1 if rule.municipality_code else 0,
+            1 if rule.state_code else 0,
+        )
+
+    if station_candidates:
+        station_candidates.sort(key=_score_station, reverse=True)
+        best_station_rule = station_candidates[0]
+        station = db.query(Station).filter(Station.id == best_station_rule.station_id, Station.active.is_(True)).first()
+        if station:
+            zone = db.query(Zone).filter(Zone.id == station.zone_id, Zone.active.is_(True)).first()
+            return {
+                "zone_id": zone.id if zone else None,
+                "zone_name": zone.name if zone else None,
+                "station_id": station.id,
+                "station_name": station.name,
+            }
 
     candidates = (
         db.query(ZoneGeoRule)

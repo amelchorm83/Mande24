@@ -2,11 +2,12 @@ from datetime import datetime, timezone
 from uuid import uuid4
 
 from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_current_user, require_roles
 from app.core.user_roles import user_has_role
-from app.db.models import ClientProfile, Delivery, GeoColony, Guide, GuideParty, PricingRule, Rider, RouteLeg, Service, ServiceType, Station, WorkflowStage
+from app.db.models import ClientProfile, Delivery, GeoColony, Guide, GuideParty, PricingRule, Rider, RiderAccountStatus, RouteLeg, Service, ServiceType, Station, StationCoverageRule, WorkflowStage, Zone
 from app.db.models import User, UserRole
 from app.db.session import get_db
 from app.models.schemas import (
@@ -18,6 +19,7 @@ from app.models.schemas import (
     RouteLegResponse,
     RouteLegRiderSuggestionResponse,
 )
+from app.services.quote_policy import resolve_quote_policy
 
 router = APIRouter(prefix="/guides", tags=["guides"])
 
@@ -40,12 +42,18 @@ def _sanitize_requester_role(requester_role: str) -> str:
     return value if value in REQUESTER_ROLE_OPTIONS else "origin"
 
 
+def _rider_is_operational(rider: Rider) -> bool:
+    return rider.active and rider.account_status == RiderAccountStatus.active and rider.is_available
+
+
 def _to_guide_response(guide: Guide) -> GuideResponse:
     return GuideResponse(
         guide_code=guide.guide_code,
         customer_name=guide.customer_name,
         destination_name=guide.destination_name,
         service_type=guide.service_type,
+        requested_service_type=(guide.deliveries[0].note.split("requested_service_type:", 1)[1].split(";", 1)[0] if guide.deliveries and guide.deliveries[0].note and "requested_service_type:" in guide.deliveries[0].note else None),
+        service_converted=(bool(guide.deliveries and guide.deliveries[0].note and "service_converted:true" in guide.deliveries[0].note)),
         service_id=guide.service_id,
         station_id=guide.station_id,
         destination_station_id=guide.destination_station_id,
@@ -53,6 +61,44 @@ def _to_guide_response(guide: Guide) -> GuideResponse:
         currency=guide.currency,
         created_at=guide.created_at,
     )
+
+
+def _resolve_station_coverage(
+    db: Session,
+    state_code: str,
+    municipality_code: str,
+    postal_code: str,
+    colony_id: str,
+) -> Station | None:
+    candidates = (
+        db.query(StationCoverageRule)
+        .filter(
+            StationCoverageRule.active.is_(True),
+            StationCoverageRule.state_code == state_code,
+            or_(StationCoverageRule.municipality_code.is_(None), StationCoverageRule.municipality_code == municipality_code),
+            or_(StationCoverageRule.postal_code.is_(None), StationCoverageRule.postal_code == postal_code),
+            or_(StationCoverageRule.colony_id.is_(None), StationCoverageRule.colony_id == colony_id),
+        )
+        .all()
+    )
+
+    if not candidates:
+        return None
+
+    candidates.sort(
+        key=lambda item: (
+            1 if item.colony_id else 0,
+            1 if item.postal_code else 0,
+            1 if item.municipality_code else 0,
+            1 if item.state_code else 0,
+        ),
+        reverse=True,
+    )
+    for item in candidates:
+        station = db.query(Station).filter(Station.id == item.station_id, Station.active.is_(True)).first()
+        if station:
+            return station
+    return None
 
 
 def _to_delivery_response(delivery: Delivery) -> DeliveryResponse:
@@ -90,9 +136,14 @@ def _build_route_legs(
     station_id: str,
     destination_station_id: str,
     use_station_handoff: bool,
+    amount_multiplier: float = 1.0,
 ) -> list[RouteLeg]:
     route_legs: list[RouteLeg] = []
     service_kind = _service_type_value(service_type)
+    pickup_fee = round(pricing_rule.pickup_fee * amount_multiplier, 2)
+    transfer_fee = round(pricing_rule.transfer_fee * amount_multiplier, 2)
+    delivery_fee = round(pricing_rule.delivery_fee * amount_multiplier, 2)
+    station_fee = round(pricing_rule.station_fee * amount_multiplier, 2)
 
     if service_kind in {"messaging", "package"}:
         route_legs.append(
@@ -104,8 +155,8 @@ def _build_route_legs(
                 to_node_type="station_origin",
                 origin_station_id=station_id,
                 destination_station_id=station_id,
-                rider_fee_amount=pricing_rule.pickup_fee,
-                station_fee_amount=pricing_rule.station_fee,
+                rider_fee_amount=pickup_fee,
+                station_fee_amount=station_fee,
                 currency=pricing_rule.currency,
                 status="planned",
             )
@@ -121,8 +172,8 @@ def _build_route_legs(
                     to_node_type="station_destination",
                     origin_station_id=station_id,
                     destination_station_id=destination_station_id,
-                    rider_fee_amount=pricing_rule.transfer_fee,
-                    station_fee_amount=pricing_rule.station_fee,
+                    rider_fee_amount=transfer_fee,
+                    station_fee_amount=station_fee,
                     currency=pricing_rule.currency,
                     status="planned",
                 )
@@ -140,8 +191,8 @@ def _build_route_legs(
                 to_node_type="client_destination",
                 origin_station_id=destination_station_id,
                 destination_station_id=destination_station_id,
-                rider_fee_amount=pricing_rule.delivery_fee,
-                station_fee_amount=pricing_rule.station_fee,
+                rider_fee_amount=delivery_fee,
+                station_fee_amount=station_fee,
                 currency=pricing_rule.currency,
                 status="planned",
             )
@@ -158,8 +209,8 @@ def _build_route_legs(
                 to_node_type="station_origin",
                 origin_station_id=station_id,
                 destination_station_id=station_id,
-                rider_fee_amount=pricing_rule.pickup_fee,
-                station_fee_amount=pricing_rule.station_fee,
+                rider_fee_amount=pickup_fee,
+                station_fee_amount=station_fee,
                 currency=pricing_rule.currency,
                 status="planned",
             )
@@ -173,8 +224,8 @@ def _build_route_legs(
                 to_node_type="client_destination",
                 origin_station_id=station_id,
                 destination_station_id=destination_station_id,
-                rider_fee_amount=pricing_rule.delivery_fee,
-                station_fee_amount=pricing_rule.station_fee,
+                rider_fee_amount=delivery_fee,
+                station_fee_amount=station_fee,
                 currency=pricing_rule.currency,
                 status="planned",
             )
@@ -189,8 +240,8 @@ def _build_route_legs(
                 to_node_type="client_destination",
                 origin_station_id=station_id,
                 destination_station_id=destination_station_id,
-                rider_fee_amount=pricing_rule.pickup_fee + pricing_rule.delivery_fee,
-                station_fee_amount=pricing_rule.station_fee,
+                rider_fee_amount=round((pickup_fee + delivery_fee), 2),
+                station_fee_amount=station_fee,
                 currency=pricing_rule.currency,
                 status="planned",
             )
@@ -254,40 +305,54 @@ def _sync_delivery_from_route_legs(db: Session, guide_id: str) -> None:
         return
 
     stage = _derive_delivery_stage(route_legs)
-    delivery.stage = stage
-    if stage == WorkflowStage.delivered and not delivery.delivered_at:
+    if stage == WorkflowStage.delivered and not (delivery.has_evidence and delivery.has_signature):
+        # Keep route progression complete, but require explicit evidence/signature confirmation.
+        delivery.stage = WorkflowStage.out_for_delivery
+    else:
+        delivery.stage = stage
+
+    if delivery.stage == WorkflowStage.delivered and not delivery.delivered_at:
         delivery.delivered_at = datetime.now(timezone.utc)
-    if stage != WorkflowStage.delivered:
+    if delivery.stage != WorkflowStage.delivered:
         delivery.delivered_at = None
-    if stage == WorkflowStage.delivered:
-        delivery.has_evidence = True
-        delivery.has_signature = True
     delivery.updated_at = datetime.now(timezone.utc)
 
 
 def _suggest_riders_for_route_leg(db: Session, route_leg: RouteLeg) -> list[RouteLegRiderSuggestionResponse]:
     station_id = route_leg.origin_station_id or route_leg.destination_station_id
     station_zone_id = None
+    preferred_station_id = None
     if station_id:
         station = db.query(Station).filter(Station.id == station_id, Station.active.is_(True)).first()
         if station:
             station_zone_id = station.zone_id
+            preferred_station_id = station.id
 
-    riders = db.query(Rider).filter(Rider.active.is_(True)).all()
+    riders = db.query(Rider).filter(Rider.active.is_(True), Rider.account_status == RiderAccountStatus.active, Rider.is_available.is_(True)).all()
     if not riders:
         return []
 
     rows: list[RouteLegRiderSuggestionResponse] = []
     for rider in riders:
+        same_station = bool(preferred_station_id and rider.station_id == preferred_station_id)
         same_zone = bool(station_zone_id and rider.zone_id == station_zone_id)
+        if same_station:
+            score = 0
+            reason = "same_station"
+        elif same_zone:
+            score = 5
+            reason = "same_zone"
+        else:
+            score = 10
+            reason = "fallback_active"
         rows.append(
             RouteLegRiderSuggestionResponse(
                 rider_id=rider.id,
                 user_id=rider.user_id,
                 zone_id=rider.zone_id,
                 vehicle_type=rider.vehicle_type,
-                score=0 if same_zone else 10,
-                reason="same_zone" if same_zone else "fallback_active",
+                score=score,
+                reason=reason,
             )
         )
 
@@ -324,20 +389,26 @@ def create_guide(
     if not destination_station:
         raise HTTPException(status_code=404, detail="Destination station not found or inactive")
 
-    pricing_rule = (
-        db.query(PricingRule)
-        .filter(
-            PricingRule.service_id == payload.service_id,
-            PricingRule.station_id == payload.station_id,
-            PricingRule.active.is_(True),
-        )
-        .first()
-    )
-    if not pricing_rule:
-        raise HTTPException(status_code=400, detail="No active pricing rule for service and station")
-
-    service_kind = _service_type_value(service.service_type)
+    requested_service_kind = _service_type_value(service.service_type)
+    service_kind = requested_service_kind
     requester_role_clean = _sanitize_requester_role(payload.requester_role)
+    policy_notes: list[str] = []
+    policy_multiplier = 1.0
+
+    requested_policy_service = "mandaditos" if requested_service_kind == ServiceType.errand.value else (
+        "paqueteria" if requested_service_kind == ServiceType.package.value else "programado"
+    )
+    station_zone = db.query(Zone).filter(Zone.id == station.zone_id).first() if station.zone_id else None
+    zone_code = station_zone.code.strip().lower() if station_zone and station_zone.code else "urbana"
+    quote_policy = resolve_quote_policy(
+        db=db,
+        requested_service_type=requested_policy_service,
+        distance_km=payload.distance_km or 0.0,
+        zone_type=zone_code,
+        rural_complexity="media",
+    )
+    policy_notes = quote_policy.policy_notes
+    policy_multiplier = quote_policy.zone_factor * quote_policy.complexity_factor * quote_policy.service_factor
 
     origin_client = None
     destination_client = None
@@ -422,7 +493,59 @@ def create_guide(
     if not destination_geo_valid:
         raise HTTPException(status_code=400, detail="Destination geo combination is invalid")
 
+    origin_coverage_station = _resolve_station_coverage(
+        db,
+        state_code=origin_state_clean,
+        municipality_code=origin_municipality_clean,
+        postal_code=origin_postal_clean,
+        colony_id=origin_colony_clean,
+    )
+    if origin_coverage_station and origin_coverage_station.id != station.id:
+        raise HTTPException(status_code=400, detail="Origin location is outside selected station coverage")
+
+    destination_coverage_station = _resolve_station_coverage(
+        db,
+        state_code=destination_state_clean,
+        municipality_code=destination_municipality_clean,
+        postal_code=destination_postal_clean,
+        colony_id=destination_colony_clean,
+    )
+
+    service_converted = False
     if _is_errand_service(service_kind):
+        requires_package = quote_policy.service_converted or (
+            destination_coverage_station and destination_coverage_station.id != station.id
+        )
+        if requires_package:
+            package_service = (
+                db.query(Service)
+                .filter(Service.active.is_(True), Service.service_type == ServiceType.package)
+                .order_by(Service.name.asc())
+                .first()
+            )
+            if not package_service:
+                raise HTTPException(status_code=400, detail="Errand crosses station coverage and requires an active package service")
+            service = package_service
+            service_kind = ServiceType.package.value
+            service_converted = True
+            if destination_coverage_station:
+                destination_station = destination_coverage_station
+        elif destination_coverage_station:
+            destination_station = destination_coverage_station
+
+    pricing_rule = (
+        db.query(PricingRule)
+        .filter(
+            PricingRule.service_id == service.id,
+            PricingRule.station_id == payload.station_id,
+            PricingRule.active.is_(True),
+        )
+        .first()
+    )
+    if not pricing_rule:
+        raise HTTPException(status_code=400, detail="No active pricing rule for service and station")
+
+    if _is_errand_service(requested_service_kind):
         if requester_role_clean == "origin" and not origin_client:
             raise HTTPException(status_code=400, detail="Errand requester=origin requires origin client")
         if requester_role_clean == "destination" and not destination_client:
@@ -435,7 +558,7 @@ def create_guide(
     if destination_client:
         destination_name = destination_client.display_name
 
-    if _is_errand_service(service_kind):
+    if _is_errand_service(requested_service_kind):
         if requester_role_clean == "destination" and destination_client:
             customer_name = destination_client.display_name
         elif requester_role_clean == "origin" and origin_client:
@@ -450,7 +573,7 @@ def create_guide(
         service_id=service.id,
         station_id=station.id,
         destination_station_id=destination_station.id,
-        sale_amount=pricing_rule.price,
+        sale_amount=round(pricing_rule.price * policy_multiplier, 2),
         currency=pricing_rule.currency,
     )
     db.add(guide)
@@ -459,7 +582,12 @@ def create_guide(
     delivery = Delivery(
         guide_id=guide.id,
         stage=WorkflowStage.assigned,
-        note=(f"requester_role:{requester_role_clean}" if _is_errand_service(service_kind) else None),
+        note=(
+            f"requester_role:{requester_role_clean};"
+            f"requested_service_type:{requested_service_kind};"
+            f"service_converted:{'true' if service_converted else 'false'};"
+            f"policy_notes:{' | '.join([item.replace(';', ',') for item in policy_notes])}"
+        ),
     )
     db.add(delivery)
 
@@ -498,6 +626,7 @@ def create_guide(
         station_id=station.id,
         destination_station_id=destination_station.id,
         use_station_handoff=payload.use_station_handoff,
+        amount_multiplier=policy_multiplier,
     ):
         db.add(leg)
 
@@ -512,7 +641,8 @@ def get_guide(
     db: Session = Depends(get_db),
     _user: User = Depends(get_current_user),
 ) -> GuideResponse:
-    guide = db.query(Guide).filter(Guide.guide_code == guide_code).first()
+    normalized_code = guide_code.strip().upper()
+    guide = db.query(Guide).filter(Guide.guide_code == normalized_code).first()
     if not guide:
         raise HTTPException(status_code=404, detail="Guide not found")
     return _to_guide_response(guide)
@@ -524,7 +654,8 @@ def get_guide_deliveries(
     db: Session = Depends(get_db),
     _user: User = Depends(get_current_user),
 ) -> list[DeliveryResponse]:
-    guide = db.query(Guide).filter(Guide.guide_code == guide_code).first()
+    normalized_code = guide_code.strip().upper()
+    guide = db.query(Guide).filter(Guide.guide_code == normalized_code).first()
     if not guide:
         raise HTTPException(status_code=404, detail="Guide not found")
 
@@ -538,7 +669,8 @@ def get_guide_route_legs(
     db: Session = Depends(get_db),
     _user: User = Depends(get_current_user),
 ) -> list[RouteLegResponse]:
-    guide = db.query(Guide).filter(Guide.guide_code == guide_code).first()
+    normalized_code = guide_code.strip().upper()
+    guide = db.query(Guide).filter(Guide.guide_code == normalized_code).first()
     if not guide:
         raise HTTPException(status_code=404, detail="Guide not found")
 
@@ -553,6 +685,8 @@ def get_my_route_legs(
 ) -> list[RouteLegResponse]:
     rider = db.query(Rider).filter(Rider.user_id == user.id, Rider.active.is_(True)).first()
     if not rider:
+        return []
+    if not _rider_is_operational(rider):
         return []
 
     rows = (
@@ -582,6 +716,8 @@ def assign_route_leg(
         rider_profile = db.query(Rider).filter(Rider.user_id == user.id, Rider.active.is_(True)).first()
         if not rider_profile:
             raise HTTPException(status_code=403, detail="Rider profile not found for current user")
+        if not _rider_is_operational(rider_profile):
+            raise HTTPException(status_code=403, detail="Rider is not operational")
 
     if payload.rider_id:
         if user_has_role(user, UserRole.rider):
@@ -589,7 +725,11 @@ def assign_route_leg(
         rider = db.query(Rider).filter(Rider.id == payload.rider_id, Rider.active.is_(True)).first()
         if not rider:
             raise HTTPException(status_code=404, detail="Rider not found or inactive")
+        if not _rider_is_operational(rider):
+            raise HTTPException(status_code=400, detail="Rider is not available or not active")
         guide = db.query(Guide).filter(Guide.id == route_leg.guide_id).first()
+        if guide and _is_errand_service(guide.service_type) and rider.station_id and guide.station_id and rider.station_id != guide.station_id:
+            raise HTTPException(status_code=400, detail="Errand rider must belong to guide origin station")
         if guide and _is_errand_service(guide.service_type):
             legs = db.query(RouteLeg).filter(RouteLeg.guide_id == route_leg.guide_id).all()
             for leg_item in legs:
@@ -632,7 +772,7 @@ def suggest_riders_for_route_leg(
         existing_rider_id = _assigned_rider_for_guide(db, route_leg.guide_id)
         if existing_rider_id:
             rider = db.query(Rider).filter(Rider.id == existing_rider_id, Rider.active.is_(True)).first()
-            if rider:
+            if rider and _rider_is_operational(rider):
                 return [
                     RouteLegRiderSuggestionResponse(
                         rider_id=rider.id,
@@ -651,11 +791,28 @@ def update_stage(
     delivery_id: str,
     payload: DeliveryStageUpdate,
     db: Session = Depends(get_db),
-    _user: User = Depends(require_roles(UserRole.admin, UserRole.rider)),
+    user: User = Depends(require_roles(UserRole.admin, UserRole.rider)),
 ) -> DeliveryResponse:
     delivery = db.query(Delivery).filter(Delivery.id == delivery_id).first()
     if not delivery:
         raise HTTPException(status_code=404, detail="Delivery not found")
+
+    if user_has_role(user, UserRole.rider):
+        rider_profile = db.query(Rider).filter(Rider.user_id == user.id, Rider.active.is_(True)).first()
+        if not rider_profile:
+            raise HTTPException(status_code=403, detail="Rider profile not found for current user")
+        if not _rider_is_operational(rider_profile):
+            raise HTTPException(status_code=403, detail="Rider is not operational")
+        rider_leg = (
+            db.query(RouteLeg.id)
+            .filter(
+                RouteLeg.guide_id == delivery.guide_id,
+                RouteLeg.assigned_rider_id == rider_profile.id,
+            )
+            .first()
+        )
+        if not rider_leg:
+            raise HTTPException(status_code=403, detail="Delivery is not assigned to current rider")
 
     route_legs = db.query(RouteLeg).filter(RouteLeg.guide_id == delivery.guide_id).order_by(RouteLeg.sequence.asc()).all()
     if route_legs:
@@ -671,6 +828,8 @@ def update_stage(
     delivery.has_signature = payload.has_signature
     if payload.stage == WorkflowStage.delivered and not delivery.delivered_at:
         delivery.delivered_at = datetime.now(timezone.utc)
+    if payload.stage != WorkflowStage.delivered:
+        delivery.delivered_at = None
     delivery.updated_at = datetime.now(timezone.utc)
     db.commit()
     db.refresh(delivery)

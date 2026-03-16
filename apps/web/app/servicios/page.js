@@ -17,9 +17,9 @@ export default function ServiciosPage() {
           <a className="nav-link" href="/noticias">Noticias</a>
            <a className="nav-link" href="/nosotros">Nosotros</a>
            <a className="nav-link" href="/contacto">Contacto</a>
-          <a className="nav-link" href="/auth">Portal Auth</a>
+          <a className="nav-link" href="/auth">Portal Acceso</a>
           <a className="nav-link" href="/client">Portal Cliente</a>
-          <a className="nav-link" href="/rider">Portal Rider</a>
+          <a className="nav-link" href="/rider">Portal Repartidor</a>
           <a className="nav-link" href="/station">Portal Estación</a>
         
           <a className="nav-link" href="/cotizador">Cotizador</a>
@@ -29,7 +29,7 @@ export default function ServiciosPage() {
 
       <span className="badge">Servicios</span>
       <h1>Mensajería, paquetería y mandaditos para resolver entregas urgentes todos los días.</h1>
-      <p className="hero-note">Diseñamos servicios escalables para empresas y personas que necesitan rapidez, comunicación clara y evidencia de entrega en Tabasco y Campeche.</p>
+      <p className="hero-note">Diseñamos servicios escalables para empresas y personas que necesitan rapidez, comunicación clara y evidencia de entrega en Tabasco, Campeche, Chiapas, Yucatán y Quintana Roo.</p>
       <img className="hero-banner" src="/brand/banner.svg" alt="Banner de servicios Mande24" />
 
       <section className="panel" id="mandaditos">
@@ -123,9 +123,9 @@ export default function ServiciosPage() {
         <h2>Operación Unificada</h2>
         <p className="hero-note">Nuestros portales conectan autenticación, captura, reparto y comisiones en un mismo flujo digital.</p>
         <div className="inline-actions">
-          <a className="btn" href="/auth">Portal Auth</a>
+          <a className="btn" href="/auth">Portal Acceso</a>
           <a className="btn" href="/client">Portal Cliente</a>
-          <a className="btn" href="/rider">Portal Rider</a>
+          <a className="btn" href="/rider">Portal Repartidor</a>
           <a className="btn" href="/station">Portal Estación</a>
         </div>
       </section>
@@ -139,7 +139,7 @@ export default function ServiciosPage() {
           </article>
           <article className="card">
             <h3>¿Pueden operar en dos estados?</h3>
-            <p>Sí. Actualmente operamos con cobertura en Tabasco y Campeche según zona y disponibilidad.</p>
+            <p>Sí. Actualmente operamos con cobertura en Tabasco, Campeche, Chiapas, Yucatán y Quintana Roo según zona y disponibilidad.</p>
           </article>
           <article className="card">
             <h3>¿Cómo solicito una propuesta?</h3>
