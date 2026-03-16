@@ -1,3 +1,5 @@
+export const metadata = { title: "Servicios" };
+
 export default function ServiciosPage() {
   return (
     <main className="shell public-shell">

@@ -1,3 +1,5 @@
+export const metadata = { title: "Centro de Ayuda" };
+
 const faqs = [
   {
     q: "¿Cómo solicito una recolección?",

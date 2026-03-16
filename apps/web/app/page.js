@@ -1,3 +1,5 @@
+export const metadata = { title: { absolute: "Mande24 | Inicio" } };
+
 async function getApiStatus() {
   const api = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
   try {

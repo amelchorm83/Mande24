@@ -1,3 +1,5 @@
+export const metadata = { title: "Cobertura" };
+
 const coverageByState = [
   {
     state: "Tabasco",

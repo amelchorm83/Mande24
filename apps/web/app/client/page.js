@@ -43,6 +43,8 @@ function formatStatus(value) {
 export default function ClientPortalPage() {
   const [section, setSection] = useState("acceso");
   const [token, setToken] = useState("");
+  const [currentUserName, setCurrentUserName] = useState("");
+  const [currentUserEmail, setCurrentUserEmail] = useState("");
   const [registerName, setRegisterName] = useState("Nuevo Cliente");
   const [registerEmail, setRegisterEmail] = useState("");
   const [registerPassword, setRegisterPassword] = useState("");
@@ -119,12 +121,26 @@ export default function ClientPortalPage() {
   useEffect(() => {
     const saved = localStorage.getItem("m24_token") || "";
     setToken(saved);
+    const fullName = localStorage.getItem("m24_full_name") || "";
     const email = localStorage.getItem("m24_email") || "";
+    if (fullName) {
+      setCurrentUserName(fullName);
+      setRegisterName(fullName);
+    }
     if (email) {
+      setCurrentUserEmail(email);
       setRegisterEmail(email);
       setOriginEmail(email);
     }
   }, []);
+
+  useEffect(() => {
+    if (!token || token.split(".").length !== 3) {
+      setCurrentUserName("");
+      return;
+    }
+    loadCurrentUser();
+  }, [token]);
 
   useEffect(() => {
     if (!token) {
@@ -190,10 +206,38 @@ export default function ClientPortalPage() {
       localStorage.setItem("m24_token", data.access_token);
       localStorage.setItem("m24_role", "client");
       localStorage.setItem("m24_email", registerEmail);
+      localStorage.setItem("m24_full_name", registerName);
+      setCurrentUserName(registerName);
+      setCurrentUserEmail(registerEmail);
       setRegisterMsg("Cuenta lista. Sesión iniciada como cliente.");
       setMsg("Token de cliente listo. Ahora carga catálogos.");
     } catch (error) {
       setRegisterMsg(`Error: ${error.message}`);
+    }
+  }
+
+  async function loadCurrentUser() {
+    try {
+      const res = await fetch(`${API_BASE}/api/v1/auth/me`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) return;
+      const data = await res.json();
+      const safeName = data.full_name || "";
+      const safeEmail = data.email || "";
+      setCurrentUserName(safeName);
+      setCurrentUserEmail(safeEmail);
+      if (safeName) {
+        setRegisterName(safeName);
+        localStorage.setItem("m24_full_name", safeName);
+      }
+      if (safeEmail) {
+        setRegisterEmail(safeEmail);
+        setOriginEmail((prev) => prev || safeEmail);
+        localStorage.setItem("m24_email", safeEmail);
+      }
+    } catch {
+      // Mantiene el portal funcional aunque el perfil no pueda resolverse en ese momento.
     }
   }
 
@@ -658,6 +702,21 @@ export default function ClientPortalPage() {
       <p className="hero-note">Registra clientes de origen y destino con dirección validada, define facturación y opera guías con trazabilidad de envíos enviados y recibidos.</p>
       <img className="hero-banner" src="/brand/banner.svg" alt="Banner portal cliente" />
 
+      <section className="panel session-card">
+        <div className="session-grid">
+          <div>
+            <span className="badge">Sesión y PWA</span>
+            <h3>Usuario visible en todos los módulos</h3>
+            <p className="field-hint">Este bloque permanece visible en portal y PWA para identificar al usuario autenticado mientras registra clientes, genera guías y consulta envíos.</p>
+          </div>
+          <div className="card session-summary">
+            <p><strong>Usuario:</strong> {currentUserName || registerName || "Sin identificar"}</p>
+            <p><strong>Email:</strong> {currentUserEmail || registerEmail || "Sin email cargado"}</p>
+            <p><strong>Estado:</strong> {token ? "Sesión con token disponible" : "Sin token activo"}</p>
+          </div>
+        </div>
+      </section>
+
       <section className="panel">
         <div className="media-grid">
           <article className="media-card">
@@ -811,158 +870,193 @@ export default function ClientPortalPage() {
 
       {section === "guias" && <section className="panel">
         <h2>Paso 3: Crear Guía</h2>
-        <form className="form-grid" onSubmit={createGuide}>
-          <label>
-            Cliente origen
-            <select value={originClientId} onChange={(e) => onSelectOriginProfile(e.target.value)}>
-              <option value="">Selecciona</option>
-              {originProfiles.map((item) => <option key={item.id} value={item.id}>{profileLabel(item)}</option>)}
-            </select>
-          </label>
-          <label>
-            Cliente destino
-            <select value={destinationClientId} onChange={(e) => onSelectDestinationProfile(e.target.value)}>
-              <option value="">Selecciona</option>
-              {destinationProfiles.map((item) => <option key={item.id} value={item.id}>{profileLabel(item)}</option>)}
-            </select>
-          </label>
-          <label>
-            Facturar servicio origen
-            <select value={originWantsInvoice ? "true" : "false"} onChange={(e) => setOriginWantsInvoice(e.target.value === "true")}>
-              <option value="true">Sí</option>
-              <option value="false">No</option>
-            </select>
-          </label>
-          <label>
-            Origen teléfono fijo (opcional)
-            <input value={originLandlinePhone} onChange={(e) => setOriginLandlinePhone(e.target.value)} />
-          </label>
-          <label>
-            Origen WhatsApp (obligatorio)
-            <input value={originWhatsappPhone} onChange={(e) => setOriginWhatsappPhone(e.target.value)} required />
-          </label>
-          <label>
-            Origen email (obligatorio)
-            <input type="email" value={originEmail} onChange={(e) => setOriginEmail(e.target.value)} required />
-          </label>
-          <label>
-            Origen estado
-            <select value={originStateCode} onChange={(e) => setOriginStateCode(e.target.value)}>
-              <option value="">Selecciona</option>
-              {states.map((item) => <option key={`o-st-${item.code}`} value={item.code}>{item.name}</option>)}
-            </select>
-          </label>
-          <label>
-            Origen municipio
-            <select value={originMunicipalityCode} onChange={(e) => setOriginMunicipalityCode(e.target.value)}>
-              <option value="">Selecciona</option>
-              {originMunicipalities.map((item) => <option key={`o-mn-${item.code}`} value={item.code}>{item.name}</option>)}
-            </select>
-          </label>
-          <label>
-            Origen código postal
-            <select value={originPostalCode} onChange={(e) => setOriginPostalCode(e.target.value)}>
-              <option value="">Selecciona</option>
-              {originPostalCodes.map((item) => <option key={`o-cp-${item.code}`} value={item.code}>{item.code}</option>)}
-            </select>
-          </label>
-          <label>
-            Origen colonia
-            <select value={originColonyId} onChange={(e) => setOriginColonyId(e.target.value)}>
-              <option value="">Selecciona</option>
-              {originColonies.map((item) => <option key={`o-col-${item.id}`} value={item.id}>{item.name}</option>)}
-            </select>
-          </label>
-          <label>
-            Origen dirección (solo guía)
-            <input value={originAddressLine} onChange={(e) => setOriginAddressLine(e.target.value)} required />
-          </label>
-          <label>
-            Destino teléfono fijo (opcional)
-            <input value={destinationLandlinePhone} onChange={(e) => setDestinationLandlinePhone(e.target.value)} />
-          </label>
-          <label>
-            Destino WhatsApp (obligatorio)
-            <input value={destinationWhatsappPhone} onChange={(e) => setDestinationWhatsappPhone(e.target.value)} required />
-          </label>
-          <label>
-            Destino email (obligatorio)
-            <input type="email" value={destinationEmail} onChange={(e) => setDestinationEmail(e.target.value)} required />
-          </label>
-          <label>
-            Destino estado
-            <select value={destinationStateCode} onChange={(e) => setDestinationStateCode(e.target.value)}>
-              <option value="">Selecciona</option>
-              {states.map((item) => <option key={`d-st-${item.code}`} value={item.code}>{item.name}</option>)}
-            </select>
-          </label>
-          <label>
-            Destino municipio
-            <select value={destinationMunicipalityCode} onChange={(e) => setDestinationMunicipalityCode(e.target.value)}>
-              <option value="">Selecciona</option>
-              {destinationMunicipalities.map((item) => <option key={`d-mn-${item.code}`} value={item.code}>{item.name}</option>)}
-            </select>
-          </label>
-          <label>
-            Destino código postal
-            <select value={destinationPostalCode} onChange={(e) => setDestinationPostalCode(e.target.value)}>
-              <option value="">Selecciona</option>
-              {destinationPostalCodes.map((item) => <option key={`d-cp-${item.code}`} value={item.code}>{item.code}</option>)}
-            </select>
-          </label>
-          <label>
-            Destino colonia
-            <select value={destinationColonyId} onChange={(e) => setDestinationColonyId(e.target.value)}>
-              <option value="">Selecciona</option>
-              {destinationColonies.map((item) => <option key={`d-col-${item.id}`} value={item.id}>{item.name}</option>)}
-            </select>
-          </label>
-          <label>
-            Destino dirección (solo guía)
-            <input value={destinationAddressLine} onChange={(e) => setDestinationAddressLine(e.target.value)} required />
-          </label>
-          <label>
-            Solicitante del servicio
-            <select value={requesterRole} onChange={(e) => setRequesterRole(e.target.value)}>
-              <option value="origin">Cliente origen</option>
-              <option value="destination">Cliente destino</option>
-              <option value="external">Tercero / externo</option>
-            </select>
-          </label>
-          <label>
-            Servicio
-            <select value={serviceId} onChange={(e) => setServiceId(e.target.value)}>
-              <option value="">Selecciona</option>
-              {services.map((item) => (
-                <option key={item.id} value={item.id}>{item.name}</option>
-              ))}
-            </select>
-          </label>
-          <label>
-            Estación
-            <select value={stationId} onChange={(e) => setStationId(e.target.value)}>
-              <option value="">Selecciona</option>
-              {stations.map((item) => (
-                <option key={item.id} value={item.id}>{stationLabel(item)}</option>
-              ))}
-            </select>
-          </label>
-          <label>
-            Zona sugerida origen
-            <input value={originZoneSuggest} readOnly />
-          </label>
-          <label>
-            Estación sugerida origen
-            <input value={originStationSuggest} readOnly />
-          </label>
-          <label>
-            Zona sugerida destino
-            <input value={destinationZoneSuggest} readOnly />
-          </label>
-          <label>
-            Estación sugerida destino
-            <input value={destinationStationSuggest} readOnly />
-          </label>
+        <form className="guide-form" onSubmit={createGuide}>
+          <section className="form-block">
+            <div className="form-block-head">
+              <h3>Origen</h3>
+              <p className="field-hint">Orden recomendado: perfil, contacto, ubicación y dirección final.</p>
+            </div>
+            <div className="form-grid">
+              <label>
+                Cliente origen
+                <select value={originClientId} onChange={(e) => onSelectOriginProfile(e.target.value)}>
+                  <option value="">Selecciona</option>
+                  {originProfiles.map((item) => <option key={item.id} value={item.id}>{profileLabel(item)}</option>)}
+                </select>
+              </label>
+              <label>
+                Nombre origen
+                <input value={customerName} onChange={(e) => setCustomerName(e.target.value)} required />
+              </label>
+              <label>
+                Origen teléfono fijo (opcional)
+                <input value={originLandlinePhone} onChange={(e) => setOriginLandlinePhone(e.target.value)} />
+              </label>
+              <label>
+                Origen WhatsApp (obligatorio)
+                <input value={originWhatsappPhone} onChange={(e) => setOriginWhatsappPhone(e.target.value)} required />
+              </label>
+              <label>
+                Origen email (obligatorio)
+                <input type="email" value={originEmail} onChange={(e) => setOriginEmail(e.target.value)} required />
+              </label>
+              <label>
+                Origen estado
+                <select value={originStateCode} onChange={(e) => setOriginStateCode(e.target.value)}>
+                  <option value="">Selecciona</option>
+                  {states.map((item) => <option key={`o-st-${item.code}`} value={item.code}>{item.name}</option>)}
+                </select>
+              </label>
+              <label>
+                Origen municipio
+                <select value={originMunicipalityCode} onChange={(e) => setOriginMunicipalityCode(e.target.value)}>
+                  <option value="">Selecciona</option>
+                  {originMunicipalities.map((item) => <option key={`o-mn-${item.code}`} value={item.code}>{item.name}</option>)}
+                </select>
+              </label>
+              <label>
+                Origen código postal
+                <select value={originPostalCode} onChange={(e) => setOriginPostalCode(e.target.value)}>
+                  <option value="">Selecciona</option>
+                  {originPostalCodes.map((item) => <option key={`o-cp-${item.code}`} value={item.code}>{item.code}</option>)}
+                </select>
+              </label>
+              <label>
+                Origen colonia
+                <select value={originColonyId} onChange={(e) => setOriginColonyId(e.target.value)}>
+                  <option value="">Selecciona</option>
+                  {originColonies.map((item) => <option key={`o-col-${item.id}`} value={item.id}>{item.name}</option>)}
+                </select>
+              </label>
+              <label className="form-span-2">
+                Origen dirección (solo guía)
+                <input value={originAddressLine} onChange={(e) => setOriginAddressLine(e.target.value)} required />
+              </label>
+              <label>
+                Zona sugerida origen
+                <input value={originZoneSuggest} readOnly />
+              </label>
+              <label>
+                Estación sugerida origen
+                <input value={originStationSuggest} readOnly />
+              </label>
+            </div>
+          </section>
+
+          <section className="form-block">
+            <div className="form-block-head">
+              <h3>Destino</h3>
+              <p className="field-hint">Se mantiene la misma secuencia para que el equipo interno y el cliente lean ambos lados igual.</p>
+            </div>
+            <div className="form-grid">
+              <label>
+                Cliente destino
+                <select value={destinationClientId} onChange={(e) => onSelectDestinationProfile(e.target.value)}>
+                  <option value="">Selecciona</option>
+                  {destinationProfiles.map((item) => <option key={item.id} value={item.id}>{profileLabel(item)}</option>)}
+                </select>
+              </label>
+              <label>
+                Nombre destino
+                <input value={destinationName} onChange={(e) => setDestinationName(e.target.value)} required />
+              </label>
+              <label>
+                Destino teléfono fijo (opcional)
+                <input value={destinationLandlinePhone} onChange={(e) => setDestinationLandlinePhone(e.target.value)} />
+              </label>
+              <label>
+                Destino WhatsApp (obligatorio)
+                <input value={destinationWhatsappPhone} onChange={(e) => setDestinationWhatsappPhone(e.target.value)} required />
+              </label>
+              <label>
+                Destino email (obligatorio)
+                <input type="email" value={destinationEmail} onChange={(e) => setDestinationEmail(e.target.value)} required />
+              </label>
+              <label>
+                Destino estado
+                <select value={destinationStateCode} onChange={(e) => setDestinationStateCode(e.target.value)}>
+                  <option value="">Selecciona</option>
+                  {states.map((item) => <option key={`d-st-${item.code}`} value={item.code}>{item.name}</option>)}
+                </select>
+              </label>
+              <label>
+                Destino municipio
+                <select value={destinationMunicipalityCode} onChange={(e) => setDestinationMunicipalityCode(e.target.value)}>
+                  <option value="">Selecciona</option>
+                  {destinationMunicipalities.map((item) => <option key={`d-mn-${item.code}`} value={item.code}>{item.name}</option>)}
+                </select>
+              </label>
+              <label>
+                Destino código postal
+                <select value={destinationPostalCode} onChange={(e) => setDestinationPostalCode(e.target.value)}>
+                  <option value="">Selecciona</option>
+                  {destinationPostalCodes.map((item) => <option key={`d-cp-${item.code}`} value={item.code}>{item.code}</option>)}
+                </select>
+              </label>
+              <label>
+                Destino colonia
+                <select value={destinationColonyId} onChange={(e) => setDestinationColonyId(e.target.value)}>
+                  <option value="">Selecciona</option>
+                  {destinationColonies.map((item) => <option key={`d-col-${item.id}`} value={item.id}>{item.name}</option>)}
+                </select>
+              </label>
+              <label className="form-span-2">
+                Destino dirección (solo guía)
+                <input value={destinationAddressLine} onChange={(e) => setDestinationAddressLine(e.target.value)} required />
+              </label>
+              <label>
+                Zona sugerida destino
+                <input value={destinationZoneSuggest} readOnly />
+              </label>
+              <label>
+                Estación sugerida destino
+                <input value={destinationStationSuggest} readOnly />
+              </label>
+            </div>
+          </section>
+
+          <section className="form-block">
+            <div className="form-block-head">
+              <h3>Configuración operativa</h3>
+              <p className="field-hint">Se captura al final para cerrar la guía con el contexto comercial y de cobertura ya validado.</p>
+            </div>
+            <div className="form-grid">
+              <label>
+                Facturar servicio origen
+                <select value={originWantsInvoice ? "true" : "false"} onChange={(e) => setOriginWantsInvoice(e.target.value === "true")}>
+                  <option value="true">Sí</option>
+                  <option value="false">No</option>
+                </select>
+              </label>
+              <label>
+                Solicitante del servicio
+                <select value={requesterRole} onChange={(e) => setRequesterRole(e.target.value)}>
+                  <option value="origin">Cliente origen</option>
+                  <option value="destination">Cliente destino</option>
+                  <option value="external">Tercero / externo</option>
+                </select>
+              </label>
+              <label>
+                Servicio
+                <select value={serviceId} onChange={(e) => setServiceId(e.target.value)}>
+                  <option value="">Selecciona</option>
+                  {services.map((item) => (
+                    <option key={item.id} value={item.id}>{item.name}</option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                Estación
+                <select value={stationId} onChange={(e) => setStationId(e.target.value)}>
+                  <option value="">Selecciona</option>
+                  {stations.map((item) => (
+                    <option key={item.id} value={item.id}>{stationLabel(item)}</option>
+                  ))}
+                </select>
+              </label>
+            </div>
+          </section>
+
           <button className="btn btn-primary" type="submit">Crear guía</button>
         </form>
 

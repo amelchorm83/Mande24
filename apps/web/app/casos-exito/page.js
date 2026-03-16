@@ -1,3 +1,5 @@
+export const metadata = { title: "Casos de Éxito" };
+
 const cases = [
   {
     name: "Cadena de farmacias regional",

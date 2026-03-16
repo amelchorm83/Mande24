@@ -1,3 +1,5 @@
+export const metadata = { title: "Tarifas y Políticas" };
+
 const policies = [
   {
     title: "Tarifa base",

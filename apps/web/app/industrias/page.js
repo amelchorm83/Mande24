@@ -1,3 +1,5 @@
+export const metadata = { title: "Industrias" };
+
 const industryData = [
   {
     title: "Retail y comercio local",

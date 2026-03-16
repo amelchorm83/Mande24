@@ -54,6 +54,8 @@ function formatVehicle(value) {
 export default function StationPortalPage() {
   const [section, setSection] = useState("clientes");
   const [token, setToken] = useState("");
+  const [currentUserName, setCurrentUserName] = useState("");
+  const [currentUserEmail, setCurrentUserEmail] = useState("");
   const [riderRows, setRiderRows] = useState([]);
   const [stationRows, setStationRows] = useState([]);
   const [riderLegRows, setRiderLegRows] = useState([]);
@@ -104,7 +106,16 @@ export default function StationPortalPage() {
 
   useEffect(() => {
     setToken(localStorage.getItem("m24_token") || "");
+    setCurrentUserName(localStorage.getItem("m24_full_name") || "");
+    setCurrentUserEmail(localStorage.getItem("m24_email") || "");
   }, []);
+
+  useEffect(() => {
+    if (!token || token.split(".").length !== 3) {
+      return;
+    }
+    loadCurrentUser();
+  }, [token]);
 
   useEffect(() => {
     if (!token) return;
@@ -128,6 +139,24 @@ export default function StationPortalPage() {
     if (!token || !stateCode || !municipalityCode || !postalCode) return;
     loadColonies(stateCode, municipalityCode, postalCode);
   }, [token, stateCode, municipalityCode, postalCode]);
+
+  async function loadCurrentUser() {
+    try {
+      const res = await fetch(`${API_BASE}/api/v1/auth/me`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) return;
+      const data = await res.json();
+      const safeName = data.full_name || "";
+      const safeEmail = data.email || "";
+      setCurrentUserName(safeName);
+      setCurrentUserEmail(safeEmail);
+      if (safeName) localStorage.setItem("m24_full_name", safeName);
+      if (safeEmail) localStorage.setItem("m24_email", safeEmail);
+    } catch {
+      // Mantiene el portal operativo aunque no se pueda resolver el perfil.
+    }
+  }
 
   async function loadGeoStates() {
     const headers = { Authorization: `Bearer ${token}` };
@@ -503,6 +532,21 @@ export default function StationPortalPage() {
       <h1>Control Semanal de Comisiones</h1>
       <p className="hero-note">Consulta resultados de riders y estaciones en tiempo real. El cierre semanal requiere rol `admin`.</p>
       <img className="hero-banner" src="/brand/banner.svg" alt="Banner portal estación" />
+
+      <section className="panel session-card">
+        <div className="session-grid">
+          <div>
+            <span className="badge">Sesión y PWA</span>
+            <h3>Usuario visible en todos los módulos</h3>
+            <p className="field-hint">La identidad del operador de estación queda visible mientras registra clientes, administra riders, opera rutas y revisa comisiones.</p>
+          </div>
+          <div className="card session-summary">
+            <p><strong>Usuario:</strong> {currentUserName || "Sin identificar"}</p>
+            <p><strong>Email:</strong> {currentUserEmail || "Sin email cargado"}</p>
+            <p><strong>Estado:</strong> {token ? "Sesión con token disponible" : "Sin token activo"}</p>
+          </div>
+        </div>
+      </section>
 
       <section className="panel">
         <div className="media-grid">

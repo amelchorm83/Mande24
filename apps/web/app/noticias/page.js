@@ -1,3 +1,5 @@
+export const metadata = { title: "Noticias" };
+
 const posts = [
   {
     title: "Lanzamos Mandaditos 24 para pendientes urgentes en zonas urbanas",

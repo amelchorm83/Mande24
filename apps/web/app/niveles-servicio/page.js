@@ -1,3 +1,5 @@
+export const metadata = { title: "Niveles de Servicio" };
+
 const slaLevels = [
   {
     level: "SLA Básico",

@@ -191,6 +191,53 @@ small {
   margin-top: 0.8rem;
 }
 
+.guide-form {
+  display: grid;
+  gap: 1rem;
+  margin-top: 0.8rem;
+}
+
+.guide-form .form-grid {
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+}
+
+.form-block {
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 0.9rem;
+  background: linear-gradient(180deg, #fff, var(--surface-soft));
+}
+
+.form-block-head {
+  display: grid;
+  gap: 0.25rem;
+  margin-bottom: 0.4rem;
+}
+
+.form-span-2 {
+  grid-column: span 2;
+}
+
+.session-card {
+  background: linear-gradient(130deg, #fff7ed, #fff0df);
+}
+
+.session-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.5fr) minmax(280px, 1fr);
+  gap: 1rem;
+  align-items: start;
+}
+
+.session-summary {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.session-summary p {
+  margin: 0;
+}
+
 label {
   display: grid;
   gap: 0.3rem;
@@ -500,10 +547,36 @@ th {
 }
 
 .site-footer-wa {
-  margin-top: 0.55rem;
-  width: 100%;
+  margin-top: 0;
+  width: min(100%, 340px);
   text-align: center;
   white-space: normal;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.8rem;
+}
+
+.site-footer-actions {
+  display: flex;
+  justify-content: center;
+  width: 100%;
+  margin-top: 0.2rem;
+}
+
+.site-footer-wa-icon {
+  width: 18px;
+  height: 18px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.site-footer-wa-icon svg {
+  width: 18px;
+  height: 18px;
+  fill: currentColor;
 }
 
 .site-footer-bottom {
@@ -573,6 +646,14 @@ th {
     align-items: flex-start;
   }
 
+  .session-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .form-span-2 {
+    grid-column: auto;
+  }
+
   .contact-grid {
     grid-template-columns: 1fr;
   }
@@ -591,6 +672,10 @@ th {
 
   .site-footer-bottom .site-footer-metrics {
     grid-template-columns: 1fr;
+  }
+
+  .site-footer-wa {
+    width: 100%;
   }
 }
 

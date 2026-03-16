@@ -1,3 +1,5 @@
+export const metadata = { title: "Nosotros" };
+
 const values = [
   {
     title: "Puntualidad Operativa",

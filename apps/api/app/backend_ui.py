@@ -967,6 +967,7 @@ def _render_layout(
         return (
             "<!doctype html><html lang=\"es\"><head><meta charset=\"utf-8\" />"
             "<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\" />"
+            "<link rel=\"icon\" type=\"image/svg+xml\" href=\"/ERPMande24/icon.svg?v=2\" />"
             "<title>ERPMande24 | Acceso</title>"
             f"<style>{_base_css()}</style></head><body>"
             '<main class="content" style="max-width:860px;margin:0 auto;padding-top:2rem;">'
@@ -982,6 +983,7 @@ def _render_layout(
         return (
             "<!doctype html><html lang=\"es\"><head><meta charset=\"utf-8\" />"
             "<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\" />"
+            "<link rel=\"icon\" type=\"image/svg+xml\" href=\"/ERPMande24/icon.svg?v=2\" />"
             "<title>ERPMande24 | Acceso restringido</title>"
             f"<style>{_base_css()}</style></head><body>"
             '<main class="content" style="max-width:860px;margin:0 auto;padding-top:2rem;">'
@@ -1440,6 +1442,7 @@ def backend_login_page(msg: str = "", kind: str = "ok", next: str = "/ERPMande24
     return (
         "<!doctype html><html lang=\"es\"><head><meta charset=\"utf-8\" />"
         "<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\" />"
+        "<link rel=\"icon\" type=\"image/svg+xml\" href=\"/ERPMande24/icon.svg?v=2\" />"
         "<title>ERPMande24 | Acceso</title>"
         f"<style>{_base_css()}</style></head><body>"
         '<main class="content" style="max-width:780px;margin:0 auto;padding-top:2rem;">'
@@ -1796,7 +1799,7 @@ def backend_sync_sepomex_now(request: Request, db: Session = Depends(get_db)) ->
 
 
 @router.get("/guides/new", response_class=HTMLResponse)
-def backend_new_guide_page(db: Session = Depends(get_db), msg: str = "", kind: str = "ok") -> str:
+def backend_new_guide_page(request: Request, db: Session = Depends(get_db), msg: str = "", kind: str = "ok") -> str:
     services = db.query(Service).filter(Service.active.is_(True)).order_by(Service.name.asc()).all()
     stations = db.query(Station).filter(Station.active.is_(True)).order_by(Station.name.asc()).all()
     states = db.query(GeoState).order_by(GeoState.name.asc()).all()
@@ -1890,35 +1893,38 @@ def backend_new_guide_page(db: Session = Depends(get_db), msg: str = "", kind: s
     content = (
         "<section class=\"panel\"><h3>Captura de Guia</h3>"
         "<form class=\"grid\" method=\"post\" action=\"/ERPMande24/guides/create\">"
+        "<div class=\"full\"><h4>Cliente Origen</h4><p class=\"muted\">Selecciona el perfil y despues confirma contacto y direccion en el orden operativo.</p></div>"
         "<label>Nombre cliente<input name=\"customer_name\" minlength=\"2\" maxlength=\"150\" value=\"Cliente Backend\" required /></label>"
-        "<label>Nombre destino<input name=\"destination_name\" minlength=\"2\" maxlength=\"150\" value=\"Destino Backend\" required /></label>"
         f"<label>Cliente origen<select id=\"guide-origin-client\" name=\"origin_client_id\"><option value=\"\">Selecciona (opcional)</option>{origin_client_options}</select></label>"
-        f"<label>Cliente destino<select id=\"guide-destination-client\" name=\"destination_client_id\"><option value=\"\">Selecciona (opcional)</option>{destination_client_options}</select></label>"
         "<label>Origen telefono fijo (opcional)<input id=\"guide-origin-landline\" name=\"origin_landline_phone\" maxlength=\"40\" /></label>"
         "<label>Origen WhatsApp (obligatorio)<input id=\"guide-origin-whatsapp\" name=\"origin_whatsapp_phone\" maxlength=\"40\" required /></label>"
         "<label>Origen email (obligatorio)<input id=\"guide-origin-email\" name=\"origin_email\" type=\"email\" maxlength=\"190\" required /></label>"
-        "<label>Destino telefono fijo (opcional)<input id=\"guide-destination-landline\" name=\"destination_landline_phone\" maxlength=\"40\" /></label>"
-        "<label>Destino WhatsApp (obligatorio)<input id=\"guide-destination-whatsapp\" name=\"destination_whatsapp_phone\" maxlength=\"40\" required /></label>"
-        "<label>Destino email (obligatorio)<input id=\"guide-destination-email\" name=\"destination_email\" type=\"email\" maxlength=\"190\" required /></label>"
         f"<label>Origen estado<select id=\"guide-origin-state\" name=\"origin_state_code\" required><option value=\"\">Selecciona</option>{state_options}</select></label>"
         "<label>Origen municipio<select id=\"guide-origin-municipality\" name=\"origin_municipality_code\" required><option value=\"\">Selecciona</option></select></label>"
         "<label>Origen codigo postal<select id=\"guide-origin-postal\" name=\"origin_postal_code\" required><option value=\"\">Selecciona</option></select></label>"
         "<label>Origen colonia<select id=\"guide-origin-colony\" name=\"origin_colony_id\" required><option value=\"\">Selecciona</option></select></label>"
         "<label class=\"full\">Origen direccion (solo guia)<input id=\"guide-origin-address\" name=\"origin_address_line\" maxlength=\"255\" required /></label>"
+        "<label>Zona sugerida por origen<input id=\"guide-origin-zone-suggest\" readonly /></label>"
+        "<label>Estacion sugerida por origen<input id=\"guide-origin-station-suggest\" readonly /></label>"
+        "<div class=\"full\"><h4>Cliente Destino</h4><p class=\"muted\">Captura el destino con la misma secuencia para evitar errores de lectura y asignacion.</p></div>"
+        "<label>Nombre destino<input name=\"destination_name\" minlength=\"2\" maxlength=\"150\" value=\"Destino Backend\" required /></label>"
+        f"<label>Cliente destino<select id=\"guide-destination-client\" name=\"destination_client_id\"><option value=\"\">Selecciona (opcional)</option>{destination_client_options}</select></label>"
+        "<label>Destino telefono fijo (opcional)<input id=\"guide-destination-landline\" name=\"destination_landline_phone\" maxlength=\"40\" /></label>"
+        "<label>Destino WhatsApp (obligatorio)<input id=\"guide-destination-whatsapp\" name=\"destination_whatsapp_phone\" maxlength=\"40\" required /></label>"
+        "<label>Destino email (obligatorio)<input id=\"guide-destination-email\" name=\"destination_email\" type=\"email\" maxlength=\"190\" required /></label>"
         f"<label>Destino estado<select id=\"guide-destination-state\" name=\"destination_state_code\" required><option value=\"\">Selecciona</option>{state_options}</select></label>"
         "<label>Destino municipio<select id=\"guide-destination-municipality\" name=\"destination_municipality_code\" required><option value=\"\">Selecciona</option></select></label>"
         "<label>Destino codigo postal<select id=\"guide-destination-postal\" name=\"destination_postal_code\" required><option value=\"\">Selecciona</option></select></label>"
         "<label>Destino colonia<select id=\"guide-destination-colony\" name=\"destination_colony_id\" required><option value=\"\">Selecciona</option></select></label>"
         "<label class=\"full\">Destino direccion (solo guia)<input id=\"guide-destination-address\" name=\"destination_address_line\" maxlength=\"255\" required /></label>"
+        "<label>Zona sugerida por destino<input id=\"guide-destination-zone-suggest\" readonly /></label>"
+        "<label>Estacion sugerida por destino<input id=\"guide-destination-station-suggest\" readonly /></label>"
+        "<div class=\"full\"><h4>Configuracion Operativa</h4><p class=\"muted\">Al final define solicitante, servicio y estaciones para cerrar la captura.</p></div>"
         "<label>Facturar servicio origen<select name=\"origin_wants_invoice\"><option value=\"\">Tomar perfil</option><option value=\"true\">Si</option><option value=\"false\">No</option></select></label>"
         "<label>Solicitante del servicio<select name=\"requester_role\"><option value=\"origin\">Cliente origen</option><option value=\"destination\">Cliente destino</option><option value=\"external\">Tercero / externo</option></select></label>"
         f"<label>Servicio<select name=\"service_id\" required><option value=\"\">Selecciona</option>{service_options}</select></label>"
         f"<label>Estacion<select id=\"guide-station\" name=\"station_id\" required><option value=\"\">Selecciona</option>{station_options}</select></label>"
         f"<label>Estacion destino<select id=\"guide-destination-station\" name=\"destination_station_id\"><option value=\"\">Misma estacion</option>{station_options}</select></label>"
-        "<label>Zona sugerida por origen<input id=\"guide-origin-zone-suggest\" readonly /></label>"
-        "<label>Estacion sugerida por origen<input id=\"guide-origin-station-suggest\" readonly /></label>"
-        "<label>Zona sugerida por destino<input id=\"guide-destination-zone-suggest\" readonly /></label>"
-        "<label>Estacion sugerida por destino<input id=\"guide-destination-station-suggest\" readonly /></label>"
         "<label><input type=\"checkbox\" name=\"use_station_handoff\" /> Usar handoff en estacion (mandadito)</label>"
         "<div class=\"full actions\"><button class=\"primary\" type=\"submit\">Generar Guia</button></div>"
         "</form>"
@@ -2008,7 +2014,7 @@ def backend_new_guide_page(db: Session = Depends(get_db), msg: str = "", kind: s
         "</script>"
     )
 
-    return _render_layout("guides_new", "Generar Guia", "Formulario backend para crear guias con precio automatico por tarifario.", content, msg, kind)
+    return _render_layout("guides_new", "Generar Guia", "Formulario backend para crear guias con precio automatico por tarifario.", content, msg, kind, request=request)
 
 
 @router.post("/guides/create")
@@ -2873,7 +2879,7 @@ def backend_update_delivery_stage(
 
 
 @router.get("/catalogs/services", response_class=HTMLResponse)
-def backend_services(db: Session = Depends(get_db), q: str = "", msg: str = "", kind: str = "ok") -> str:
+def backend_services(request: Request, db: Session = Depends(get_db), q: str = "", msg: str = "", kind: str = "ok") -> str:
     services_query = db.query(Service)
     if q.strip():
         services_query = services_query.filter(Service.name.ilike(f"%{q.strip()}%"))
@@ -2905,14 +2911,14 @@ def backend_services(db: Session = Depends(get_db), q: str = "", msg: str = "", 
     )
 
     content = form + f"<section class=\"panel\"><h3>Lista de Servicios</h3>{_querybox('/ERPMande24/catalogs/services', 'Buscar servicio por nombre', q)}<div class=\"actions\"><a class=\"btn\" href=\"/ERPMande24/export/services.csv\">Exportar CSV</a></div>{_bulk_form('bulk-services', '/ERPMande24/catalogs/services/bulk-toggle', 'Aplicar cambios')}{_table(['Sel', 'ID', 'Nombre', 'Tipo', 'Estado', 'Accion'], rows)}</section>"
-    return _render_layout("services", "Catalogo de Servicios", "Mantenimiento de servicios operativos.", content, msg, kind)
+    return _render_layout("services", "Catalogo de Servicios", "Mantenimiento de servicios operativos.", content, msg, kind, request=request)
 
 
 @router.get("/catalogs/services/{service_id}", response_class=HTMLResponse)
-def backend_service_detail(service_id: str, db: Session = Depends(get_db), msg: str = "", kind: str = "ok") -> str:
+def backend_service_detail(service_id: str, request: Request, db: Session = Depends(get_db), msg: str = "", kind: str = "ok") -> str:
     service = db.query(Service).filter(Service.id == service_id).first()
     if not service:
-        return _render_layout("services", "Servicio", "Detalle", '<section class="panel"><div class="empty">Servicio no encontrado.</div></section>', msg, "error")
+        return _render_layout("services", "Servicio", "Detalle", '<section class="panel"><div class="empty">Servicio no encontrado.</div></section>', msg, "error", request=request)
     content = (
         f"{_tabs([('resumen', 'Resumen'), ('operacion', 'Operacion')])}"
         "<section id=\"resumen\" class=\"panel\"><h3>Ficha de Servicio</h3>"
@@ -2924,7 +2930,7 @@ def backend_service_detail(service_id: str, db: Session = Depends(get_db), msg: 
         "</div></section>"
         "<section id=\"operacion\" class=\"panel\"><h3>Operacion</h3><div class=\"actions\"><a class=\"btn\" href=\"/ERPMande24/catalogs/services\">Volver a servicios</a></div></section>"
     )
-    return _render_layout("services", f"Servicio {service.name}", "Vista detalle tipo formulario.", content, msg, kind)
+    return _render_layout("services", f"Servicio {service.name}", "Vista detalle tipo formulario.", content, msg, kind, request=request)
 
 
 @router.post("/catalogs/services/{service_id}/toggle")
@@ -2989,7 +2995,7 @@ def backend_create_service(
 
 
 @router.get("/catalogs/regions", response_class=HTMLResponse)
-def backend_regions(db: Session = Depends(get_db), q: str = "", msg: str = "", kind: str = "ok") -> str:
+def backend_regions(request: Request, db: Session = Depends(get_db), q: str = "", msg: str = "", kind: str = "ok") -> str:
     rows_query = db.query(Region)
     if q.strip():
         term = f"%{q.strip()}%"
@@ -3020,7 +3026,7 @@ def backend_regions(db: Session = Depends(get_db), q: str = "", msg: str = "", k
         "</form></section>"
     )
     content = form + f"<section class=\"panel\"><h3>Lista de Regiones</h3>{_querybox('/ERPMande24/catalogs/regions', 'Buscar por nombre o codigo', q)}{_bulk_form('bulk-regions', '/ERPMande24/catalogs/regions/bulk-toggle', 'Aplicar cambios')}{_table(['Sel', 'ID', 'Nombre', 'Codigo', 'Estado', 'Accion'], rows)}</section>"
-    return _render_layout("regions", "Catalogo de Regiones", "Regiones para relacionar zonas.", content, msg, kind)
+    return _render_layout("regions", "Catalogo de Regiones", "Regiones para relacionar zonas.", content, msg, kind, request=request)
 
 
 @router.post("/catalogs/regions/create")
@@ -3069,7 +3075,7 @@ def backend_bulk_toggle_regions(
 
 
 @router.get("/catalogs/zones", response_class=HTMLResponse)
-def backend_zones(db: Session = Depends(get_db), q: str = "", msg: str = "", kind: str = "ok") -> str:
+def backend_zones(request: Request, db: Session = Depends(get_db), q: str = "", msg: str = "", kind: str = "ok") -> str:
     regions = {item.id: item for item in db.query(Region).filter(Region.active.is_(True)).order_by(Region.name.asc()).all()}
     zones_query = db.query(Zone)
     if q.strip():
@@ -3104,7 +3110,7 @@ def backend_zones(db: Session = Depends(get_db), q: str = "", msg: str = "", kin
     )
 
     content = form + f"<section class=\"panel\"><h3>Lista de Zonas</h3>{_querybox('/ERPMande24/catalogs/zones', 'Buscar por nombre o codigo', q)}<div class=\"actions\"><a class=\"btn\" href=\"/ERPMande24/export/zones.csv\">Exportar CSV</a></div>{_bulk_form('bulk-zones', '/ERPMande24/catalogs/zones/bulk-toggle', 'Aplicar cambios')}{_table(['Sel', 'ID', 'Nombre', 'Codigo', 'Region', 'Estado', 'Accion'], rows)}</section>"
-    return _render_layout("zones", "Catalogo de Zonas", "Mantenimiento de zonas logisticas.", content, msg, kind)
+    return _render_layout("zones", "Catalogo de Zonas", "Mantenimiento de zonas logisticas.", content, msg, kind, request=request)
 
 
 @router.post("/catalogs/zones/{zone_id}/toggle")
@@ -3139,10 +3145,10 @@ def backend_bulk_toggle_zones(
 
 
 @router.get("/catalogs/zones/{zone_id}", response_class=HTMLResponse)
-def backend_zone_detail(zone_id: str, db: Session = Depends(get_db), msg: str = "", kind: str = "ok") -> str:
+def backend_zone_detail(zone_id: str, request: Request, db: Session = Depends(get_db), msg: str = "", kind: str = "ok") -> str:
     zone = db.query(Zone).filter(Zone.id == zone_id).first()
     if not zone:
-        return _render_layout("zones", "Zona", "Detalle", '<section class="panel"><div class="empty">Zona no encontrada.</div></section>', msg, "error")
+        return _render_layout("zones", "Zona", "Detalle", '<section class="panel"><div class="empty">Zona no encontrada.</div></section>', msg, "error", request=request)
     stations = db.query(Station).filter(Station.zone_id == zone.id).order_by(Station.name.asc()).all()
     states = db.query(GeoState).order_by(GeoState.name.asc()).all()
     coverage = db.query(ZoneGeoRule).filter(ZoneGeoRule.zone_id == zone.id).order_by(ZoneGeoRule.id.desc()).all()
@@ -3251,7 +3257,7 @@ def backend_zone_detail(zone_id: str, db: Session = Depends(get_db), msg: str = 
 </script>
 """
     )
-    return _render_layout("zones", f"Zona {zone.name}", "Vista detalle tipo formulario.", content, msg, kind)
+    return _render_layout("zones", f"Zona {zone.name}", "Vista detalle tipo formulario.", content, msg, kind, request=request)
 
 
 @router.post("/catalogs/zones/{zone_id}/coverage/add")
@@ -3352,7 +3358,7 @@ def backend_create_zone(name: str = Form(...), code: str = Form(...), region_id:
 
 
 @router.get("/catalogs/stations", response_class=HTMLResponse)
-def backend_stations(db: Session = Depends(get_db), q: str = "", msg: str = "", kind: str = "ok") -> str:
+def backend_stations(request: Request, db: Session = Depends(get_db), q: str = "", msg: str = "", kind: str = "ok") -> str:
     zones = db.query(Zone).order_by(Zone.name.asc()).all()
     states = db.query(GeoState).order_by(GeoState.name.asc()).all()
     stations_query = db.query(Station)
@@ -3412,7 +3418,7 @@ def backend_stations(db: Session = Depends(get_db), q: str = "", msg: str = "", 
     )
 
     content = form + f"<section class=\"panel\"><h3>Lista de Estaciones</h3>{_querybox('/ERPMande24/catalogs/stations', 'Buscar estacion por nombre', q)}<div class=\"actions\"><a class=\"btn\" href=\"/ERPMande24/export/stations.csv\">Exportar CSV</a></div>{_bulk_form('bulk-stations', '/ERPMande24/catalogs/stations/bulk-toggle', 'Aplicar cambios')}{_table(['Sel', 'ID', 'Nombre', 'Zona', 'Telefono fijo', 'WhatsApp', 'Responsable', 'Dias', 'Descanso', 'Estado', 'Accion'], rows)}</section>"
-    return _render_layout("stations", "Catalogo de Estaciones", "Mantenimiento de estaciones por zona.", content, msg, kind)
+    return _render_layout("stations", "Catalogo de Estaciones", "Mantenimiento de estaciones por zona.", content, msg, kind, request=request)
 
 
 @router.post("/catalogs/stations/{station_id}/toggle")
@@ -3447,10 +3453,10 @@ def backend_bulk_toggle_stations(
 
 
 @router.get("/catalogs/stations/{station_id}", response_class=HTMLResponse)
-def backend_station_detail(station_id: str, db: Session = Depends(get_db), msg: str = "", kind: str = "ok") -> str:
+def backend_station_detail(station_id: str, request: Request, db: Session = Depends(get_db), msg: str = "", kind: str = "ok") -> str:
     station = db.query(Station).filter(Station.id == station_id).first()
     if not station:
-        return _render_layout("stations", "Estacion", "Detalle", '<section class="panel"><div class="empty">Estacion no encontrada.</div></section>', msg, "error")
+        return _render_layout("stations", "Estacion", "Detalle", '<section class="panel"><div class="empty">Estacion no encontrada.</div></section>', msg, "error", request=request)
     zone = db.query(Zone).filter(Zone.id == station.zone_id).first()
     guides = db.query(Guide).filter(Guide.station_id == station.id).order_by(Guide.created_at.desc()).limit(20).all()
     guide_rows = [[f'<a href="/ERPMande24/guides/{escape(item.guide_code)}">{escape(item.guide_code)}</a>', escape(item.customer_name), f"{item.sale_amount:.2f} {escape(item.currency)}", item.created_at.strftime("%Y-%m-%d %H:%M")] for item in guides]
@@ -3489,7 +3495,7 @@ def backend_station_detail(station_id: str, db: Session = Depends(get_db), msg: 
         "</form></section>"
     )
     content += f"<section id=\"guias\" class=\"panel\"><h3>Ultimas Guias de la Estacion</h3>{_table(['Guia', 'Cliente', 'Monto', 'Creada'], guide_rows)}</section>"
-    return _render_layout("stations", f"Estacion {station.name}", "Vista detalle tipo formulario.", content, msg, kind)
+    return _render_layout("stations", f"Estacion {station.name}", "Vista detalle tipo formulario.", content, msg, kind, request=request)
 
 
 @router.post("/catalogs/stations/create")
@@ -3608,7 +3614,7 @@ def backend_update_station(
 
 
 @router.get("/catalogs/riders", response_class=HTMLResponse)
-def backend_riders(db: Session = Depends(get_db), q: str = "", msg: str = "", kind: str = "ok") -> str:
+def backend_riders(request: Request, db: Session = Depends(get_db), q: str = "", msg: str = "", kind: str = "ok") -> str:
     riders_query = db.query(Rider)
     if q.strip():
         term = f"%{q.strip()}%"
@@ -3677,7 +3683,7 @@ def backend_riders(db: Session = Depends(get_db), q: str = "", msg: str = "", ki
         "</form></section>"
     )
     content = create_form + f"<section class=\"panel\"><h3>Lista de Riders</h3>{_querybox('/ERPMande24/catalogs/riders', 'Buscar rider por ID, nombre o email', q)}<div class=\"actions\"><a class=\"btn\" href=\"/ERPMande24/export/riders.csv\">Exportar CSV</a></div>{_bulk_form('bulk-riders', '/ERPMande24/catalogs/riders/bulk-toggle', 'Aplicar cambios')}{_table(['Sel', 'ID', 'Nombre', 'Email', 'Estacion', 'Zona', 'Telefono fijo', 'WhatsApp', 'Vehiculo', 'Disponible', 'Cuenta', 'Estado', 'Activo', 'Accion'], rows)}</section>"
-    return _render_layout("riders", "Catalogo de Riders", "Vista de riders y su estado operativo.", content, msg, kind)
+    return _render_layout("riders", "Catalogo de Riders", "Vista de riders y su estado operativo.", content, msg, kind, request=request)
 
 
 @router.post("/catalogs/riders/create")
@@ -3869,10 +3875,10 @@ def backend_bulk_toggle_riders(
 
 
 @router.get("/catalogs/riders/{rider_id}", response_class=HTMLResponse)
-def backend_rider_detail(rider_id: str, db: Session = Depends(get_db), msg: str = "", kind: str = "ok") -> str:
+def backend_rider_detail(rider_id: str, request: Request, db: Session = Depends(get_db), msg: str = "", kind: str = "ok") -> str:
     rider = db.query(Rider).filter(Rider.id == rider_id).first()
     if not rider:
-        return _render_layout("riders", "Rider", "Detalle", '<section class="panel"><div class="empty">Rider no encontrado.</div></section>', msg, "error")
+        return _render_layout("riders", "Rider", "Detalle", '<section class="panel"><div class="empty">Rider no encontrado.</div></section>', msg, "error", request=request)
     user = db.query(User).filter(User.id == rider.user_id).first()
     zone = db.query(Zone).filter(Zone.id == rider.zone_id).first() if rider.zone_id else None
     deliveries = db.query(Delivery).filter(Delivery.rider_id == rider.id).order_by(Delivery.updated_at.desc()).limit(20).all()
@@ -3918,7 +3924,7 @@ def backend_rider_detail(rider_id: str, db: Session = Depends(get_db), msg: str 
         "</form></section>"
     )
     content += f"<section id=\"entregas\" class=\"panel\"><h3>Entregas Asignadas</h3>{_table(['Delivery', 'Guia', 'Etapa', 'Actualizada'], delivery_rows)}</section>"
-    return _render_layout("riders", f"Rider {rider.id}", "Vista detalle tipo formulario.", content, msg, kind)
+    return _render_layout("riders", f"Rider {rider.id}", "Vista detalle tipo formulario.", content, msg, kind, request=request)
 
 
 @router.get("/geo/municipalities", response_class=JSONResponse)
@@ -4064,6 +4070,7 @@ def backend_geo_service_coverage(
 
 @router.get("/catalogs/clients", response_class=HTMLResponse)
 def backend_clients(
+    request: Request,
     db: Session = Depends(get_db),
     q: str = "",
     client_kind: str = "",
@@ -4238,7 +4245,7 @@ def backend_clients(
         f"{_table(['ID', 'Nombre', 'Tipo', 'Estado', 'Municipio', 'CP', 'Colonia', 'Direccion', 'Telefono fijo', 'WhatsApp', 'Factura Origen', 'Usuario Portal', 'Estado Registro', 'Accion'], rows)}"
         "</section>"
     )
-    return _render_layout("clients", "Catalogo de Clientes", "Clientes origen y destino con direccion y facturacion.", create_form + content + cascade_script, msg, kind)
+    return _render_layout("clients", "Catalogo de Clientes", "Clientes origen y destino con direccion y facturacion.", create_form + content + cascade_script, msg, kind, request=request)
 
 
 @router.post("/catalogs/clients/create")
@@ -4342,10 +4349,10 @@ def backend_create_client(
 
 
 @router.get("/catalogs/clients/{client_id}", response_class=HTMLResponse)
-def backend_client_detail(client_id: str, db: Session = Depends(get_db), msg: str = "", kind: str = "ok") -> str:
+def backend_client_detail(client_id: str, request: Request, db: Session = Depends(get_db), msg: str = "", kind: str = "ok") -> str:
     client = db.query(ClientProfile).filter(ClientProfile.id == client_id).first()
     if not client:
-        return _render_layout("clients", "Cliente", "Detalle", '<section class="panel"><div class="empty">Cliente no encontrado.</div></section>', msg, "error")
+        return _render_layout("clients", "Cliente", "Detalle", '<section class="panel"><div class="empty">Cliente no encontrado.</div></section>', msg, "error", request=request)
 
     states = db.query(GeoState).order_by(GeoState.name.asc()).all()
     municipalities = (
@@ -4456,7 +4463,7 @@ def backend_client_detail(client_id: str, db: Session = Depends(get_db), msg: st
 })();
 </script>
 """
-    return _render_layout("clients", f"Cliente {client.display_name}", "Edicion de catalogo de clientes.", content, msg, kind)
+    return _render_layout("clients", f"Cliente {client.display_name}", "Edicion de catalogo de clientes.", content, msg, kind, request=request)
 
 
 @router.post("/catalogs/clients/{client_id}/update")
@@ -4562,7 +4569,7 @@ def backend_update_client(
 
 
 @router.get("/catalogs/pricing-rules", response_class=HTMLResponse)
-def backend_pricing_rules(db: Session = Depends(get_db), msg: str = "", kind: str = "ok") -> str:
+def backend_pricing_rules(request: Request, db: Session = Depends(get_db), msg: str = "", kind: str = "ok") -> str:
     services = db.query(Service).order_by(Service.name.asc()).all()
     stations = db.query(Station).order_by(Station.name.asc()).all()
     rules = db.query(PricingRule).order_by(PricingRule.id.desc()).limit(300).all()
@@ -4604,7 +4611,7 @@ def backend_pricing_rules(db: Session = Depends(get_db), msg: str = "", kind: st
     )
 
     content = form + f"<section class=\"panel\"><h3>Lista de Tarifas</h3><div class=\"actions\"><a class=\"btn\" href=\"/ERPMande24/export/pricing-rules.csv\">Exportar CSV</a></div>{_bulk_form('bulk-pricing', '/ERPMande24/catalogs/pricing-rules/bulk-toggle', 'Aplicar cambios')}{_table(['Sel', 'ID', 'Servicio', 'Estacion', 'Precio', 'Estado', 'Accion'], rows)}</section>"
-    return _render_layout("pricing", "Catalogo de Tarifas", "Reglas de precio por servicio y estacion.", content, msg, kind)
+    return _render_layout("pricing", "Catalogo de Tarifas", "Reglas de precio por servicio y estacion.", content, msg, kind, request=request)
 
 
 @router.post("/catalogs/pricing-rules/create")
@@ -5452,7 +5459,7 @@ def backend_update_contact_lead_status(
 
 
 @router.get("/commissions/riders", response_class=HTMLResponse)
-def backend_rider_commissions(db: Session = Depends(get_db), msg: str = "", kind: str = "ok") -> str:
+def backend_rider_commissions(request: Request, db: Session = Depends(get_db), msg: str = "", kind: str = "ok") -> str:
     rows_db = db.query(RiderCommission).order_by(RiderCommission.week_start.desc()).limit(200).all()
     rows = [
         [
@@ -5473,11 +5480,11 @@ def backend_rider_commissions(db: Session = Depends(get_db), msg: str = "", kind
         "</form></section>"
     )
     content = close_form + f"<section class=\"panel\"><h3>Historico Comisiones Rider</h3><div class=\"actions\"><a class=\"btn\" href=\"/ERPMande24/export/commissions-riders.csv\">Exportar CSV</a></div>{_table(['ID', 'Rider ID', 'Week Start', 'Entregas', 'Total', 'Estado'], rows)}</section>"
-    return _render_layout("comm_rider", "Comisiones Rider", "Snapshots semanales de comision por rider.", content, msg, kind)
+    return _render_layout("comm_rider", "Comisiones Rider", "Snapshots semanales de comision por rider.", content, msg, kind, request=request)
 
 
 @router.get("/commissions/stations", response_class=HTMLResponse)
-def backend_station_commissions(db: Session = Depends(get_db), msg: str = "", kind: str = "ok") -> str:
+def backend_station_commissions(request: Request, db: Session = Depends(get_db), msg: str = "", kind: str = "ok") -> str:
     rows_db = db.query(StationCommission).order_by(StationCommission.week_start.desc()).limit(200).all()
     rows = [
         [
@@ -5499,7 +5506,7 @@ def backend_station_commissions(db: Session = Depends(get_db), msg: str = "", ki
         "</form></section>"
     )
     content = close_form + f"<section class=\"panel\"><h3>Historico Comisiones Estacion</h3><div class=\"actions\"><a class=\"btn\" href=\"/ERPMande24/export/commissions-stations.csv\">Exportar CSV</a></div>{_table(['ID', 'Station ID', 'Week Start', 'Guias', 'Venta', 'Total', 'Estado'], rows)}</section>"
-    return _render_layout("comm_station", "Comisiones Estacion", "Snapshots semanales de comision por estacion.", content, msg, kind)
+    return _render_layout("comm_station", "Comisiones Estacion", "Snapshots semanales de comision por estacion.", content, msg, kind, request=request)
 
 
 @router.post("/commissions/riders/close")

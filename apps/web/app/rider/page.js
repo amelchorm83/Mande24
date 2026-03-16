@@ -36,6 +36,8 @@ function formatStatus(value) {
 export default function RiderPortalPage() {
   const [section, setSection] = useState("actualizar");
   const [token, setToken] = useState("");
+  const [currentUserName, setCurrentUserName] = useState("");
+  const [currentUserEmail, setCurrentUserEmail] = useState("");
   const [deliveryId, setDeliveryId] = useState("");
   const [routeGuideCode, setRouteGuideCode] = useState("");
   const [routeLegRows, setRouteLegRows] = useState([]);
@@ -49,7 +51,34 @@ export default function RiderPortalPage() {
 
   useEffect(() => {
     setToken(localStorage.getItem("m24_token") || "");
+    setCurrentUserName(localStorage.getItem("m24_full_name") || "");
+    setCurrentUserEmail(localStorage.getItem("m24_email") || "");
   }, []);
+
+  useEffect(() => {
+    if (!token || token.split(".").length !== 3) {
+      return;
+    }
+    loadCurrentUser();
+  }, [token]);
+
+  async function loadCurrentUser() {
+    try {
+      const res = await fetch(`${API_BASE}/api/v1/auth/me`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) return;
+      const data = await res.json();
+      const safeName = data.full_name || "";
+      const safeEmail = data.email || "";
+      setCurrentUserName(safeName);
+      setCurrentUserEmail(safeEmail);
+      if (safeName) localStorage.setItem("m24_full_name", safeName);
+      if (safeEmail) localStorage.setItem("m24_email", safeEmail);
+    } catch {
+      // Mantiene el portal operativo aunque no se pueda resolver el perfil.
+    }
+  }
 
   async function updateStage(e) {
     e.preventDefault();
@@ -175,6 +204,21 @@ export default function RiderPortalPage() {
       <h1>Control de Entrega en Ruta</h1>
       <p className="hero-note">Captura el <code>delivery_id</code> generado en Cliente y actualiza la entrega por etapas. Para <code>delivered</code> se requiere evidencia y firma.</p>
       <img className="hero-banner" src="/brand/banner.svg" alt="Banner portal repartidor" />
+
+      <section className="panel session-card">
+        <div className="session-grid">
+          <div>
+            <span className="badge">Sesión y PWA</span>
+            <h3>Usuario visible en todos los módulos</h3>
+            <p className="field-hint">La identidad del repartidor permanece visible mientras actualiza etapas, revisa rutas y ejecuta tramos asignados.</p>
+          </div>
+          <div className="card session-summary">
+            <p><strong>Usuario:</strong> {currentUserName || "Sin identificar"}</p>
+            <p><strong>Email:</strong> {currentUserEmail || "Sin email cargado"}</p>
+            <p><strong>Estado:</strong> {token ? "Sesión con token disponible" : "Sin token activo"}</p>
+          </div>
+        </div>
+      </section>
 
       <section className="panel">
         <div className="media-grid">
