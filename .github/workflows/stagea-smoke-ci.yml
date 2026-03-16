@@ -64,6 +64,10 @@ jobs:
           }
           throw "API did not become healthy in time."
 
+      - name: Run DB migrations
+        run: |
+          docker compose exec -T api alembic upgrade head
+
       - name: Seed minimal geo catalog
         run: |
           docker compose exec -T api python -m app.scripts.seed_smoke_geo
