@@ -71,8 +71,7 @@ jobs:
         shell: pwsh
         run: |
           $reportPath = "${{ github.workspace }}/stagea-smoke-report.json"
-          Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass -Force
-          & pwsh -ExecutionPolicy Bypass -File "${{ github.workspace }}/scripts/stagea-smoke.ps1" -ApiBase "http://localhost:8000" -ReportPath $reportPath
+          & "${{ github.workspace }}/scripts/stagea-smoke.ps1" -ApiBase "http://localhost:8000" -ReportPath $reportPath
 
       - name: Upload Stage A smoke report
         if: always()
