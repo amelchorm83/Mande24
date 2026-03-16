@@ -66,7 +66,7 @@ jobs:
 
       - name: Run DB migrations
         run: |
-          docker compose exec -T api alembic upgrade head
+          docker compose exec -T api python -m alembic upgrade head
 
       - name: Seed minimal geo catalog
         run: |
