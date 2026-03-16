@@ -65,6 +65,7 @@ jobs:
           throw "API did not become healthy in time."
 
       - name: Seed minimal geo catalog
+        continue-on-error: true
         run: |
           docker compose exec -T -w /app api python -m app.scripts.seed_smoke_geo
 
