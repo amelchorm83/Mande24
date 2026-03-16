@@ -2,9 +2,10 @@ from datetime import date, datetime, timedelta, timezone
 from collections import defaultdict
 
 from sqlalchemy import func
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from app.db.models import Guide, RiderCommission, RouteLeg, ServiceType, StationCommission
+from app.db.models import CommissionClose, Guide, RiderCommission, RouteLeg, ServiceType, StationCommission
 
 
 def resolve_week_window(week_start: str | None, previous_week: bool = False) -> tuple[datetime, datetime, date]:
@@ -152,6 +153,7 @@ def close_rider_week(
         snapshot = (
             db.query(RiderCommission)
             .filter(RiderCommission.rider_id == rider_id, RiderCommission.week_start == monday)
+            .with_for_update()
             .first()
         )
         if snapshot:
@@ -185,6 +187,7 @@ def close_station_week(
         snapshot = (
             db.query(StationCommission)
             .filter(StationCommission.station_id == station_id, StationCommission.week_start == monday)
+            .with_for_update()
             .first()
         )
         if snapshot:
@@ -209,13 +212,50 @@ def close_station_week(
 
 def close_weekly_commissions(db: Session, week_start: str | None = None, previous_week: bool = False) -> dict[str, int]:
     start_dt, end_dt, monday = resolve_week_window(week_start=week_start, previous_week=previous_week)
+
+    # Idempotent: return existing result if this week was already closed successfully.
+    existing = (
+        db.query(CommissionClose)
+        .filter(CommissionClose.week_start == monday, CommissionClose.status == "success")
+        .first()
+    )
+    if existing:
+        return {
+            "rider_snapshots": existing.rider_snapshots,
+            "station_snapshots": existing.station_snapshots,
+            "week_start": monday.isoformat(),
+            "already_closed": True,
+        }
+
+    # Claim the closure slot; unique constraint blocks concurrent runs for same week.
+    close_record = CommissionClose(week_start=monday, status="in_progress")
+    db.add(close_record)
+    try:
+        db.flush()
+    except IntegrityError:
+        db.rollback()
+        raise ValueError(f"Commission close already in progress for week {monday.isoformat()}")
+
     try:
         rider_rows = close_rider_week(db, monday, start_dt, end_dt, commit=False)
         station_rows = close_station_week(db, monday, start_dt, end_dt, commit=False)
+        close_record.status = "success"
+        close_record.rider_snapshots = len(rider_rows)
+        close_record.station_snapshots = len(station_rows)
+        close_record.completed_at = datetime.now(timezone.utc)
         db.commit()
-    except Exception:
+    except Exception as exc:
         db.rollback()
+        failed_record = db.query(CommissionClose).filter(CommissionClose.week_start == monday).first()
+        if not failed_record:
+            failed_record = CommissionClose(week_start=monday)
+            db.add(failed_record)
+        failed_record.status = "failed"
+        failed_record.error_message = str(exc)[:2000]
+        failed_record.completed_at = datetime.now(timezone.utc)
+        db.commit()
         raise
+
     return {
         "rider_snapshots": len(rider_rows),
         "station_snapshots": len(station_rows),

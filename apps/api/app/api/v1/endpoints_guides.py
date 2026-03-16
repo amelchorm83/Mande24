@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 
 from app.api.deps import get_current_user, require_roles
 from app.core.user_roles import user_has_role
-from app.db.models import ClientProfile, Delivery, GeoColony, Guide, GuideParty, PricingRule, Rider, RiderAccountStatus, RouteLeg, Service, ServiceType, Station, StationCoverageRule, WorkflowStage, Zone
+from app.db.models import ClientProfile, Delivery, GeoColony, Guide, GuideParty, PricingRule, Rider, RiderAccountStatus, RouteLeg, RouteLegStatusChange, Service, ServiceType, Station, StationCoverageRule, WorkflowStage, Zone
 from app.db.models import User, UserRole
 from app.db.session import get_db
 from app.models.schemas import (
@@ -735,10 +735,24 @@ def assign_route_leg(
             for leg_item in legs:
                 leg_item.assigned_rider_id = rider.id
                 if leg_item.status == "planned":
+                    db.add(RouteLegStatusChange(
+                        route_leg_id=leg_item.id,
+                        guide_id=leg_item.guide_id,
+                        old_status=leg_item.status,
+                        new_status="assigned",
+                        changed_by_user_id=user.id,
+                    ))
                     leg_item.status = "assigned"
         else:
             route_leg.assigned_rider_id = rider.id
             if route_leg.status == "planned":
+                db.add(RouteLegStatusChange(
+                    route_leg_id=route_leg.id,
+                    guide_id=route_leg.guide_id,
+                    old_status=route_leg.status,
+                    new_status="assigned",
+                    changed_by_user_id=user.id,
+                ))
                 route_leg.status = "assigned"
 
     if payload.status:
@@ -748,6 +762,14 @@ def assign_route_leg(
         if user_has_role(user, UserRole.rider) and route_leg.assigned_rider_id != rider_profile.id:
             raise HTTPException(status_code=403, detail="Route leg is not assigned to current rider")
         _ensure_route_leg_transition(db, route_leg, new_status)
+        if route_leg.status != new_status:
+            db.add(RouteLegStatusChange(
+                route_leg_id=route_leg.id,
+                guide_id=route_leg.guide_id,
+                old_status=route_leg.status,
+                new_status=new_status,
+                changed_by_user_id=user.id,
+            ))
         route_leg.status = new_status
 
     route_leg.updated_at = datetime.now(timezone.utc)

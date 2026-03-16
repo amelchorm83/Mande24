@@ -1,0 +1,63 @@
+name: StageA Smoke CI
+
+on:
+  push:
+    paths:
+      - "apps/api/**"
+      - "scripts/stagea-smoke.ps1"
+      - ".github/workflows/stagea-smoke-ci.yml"
+  pull_request:
+    paths:
+      - "apps/api/**"
+      - "scripts/stagea-smoke.ps1"
+      - ".github/workflows/stagea-smoke-ci.yml"
+  workflow_dispatch:
+
+jobs:
+  stagea-smoke:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Start API stack
+        run: |
+          docker compose up -d --build postgres redis api
+
+      - name: Wait for API health
+        shell: pwsh
+        run: |
+          $maxTries = 60
+          for ($i = 1; $i -le $maxTries; $i++) {
+            try {
+              $r = Invoke-RestMethod -Uri "http://localhost:8000/api/v1/health" -Method Get -TimeoutSec 5
+              if ($r.status -eq "ok") {
+                Write-Host "API ready"
+                exit 0
+              }
+            } catch {
+            }
+            Start-Sleep -Seconds 2
+          }
+          throw "API did not become healthy in time."
+
+      - name: Run Stage A smoke
+        shell: pwsh
+        run: |
+          $reportPath = "${{ github.workspace }}/stagea-smoke-report.json"
+          Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass -Force
+          & pwsh -ExecutionPolicy Bypass -File "${{ github.workspace }}/scripts/stagea-smoke.ps1" -ApiBase "http://localhost:8000" -ReportPath $reportPath
+
+      - name: Upload Stage A smoke report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: stagea-smoke-report
+          path: stagea-smoke-report.json
+          if-no-files-found: warn
+
+      - name: Show API logs on failure
+        if: failure()
+        run: |
+          docker compose logs api --tail 200

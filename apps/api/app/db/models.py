@@ -457,3 +457,31 @@ class ContactLead(Base):
         default=lambda: datetime.now(timezone.utc),
         onupdate=lambda: datetime.now(timezone.utc),
     )
+
+
+class CommissionClose(Base):
+    """Tracks each weekly commission close run for idempotency and audit."""
+    __tablename__ = "commission_closes"
+    __table_args__ = (UniqueConstraint("week_start", name="uq_commission_close_week"),)
+
+    id: Mapped[str] = mapped_column(String(32), primary_key=True, default=lambda: uuid4().hex)
+    week_start: Mapped[date] = mapped_column()
+    status: Mapped[str] = mapped_column(String(20), default="in_progress")  # in_progress | success | failed
+    rider_snapshots: Mapped[int] = mapped_column(Integer, default=0)
+    station_snapshots: Mapped[int] = mapped_column(Integer, default=0)
+    started_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    error_message: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+
+class RouteLegStatusChange(Base):
+    """Immutable audit log for every RouteLeg status transition."""
+    __tablename__ = "route_leg_status_changes"
+
+    id: Mapped[str] = mapped_column(String(32), primary_key=True, default=lambda: uuid4().hex)
+    route_leg_id: Mapped[str] = mapped_column(String(32), ForeignKey("route_legs.id", ondelete="CASCADE"), index=True)
+    guide_id: Mapped[str] = mapped_column(String(32), ForeignKey("guides.id", ondelete="CASCADE"), index=True)
+    old_status: Mapped[str] = mapped_column(String(20))
+    new_status: Mapped[str] = mapped_column(String(20))
+    changed_by_user_id: Mapped[str | None] = mapped_column(String(32), ForeignKey("users.id"), nullable=True, index=True)
+    changed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
