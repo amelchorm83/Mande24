@@ -1,10 +1,13 @@
-from app.db.models import GeoColony, GeoMunicipality, GeoPostalCode, GeoState
+from app.db.models import Base, GeoColony, GeoMunicipality, GeoPostalCode, GeoState
 from app.db.session import SessionLocal
 
 
 def main() -> None:
     db = SessionLocal()
     try:
+        # Ensure geo tables exist in fresh CI databases before querying/inserting.
+        Base.metadata.create_all(bind=db.get_bind())
+
         state = db.query(GeoState).filter(GeoState.code == "SIN").first()
         if not state:
             state = GeoState(code="SIN", name="Sinaloa")
