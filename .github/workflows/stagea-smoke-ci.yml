@@ -42,6 +42,10 @@ jobs:
           }
           throw "API did not become healthy in time."
 
+      - name: Seed minimal geo catalog
+        run: |
+          docker compose exec -T api python -m app.scripts.seed_smoke_geo
+
       - name: Run Stage A smoke
         shell: pwsh
         run: |
