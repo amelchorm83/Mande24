@@ -1,4 +1,5 @@
 name: StageA Smoke CI
+# Retry marker: keep this workflow touchable to force reruns when needed.
 
 on:
   push:
