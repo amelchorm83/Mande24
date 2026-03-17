@@ -1,5 +1,5 @@
 ﻿{
-    "generated_at_utc":  "2026-03-16T22:30:50Z",
+    "generated_at_utc":  "2026-03-16T22:49:32Z",
     "api_base":  "http://localhost:8000",
     "seed":  {
                  "zone_id":  "11295b92104842c68ce0a00500c490cf",
@@ -7,7 +7,7 @@
                  "service_id":  "f0c62965c481436fa07ab8fdc78ecc34"
              },
     "guide":  {
-                  "guide_code":  "M24-20260316-7F0F80",
+                  "guide_code":  "M24-20260316-39C916",
                   "customer_name":  "Smoke API StageA",
                   "destination_name":  "Smoke API Dest",
                   "service_type":  "messaging",
@@ -18,11 +18,11 @@
                   "destination_station_id":  "9c73b7c57ab34c8998ccc23985fec0f7",
                   "sale_amount":  120.0,
                   "currency":  "MXN",
-                  "created_at":  "2026-03-16T22:30:43.575974Z"
+                  "created_at":  "2026-03-16T22:49:26.763528Z"
               },
     "route_leg_before":  {
-                             "id":  "b1494e8d711a4ffeb4fd9f18109b7c43",
-                             "guide_code":  "M24-20260316-7F0F80",
+                             "id":  "7c29a9d50130492dbf15719fbc5ba331",
+                             "guide_code":  "M24-20260316-39C916",
                              "sequence":  1,
                              "leg_type":  "pickup_to_origin_station",
                              "from_node_type":  "client_origin",
@@ -34,11 +34,11 @@
                              "station_fee_amount":  0.0,
                              "currency":  "MXN",
                              "status":  "planned",
-                             "updated_at":  "2026-03-16T22:30:43.642400Z"
+                             "updated_at":  "2026-03-16T22:49:26.779661Z"
                          },
     "route_leg_after":  {
-                            "id":  "b1494e8d711a4ffeb4fd9f18109b7c43",
-                            "guide_code":  "M24-20260316-7F0F80",
+                            "id":  "7c29a9d50130492dbf15719fbc5ba331",
+                            "guide_code":  "M24-20260316-39C916",
                             "sequence":  1,
                             "leg_type":  "pickup_to_origin_station",
                             "from_node_type":  "client_origin",
@@ -50,7 +50,7 @@
                             "station_fee_amount":  0.0,
                             "currency":  "MXN",
                             "status":  "assigned",
-                            "updated_at":  "2026-03-16T22:30:44.034458Z"
+                            "updated_at":  "2026-03-16T22:49:26.944253Z"
                         },
     "health":  {
                    "status":  "ok",
