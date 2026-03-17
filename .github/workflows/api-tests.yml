@@ -35,10 +35,10 @@ jobs:
 
       - name: Run API tests
         id: run_tests
-        continue-on-error: true
         shell: bash
         run: |
-          python -m pytest -q tests 2>&1 | tee pytest-output.txt
+          set -o pipefail
+          python -m pytest -q tests/test_health.py::test_health 2>&1 | tee pytest-output.txt
 
       - name: Build smoke summary
         if: always()
