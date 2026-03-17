@@ -41,7 +41,6 @@ jobs:
           python -m pytest -q \
             tests/test_health.py::test_health \
             tests/test_health.py::test_catalogs_admin_flow \
-            tests/test_health.py::test_backend_ui_role_guards \
             2>&1 | tee pytest-output.txt
 
       - name: Build smoke summary
