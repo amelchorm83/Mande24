@@ -273,21 +273,21 @@ class GuideCreate(BaseModel):
     origin_client_id: str | None = None
     destination_client_id: str | None = None
     origin_landline_phone: str | None = Field(default=None, max_length=40)
-    origin_whatsapp_phone: str = Field(min_length=3, max_length=40)
-    origin_email: str = Field(min_length=5, max_length=190)
-    origin_state_code: str = Field(min_length=2, max_length=10)
-    origin_municipality_code: str = Field(min_length=2, max_length=20)
-    origin_postal_code: str = Field(min_length=3, max_length=10)
-    origin_colony_id: str = Field(min_length=1, max_length=64)
-    origin_address_line: str = Field(min_length=2, max_length=255)
+    origin_whatsapp_phone: str = Field(default="", max_length=40)
+    origin_email: str = Field(default="", max_length=190)
+    origin_state_code: str = Field(default="", max_length=10)
+    origin_municipality_code: str = Field(default="", max_length=20)
+    origin_postal_code: str = Field(default="", max_length=10)
+    origin_colony_id: str = Field(default="", max_length=64)
+    origin_address_line: str = Field(default="", max_length=255)
     destination_landline_phone: str | None = Field(default=None, max_length=40)
-    destination_whatsapp_phone: str = Field(min_length=3, max_length=40)
-    destination_email: str = Field(min_length=5, max_length=190)
-    destination_state_code: str = Field(min_length=2, max_length=10)
-    destination_municipality_code: str = Field(min_length=2, max_length=20)
-    destination_postal_code: str = Field(min_length=3, max_length=10)
-    destination_colony_id: str = Field(min_length=1, max_length=64)
-    destination_address_line: str = Field(min_length=2, max_length=255)
+    destination_whatsapp_phone: str = Field(default="", max_length=40)
+    destination_email: str = Field(default="", max_length=190)
+    destination_state_code: str = Field(default="", max_length=10)
+    destination_municipality_code: str = Field(default="", max_length=20)
+    destination_postal_code: str = Field(default="", max_length=10)
+    destination_colony_id: str = Field(default="", max_length=64)
+    destination_address_line: str = Field(default="", max_length=255)
     origin_wants_invoice: bool | None = None
     requester_role: str = Field(default="origin", pattern="^(origin|destination|external)$")
     service_id: str
@@ -519,6 +519,11 @@ class PublicQuoteRequest(BaseModel):
     zone_type: str = Field(default="urbana", max_length=40)
     service_type: str = Field(default="programado", max_length=40)
     rural_complexity: str = Field(default="media", max_length=20)
+    origin_state_code: str | None = Field(default=None, max_length=10)
+    destination_state_code: str | None = Field(default=None, max_length=10)
+    origin_zone_code: str | None = Field(default=None, max_length=30)
+    destination_zone_code: str | None = Field(default=None, max_length=30)
+    use_station_handoff: bool = False
 
 
 class PublicQuoteResponse(BaseModel):
@@ -545,4 +550,3 @@ class PublicTrackingResponse(BaseModel):
     currency: str
     has_evidence: bool
     has_signature: bool
-    note: str | None

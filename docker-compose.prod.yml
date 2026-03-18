@@ -1,0 +1,52 @@
+services:
+  api:
+    build:
+      context: ./apps/api
+      dockerfile: Dockerfile.prod
+    container_name: mande24-api-prod
+    restart: always
+    env_file:
+      - .env
+    environment:
+      ENVIRONMENT: production
+      AUTO_CREATE_TABLES: "false"
+      CORS_ALLOW_CREDENTIALS: "true"
+    ports:
+      - "8000:8000"
+    depends_on:
+      - postgres
+      - redis
+
+  web:
+    build:
+      context: ./apps/web
+      dockerfile: Dockerfile.prod
+    container_name: mande24-web-prod
+    restart: always
+    env_file:
+      - .env
+    environment:
+      NODE_ENV: production
+    ports:
+      - "3000:3000"
+    depends_on:
+      - api
+
+  postgres:
+    image: postgres:16
+    container_name: mande24-postgres-prod
+    restart: always
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - postgres_data_prod:/var/lib/postgresql/data
+
+  redis:
+    image: redis:7-alpine
+    container_name: mande24-redis-prod
+    restart: always
+
+volumes:
+  postgres_data_prod:

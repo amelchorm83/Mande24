@@ -44,6 +44,7 @@ from app.db.models import (
     ZoneSurchargeRule,
 )
 from app.db.sepomex_sync import sync_sepomex_catalog
+from app.core.config import settings
 from app.core.security import create_access_token, decode_access_token, hash_password, verify_password
 from app.core.user_roles import ensure_user_roles, get_user_roles_sorted, user_has_role
 from app.db.session import get_db
@@ -106,6 +107,10 @@ RIDER_STATE_LABELS = {
     "rejected": "Rechazado",
 }
 BLOCKED_ERP_ROLES = {"client", "rider"}
+
+
+def _erp_cookie_secure() -> bool:
+    return settings.environment.strip().lower() not in {"local", "dev", "development", "test"}
 
 MODULE_ICON_SVG = {
     "dashboard": "<rect x='3' y='3' width='18' height='18' rx='4'/><path d='M7.5 15.5v-3.5M12 15.5V8.5M16.5 15.5v-5.5'/>",
@@ -1426,7 +1431,7 @@ def backend_select_role(role: str = Form("admin"), return_to: str = Form("/ERPMa
     response = RedirectResponse(url=safe_next, status_code=303)
     selected = role.strip().lower()
     if selected in ROLE_OPTIONS:
-        response.set_cookie("m24_erp_active_role", selected, httponly=False, samesite="lax")
+        response.set_cookie("m24_erp_active_role", selected, httponly=False, samesite="lax", secure=_erp_cookie_secure())
     else:
         response.delete_cookie("m24_erp_active_role")
     return response
@@ -1493,11 +1498,12 @@ def backend_login_submit(
 
     token = create_access_token(subject=user.id, role=role_value, roles=role_values)
     response = RedirectResponse(url=safe_next, status_code=303)
-    response.set_cookie("m24_erp_token", token, httponly=True, samesite="lax")
-    response.set_cookie("m24_erp_active_role", role_value, httponly=False, samesite="lax")
-    response.set_cookie("m24_erpmande24_user_email", user.email, httponly=False, samesite="lax")
-    response.set_cookie("m24_erpmande24_user_id", user.id, httponly=False, samesite="lax")
-    response.set_cookie("m24_erp_user_name", user.full_name, httponly=False, samesite="lax")
+    secure_cookie = _erp_cookie_secure()
+    response.set_cookie("m24_erp_token", token, httponly=True, samesite="lax", secure=secure_cookie)
+    response.set_cookie("m24_erp_active_role", role_value, httponly=False, samesite="lax", secure=secure_cookie)
+    response.set_cookie("m24_erpmande24_user_email", user.email, httponly=False, samesite="lax", secure=secure_cookie)
+    response.set_cookie("m24_erpmande24_user_id", user.id, httponly=False, samesite="lax", secure=secure_cookie)
+    response.set_cookie("m24_erp_user_name", user.full_name, httponly=False, samesite="lax", secure=secure_cookie)
     return response
 
 
@@ -1522,14 +1528,15 @@ def backend_select_operator(
     response = RedirectResponse(url=return_to or "/ERPMande24", status_code=303)
     clean_email = user_email.strip().lower()
     clean_id = user_id.strip()
+    secure_cookie = _erp_cookie_secure()
 
     if clean_email:
-        response.set_cookie("m24_erpmande24_user_email", clean_email, httponly=False, samesite="lax")
+        response.set_cookie("m24_erpmande24_user_email", clean_email, httponly=False, samesite="lax", secure=secure_cookie)
     else:
         response.delete_cookie("m24_erpmande24_user_email")
 
     if clean_id:
-        response.set_cookie("m24_erpmande24_user_id", clean_id, httponly=False, samesite="lax")
+        response.set_cookie("m24_erpmande24_user_id", clean_id, httponly=False, samesite="lax", secure=secure_cookie)
     else:
         response.delete_cookie("m24_erpmande24_user_id")
 

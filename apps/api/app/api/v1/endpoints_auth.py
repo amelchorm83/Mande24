@@ -1,6 +1,8 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy.orm import Session
 
+from app.core.config import settings
+from app.core.rate_limit import enforce_rate_limit, resolve_client_identifier
 from app.api.deps import get_current_user
 from app.core.security import create_access_token, hash_password, verify_password
 from app.core.user_roles import ensure_user_roles, get_user_roles_sorted
@@ -12,8 +14,16 @@ router = APIRouter(prefix="/auth", tags=["auth"])
 
 
 @router.post("/register", response_model=UserResponse)
-def register(payload: RegisterRequest, db: Session = Depends(get_db)) -> UserResponse:
+def register(payload: RegisterRequest, request: Request, db: Session = Depends(get_db)) -> UserResponse:
     email = payload.email.strip().lower()
+    identifier = resolve_client_identifier(request, extra=email)
+    enforce_rate_limit(
+        "auth:register",
+        identifier,
+        limit=settings.auth_register_rate_limit,
+        window_seconds=settings.auth_rate_limit_window_seconds,
+    )
+
     existing = db.query(User).filter(User.email == email).first()
     if existing:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Email already exists")
@@ -45,8 +55,16 @@ def register(payload: RegisterRequest, db: Session = Depends(get_db)) -> UserRes
 
 
 @router.post("/login", response_model=TokenResponse)
-def login(payload: LoginRequest, db: Session = Depends(get_db)) -> TokenResponse:
+def login(payload: LoginRequest, request: Request, db: Session = Depends(get_db)) -> TokenResponse:
     email = payload.email.strip().lower()
+    identifier = resolve_client_identifier(request, extra=email)
+    enforce_rate_limit(
+        "auth:login",
+        identifier,
+        limit=settings.auth_login_rate_limit,
+        window_seconds=settings.auth_rate_limit_window_seconds,
+    )
+
     user = db.query(User).filter(User.email == email).first()
     if not user or not verify_password(payload.password, user.password_hash):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials")

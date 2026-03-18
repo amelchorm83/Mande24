@@ -6,7 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.api.v1.router import api_router
 from app.backend_ui import legacy_router as backend_ui_legacy_router
 from app.backend_ui import router as backend_ui_router
-from app.core.config import settings
+from app.core.config import settings, validate_runtime_security
 from app.db.init_db import init_db
 from app.db.session import SessionLocal
 from app.scheduler import start_scheduler, stop_scheduler
@@ -14,6 +14,7 @@ from app.services.commissions import close_weekly_commissions
 
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
+    validate_runtime_security()
     if settings.auto_create_tables:
         init_db()
     if settings.enable_commission_scheduler:
@@ -32,10 +33,12 @@ async def lifespan(_app: FastAPI):
 app = FastAPI(title=settings.project_name, lifespan=lifespan)
 
 cors_origins = [item.strip() for item in settings.cors_allow_origins.split(",") if item.strip()]
+allow_credentials = settings.cors_allow_credentials
+allow_origins = cors_origins if cors_origins else (["*"] if not allow_credentials else [])
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=cors_origins if cors_origins else ["*"],
-    allow_credentials=True,
+    allow_origins=allow_origins,
+    allow_credentials=allow_credentials,
     allow_methods=["*"],
     allow_headers=["*"],
 )

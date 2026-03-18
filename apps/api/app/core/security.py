@@ -1,4 +1,5 @@
 import hashlib
+import hmac
 import os
 from datetime import datetime, timedelta, timezone
 
@@ -19,7 +20,7 @@ def verify_password(password: str, hashed_password: str) -> bool:
     except ValueError:
         return False
     computed = hashlib.pbkdf2_hmac("sha256", password.encode("utf-8"), bytes.fromhex(salt), 120000).hex()
-    return computed == digest
+    return hmac.compare_digest(computed, digest)
 
 
 def create_access_token(subject: str, role: str, roles: list[str] | None = None) -> str:

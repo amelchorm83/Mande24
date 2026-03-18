@@ -27,6 +27,28 @@ docker compose up --build
 - API health: `http://localhost:8000/api/v1/health`
 - Web: `http://localhost:3000`
 
+## Arranque productivo con Docker
+
+1. Copie variables productivas:
+
+```powershell
+Copy-Item .env.prod.example .env
+```
+
+2. Ajuste dominios, secretos y politicas CORS en `.env`.
+
+3. Levante servicios productivos:
+
+```powershell
+docker compose -f docker-compose.prod.yml up --build -d
+```
+
+4. Revise estado:
+
+```powershell
+docker compose -f docker-compose.prod.yml ps
+```
+
 ## Endpoints iniciales
 
 - `GET /api/v1/health`
@@ -53,6 +75,16 @@ docker compose up --build
 - `GET /api/v1/guides/{guide_code}`
 - `GET /api/v1/guides/deliveries/{delivery_id}`
 - `PATCH /api/v1/guides/deliveries/{delivery_id}/stage`
+
+El endpoint `POST /api/v1/public/quote` soporta cotizacion nacional para Mexico con contexto de:
+
+- `origin_state_code`
+- `destination_state_code`
+- `origin_zone_code`
+- `destination_zone_code`
+- `use_station_handoff`
+
+La tarifa considera factores de estado, region, zona y transferencia entre estaciones de servicio.
 
 Regla aplicada: para marcar `delivered`, se requiere evidencia y firma.
 Las rutas de guias requieren token Bearer.

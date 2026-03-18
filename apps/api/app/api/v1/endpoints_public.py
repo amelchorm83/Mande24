@@ -2,10 +2,11 @@ import smtplib
 from datetime import datetime
 from email.message import EmailMessage
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
+from app.core.rate_limit import enforce_rate_limit, resolve_client_identifier
 from app.db.models import ContactLead, Delivery, Guide, OperationalSetting
 from app.db.session import get_db
 from app.models.schemas import (
@@ -15,11 +16,26 @@ from app.models.schemas import (
     PublicQuoteResponse,
     PublicTrackingResponse,
 )
+from app.services.national_lane import resolve_national_lane
 from app.services.quote_policy import resolve_quote_policy
 
 router = APIRouter(prefix="/public", tags=["public"])
 
 ALLOWED_SERVICE_TYPES = {"express", "programada", "recurrente", "mandaditos", "paqueteria"}
+
+
+def _to_float(raw: str | None, default: float) -> float:
+    try:
+        return float(str(raw or "").strip())
+    except (TypeError, ValueError):
+        return default
+
+
+def _to_int(raw: str | None, default: int) -> int:
+    try:
+        return int(str(raw or "").strip())
+    except (TypeError, ValueError):
+        return default
 
 
 def _send_contact_email_notification(lead: ContactLead) -> None:
@@ -60,7 +76,15 @@ def _send_contact_email_notification(lead: ContactLead) -> None:
 
 
 @router.post("/contact", response_model=ContactLeadResponse)
-def create_contact_lead(payload: ContactLeadCreate, db: Session = Depends(get_db)) -> ContactLeadResponse:
+def create_contact_lead(payload: ContactLeadCreate, request: Request, db: Session = Depends(get_db)) -> ContactLeadResponse:
+    identifier = resolve_client_identifier(request, extra=payload.email)
+    enforce_rate_limit(
+        "public:contact",
+        identifier,
+        limit=settings.public_contact_rate_limit,
+        window_seconds=settings.public_rate_limit_window_seconds,
+    )
+
     service_interest = payload.service_interest.strip().lower()
     if service_interest not in ALLOWED_SERVICE_TYPES:
         service_interest = "express"
@@ -87,7 +111,15 @@ def create_contact_lead(payload: ContactLeadCreate, db: Session = Depends(get_db
 
 
 @router.post("/quote", response_model=PublicQuoteResponse)
-def estimate_public_quote(payload: PublicQuoteRequest, db: Session = Depends(get_db)) -> PublicQuoteResponse:
+def estimate_public_quote(payload: PublicQuoteRequest, request: Request, db: Session = Depends(get_db)) -> PublicQuoteResponse:
+    identifier = resolve_client_identifier(request)
+    enforce_rate_limit(
+        "public:quote",
+        identifier,
+        limit=settings.public_quote_rate_limit,
+        window_seconds=settings.public_rate_limit_window_seconds,
+    )
+
     decision = resolve_quote_policy(
         db=db,
         requested_service_type=payload.service_type,
@@ -95,27 +127,39 @@ def estimate_public_quote(payload: PublicQuoteRequest, db: Session = Depends(get
         zone_type=payload.zone_type,
         rural_complexity=payload.rural_complexity,
     )
+    lane_decision = resolve_national_lane(
+        origin_state_code=payload.origin_state_code,
+        destination_state_code=payload.destination_state_code,
+        origin_zone_code=payload.origin_zone_code,
+        destination_zone_code=payload.destination_zone_code,
+        use_station_handoff=payload.use_station_handoff,
+    )
 
-    base = 49.0
-    per_km = 7.5
-    stop_extra = max(0, payload.stops - 1) * 14.0
+    settings_map = {item.key: item.value for item in db.query(OperationalSetting).all()}
+    base = _to_float(settings_map.get("quote_base_fare"), 49.0)
+    per_km = _to_float(settings_map.get("quote_per_km"), 7.5)
+    stop_extra_unit = _to_float(settings_map.get("quote_stop_extra"), 14.0)
+    stop_extra = max(0, payload.stops - 1) * stop_extra_unit
+
+    manual_service_multiplier = _to_float(
+        settings_map.get(f"quote_manual_service_multiplier_{decision.applied_service_type}"),
+        1.0,
+    )
     distance_cost = payload.distance_km * per_km
     subtotal = (
         (base + distance_cost + stop_extra)
         * decision.zone_factor
         * decision.service_factor
         * decision.complexity_factor
+        * manual_service_multiplier
+        * lane_decision.lane_factor
     )
 
-    settings_map = {item.key: item.value for item in db.query(OperationalSetting).all()}
-    try:
-        night_start = int(settings_map.get("night_start_hour", "22"))
-        night_end = int(settings_map.get("night_end_hour", "7"))
-        night_factor = float(settings_map.get("night_surcharge_factor", "1.15"))
-    except ValueError:
-        night_start = 22
-        night_end = 7
-        night_factor = 1.15
+    decision.policy_notes.extend(lane_decision.notes)
+
+    night_start = _to_int(settings_map.get("night_start_hour"), 22)
+    night_end = _to_int(settings_map.get("night_end_hour"), 7)
+    night_factor = _to_float(settings_map.get("night_surcharge_factor"), 1.15)
 
     now_hour = datetime.now().hour
     is_night = now_hour >= night_start or now_hour < night_end
@@ -126,9 +170,12 @@ def estimate_public_quote(payload: PublicQuoteRequest, db: Session = Depends(get
         )
 
     total = round(subtotal, 2)
-    eta_base = payload.distance_km * 5 + payload.stops * 8
+    eta_per_km = _to_float(settings_map.get("quote_eta_minutes_per_km"), 5.0)
+    eta_per_stop = _to_float(settings_map.get("quote_eta_minutes_per_stop"), 8.0)
+    eta_floor = _to_int(settings_map.get("quote_eta_min_floor"), 25)
+    eta_base = payload.distance_km * eta_per_km + payload.stops * eta_per_stop
     eta_base += decision.eta_extra_minutes
-    eta_minutes = max(25, int(round(eta_base)))
+    eta_minutes = max(eta_floor, int(round(eta_base)))
 
     message = "Cotizacion referencial calculada con parametros operativos actuales."
     if decision.service_converted:
@@ -149,6 +196,8 @@ def estimate_public_quote(payload: PublicQuoteRequest, db: Session = Depends(get
             "zone_factor": round(decision.zone_factor, 2),
             "service_factor": round(decision.service_factor, 2),
             "area_complexity_factor": round(decision.complexity_factor, 2),
+            "manual_service_multiplier": round(manual_service_multiplier, 2),
+            "national_lane_factor": round(lane_decision.lane_factor, 2),
         },
         policy_notes=decision.policy_notes,
         message=message,
@@ -156,7 +205,15 @@ def estimate_public_quote(payload: PublicQuoteRequest, db: Session = Depends(get
 
 
 @router.get("/tracking/{guide_code}", response_model=PublicTrackingResponse)
-def get_public_tracking(guide_code: str, db: Session = Depends(get_db)) -> PublicTrackingResponse:
+def get_public_tracking(guide_code: str, request: Request, db: Session = Depends(get_db)) -> PublicTrackingResponse:
+    identifier = resolve_client_identifier(request, extra=guide_code)
+    enforce_rate_limit(
+        "public:tracking",
+        identifier,
+        limit=settings.public_tracking_rate_limit,
+        window_seconds=settings.public_rate_limit_window_seconds,
+    )
+
     normalized_code = guide_code.strip().upper()
     guide = db.query(Guide).filter(Guide.guide_code == normalized_code).first()
     if not guide:
@@ -182,5 +239,4 @@ def get_public_tracking(guide_code: str, db: Session = Depends(get_db)) -> Publi
         currency=guide.currency,
         has_evidence=latest_delivery.has_evidence,
         has_signature=latest_delivery.has_signature,
-        note=latest_delivery.note,
     )

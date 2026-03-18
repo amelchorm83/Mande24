@@ -76,6 +76,30 @@ def _auth_headers(email: str, role: str) -> dict[str, str]:
     return {"Authorization": f"Bearer {token}"}
 
 
+def _erp_session_cookies(email: str, role: str) -> dict[str, str]:
+    password = "Secret123"
+    register_payload = {
+        "email": email,
+        "full_name": email.split("@")[0],
+        "password": password,
+        "role": role,
+    }
+    register_response = client.post("/api/v1/auth/register", json=register_payload)
+    assert register_response.status_code in (200, 409)
+
+    login_response = client.post(
+        "/api/v1/auth/login",
+        json={"email": register_payload["email"], "password": register_payload["password"]},
+    )
+    assert login_response.status_code == 200
+    token = login_response.json()["access_token"]
+    return {
+        "m24_erp_token": token,
+        "m24_erp_active_role": role,
+        "m24_erpmande24_user_email": email,
+    }
+
+
 def _create_catalog_data(admin_headers: dict[str, str]) -> tuple[str, str, str]:
     client.post("/api/v1/catalogs/zones", json={"name": "Centro", "code": "CTR"}, headers=admin_headers)
     zones_response = client.get("/api/v1/catalogs/zones", headers=admin_headers)
@@ -349,10 +373,13 @@ def test_weekly_commissions() -> None:
 
 
 def test_backend_ui_role_guards() -> None:
+    station_cookies = _erp_session_cookies("erp.station.demo@mande24.test", "station")
+    rider_cookies = _erp_session_cookies("erp.rider.demo@mande24.test", "rider")
+
     service_block = client.post(
         "/ERPMande24/catalogs/services/bulk-toggle",
         data={"active": "true"},
-        cookies={"m24_erpmande24_role": "station"},
+        cookies=station_cookies,
         follow_redirects=False,
     )
     assert service_block.status_code == 303
@@ -361,7 +388,7 @@ def test_backend_ui_role_guards() -> None:
     rider_block = client.post(
         "/ERPMande24/guides/create",
         data={"customer_name": "A", "destination_name": "B", "service_id": "fake", "station_id": "fake"},
-        cookies={"m24_erpmande24_role": "rider"},
+        cookies=rider_cookies,
         follow_redirects=False,
     )
     assert rider_block.status_code == 303
@@ -370,7 +397,7 @@ def test_backend_ui_role_guards() -> None:
     station_ops = client.post(
         "/ERPMande24/guides/create",
         data={"customer_name": "A", "destination_name": "B", "service_id": "fake", "station_id": "fake"},
-        cookies={"m24_erpmande24_role": "station"},
+        cookies=station_cookies,
         follow_redirects=False,
     )
     assert station_ops.status_code == 303
@@ -378,6 +405,8 @@ def test_backend_ui_role_guards() -> None:
 
 
 def test_backend_ui_pagination_and_timeline() -> None:
+    admin_cookies = _erp_session_cookies("erp.admin.demo@mande24.test", "admin")
+
     seed_response = client.post("/ERPMande24/demo/seed")
     assert seed_response.status_code == 200
     seed = seed_response.json()
@@ -391,7 +420,7 @@ def test_backend_ui_pagination_and_timeline() -> None:
                 "service_id": seed["service_id"],
                 "station_id": seed["station_id"],
             },
-            cookies={"m24_erpmande24_role": "admin"},
+            cookies=admin_cookies,
             follow_redirects=False,
         )
         assert created.status_code == 303

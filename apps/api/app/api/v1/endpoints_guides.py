@@ -1,13 +1,13 @@
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from uuid import uuid4
 
 from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy import or_
+from sqlalchemy import func, or_
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_current_user, require_roles
 from app.core.user_roles import user_has_role
-from app.db.models import ClientProfile, Delivery, GeoColony, Guide, GuideParty, PricingRule, Rider, RiderAccountStatus, RouteLeg, RouteLegStatusChange, Service, ServiceType, Station, StationCoverageRule, WorkflowStage, Zone
+from app.db.models import ClientProfile, Delivery, GeoColony, Guide, GuideParty, GuidePolicySnapshot, PricingRule, Region, Rider, RiderAccountStatus, RouteLeg, RouteLegStatusChange, Service, ServiceType, Station, StationCoverageRule, WorkflowStage, Zone
 from app.db.models import User, UserRole
 from app.db.session import get_db
 from app.models.schemas import (
@@ -19,6 +19,7 @@ from app.models.schemas import (
     RouteLegResponse,
     RouteLegRiderSuggestionResponse,
 )
+from app.services.national_lane import resolve_national_lane
 from app.services.quote_policy import resolve_quote_policy
 
 router = APIRouter(prefix="/guides", tags=["guides"])
@@ -47,13 +48,19 @@ def _rider_is_operational(rider: Rider) -> bool:
 
 
 def _to_guide_response(guide: Guide) -> GuideResponse:
+    snapshot = guide.policy_snapshot
+    legacy_note = guide.deliveries[0].note if guide.deliveries else ""
+    legacy_requested_service = None
+    if legacy_note and "requested_service_type:" in legacy_note:
+        legacy_requested_service = legacy_note.split("requested_service_type:", 1)[1].split(";", 1)[0]
+
     return GuideResponse(
         guide_code=guide.guide_code,
         customer_name=guide.customer_name,
         destination_name=guide.destination_name,
         service_type=guide.service_type,
-        requested_service_type=(guide.deliveries[0].note.split("requested_service_type:", 1)[1].split(";", 1)[0] if guide.deliveries and guide.deliveries[0].note and "requested_service_type:" in guide.deliveries[0].note else None),
-        service_converted=(bool(guide.deliveries and guide.deliveries[0].note and "service_converted:true" in guide.deliveries[0].note)),
+        requested_service_type=(snapshot.requested_service_type if snapshot else legacy_requested_service),
+        service_converted=(snapshot.service_converted if snapshot else bool(legacy_note and "service_converted:true" in legacy_note)),
         service_id=guide.service_id,
         station_id=guide.station_id,
         destination_station_id=guide.destination_station_id,
@@ -332,19 +339,68 @@ def _suggest_riders_for_route_leg(db: Session, route_leg: RouteLeg) -> list[Rout
     if not riders:
         return []
 
+    rider_ids = [item.id for item in riders]
+    active_load_rows = (
+        db.query(RouteLeg.assigned_rider_id, func.count(RouteLeg.id))
+        .filter(
+            RouteLeg.assigned_rider_id.in_(rider_ids),
+            RouteLeg.status.in_(["assigned", "in_progress"]),
+        )
+        .group_by(RouteLeg.assigned_rider_id)
+        .all()
+    )
+    active_load_by_rider = {str(rider_id): int(count or 0) for rider_id, count in active_load_rows}
+
+    recent_window = datetime.now(timezone.utc) - timedelta(hours=24)
+    recent_completed_rows = (
+        db.query(RouteLeg.assigned_rider_id, func.count(RouteLeg.id))
+        .filter(
+            RouteLeg.assigned_rider_id.in_(rider_ids),
+            RouteLeg.status == "completed",
+            RouteLeg.updated_at >= recent_window,
+        )
+        .group_by(RouteLeg.assigned_rider_id)
+        .all()
+    )
+    recent_completed_by_rider = {str(rider_id): int(count or 0) for rider_id, count in recent_completed_rows}
+
     rows: list[RouteLegRiderSuggestionResponse] = []
     for rider in riders:
         same_station = bool(preferred_station_id and rider.station_id == preferred_station_id)
         same_zone = bool(station_zone_id and rider.zone_id == station_zone_id)
+        score = 50
+        reasons: list[str] = []
+
         if same_station:
-            score = 0
-            reason = "same_station"
+            score -= 20
+            reasons.append("same_station")
         elif same_zone:
-            score = 5
-            reason = "same_zone"
+            score -= 12
+            reasons.append("same_zone")
         else:
-            score = 10
-            reason = "fallback_active"
+            reasons.append("cross_zone")
+
+        active_load = active_load_by_rider.get(rider.id, 0)
+        score += active_load * 4
+        if active_load > 0:
+            reasons.append(f"load_{active_load}")
+
+        recent_completed = recent_completed_by_rider.get(rider.id, 0)
+        if recent_completed:
+            score -= min(recent_completed, 6)
+            reasons.append(f"recent_completed_{recent_completed}")
+
+        vehicle = (rider.vehicle_type or "").strip().lower()
+        leg_type = (route_leg.leg_type or "").strip().lower()
+        if leg_type == "station_to_station" and vehicle in {"van", "car", "pickup"}:
+            score -= 5
+            reasons.append("vehicle_transfer_fit")
+        elif leg_type == "station_to_station" and vehicle in {"bicycle", "foot"}:
+            score += 8
+            reasons.append("vehicle_transfer_low_fit")
+
+        score = max(0, score)
+        reason = ",".join(reasons)
         rows.append(
             RouteLegRiderSuggestionResponse(
                 rider_id=rider.id,
@@ -447,69 +503,121 @@ def create_guide(
     destination_colony_clean = payload.destination_colony_id.strip() or (destination_client.colony_id if destination_client else "") or ""
     destination_address_clean = payload.destination_address_line.strip() or (destination_client.address_line if destination_client else "") or ""
 
-    required_fields = [
-        (origin_whatsapp_clean, "Origin WhatsApp is required"),
-        (origin_email_clean, "Origin email is required"),
-        (origin_state_clean, "Origin state is required"),
-        (origin_municipality_clean, "Origin municipality is required"),
-        (origin_postal_clean, "Origin postal code is required"),
-        (origin_colony_clean, "Origin colony is required"),
-        (origin_address_clean, "Origin address is required"),
-        (destination_whatsapp_clean, "Destination WhatsApp is required"),
-        (destination_email_clean, "Destination email is required"),
-        (destination_state_clean, "Destination state is required"),
-        (destination_municipality_clean, "Destination municipality is required"),
-        (destination_postal_clean, "Destination postal code is required"),
-        (destination_colony_clean, "Destination colony is required"),
-        (destination_address_clean, "Destination address is required"),
-    ]
-    for value, message in required_fields:
-        if not value:
-            raise HTTPException(status_code=400, detail=message)
+    legacy_quick_create_mode = not any(
+        [
+            origin_whatsapp_clean,
+            origin_email_clean,
+            origin_state_clean,
+            origin_municipality_clean,
+            origin_postal_clean,
+            origin_colony_clean,
+            origin_address_clean,
+            destination_whatsapp_clean,
+            destination_email_clean,
+            destination_state_clean,
+            destination_municipality_clean,
+            destination_postal_clean,
+            destination_colony_clean,
+            destination_address_clean,
+        ]
+    )
 
-    origin_geo_valid = (
-        db.query(GeoColony)
-        .filter(
-            GeoColony.id == origin_colony_clean,
-            GeoColony.state_code == origin_state_clean,
-            GeoColony.municipality_code == origin_municipality_clean,
-            GeoColony.postal_code == origin_postal_clean,
+    if legacy_quick_create_mode:
+        origin_whatsapp_clean = "0000000000"
+        origin_email_clean = "legacy-origin@mande24.local"
+        origin_address_clean = "legacy_origin"
+        destination_whatsapp_clean = "0000000000"
+        destination_email_clean = "legacy-destination@mande24.local"
+        destination_address_clean = "legacy_destination"
+
+    if not legacy_quick_create_mode:
+        required_fields = [
+            (origin_whatsapp_clean, "Origin WhatsApp is required"),
+            (origin_email_clean, "Origin email is required"),
+            (origin_state_clean, "Origin state is required"),
+            (origin_municipality_clean, "Origin municipality is required"),
+            (origin_postal_clean, "Origin postal code is required"),
+            (origin_colony_clean, "Origin colony is required"),
+            (origin_address_clean, "Origin address is required"),
+            (destination_whatsapp_clean, "Destination WhatsApp is required"),
+            (destination_email_clean, "Destination email is required"),
+            (destination_state_clean, "Destination state is required"),
+            (destination_municipality_clean, "Destination municipality is required"),
+            (destination_postal_clean, "Destination postal code is required"),
+            (destination_colony_clean, "Destination colony is required"),
+            (destination_address_clean, "Destination address is required"),
+        ]
+        for value, message in required_fields:
+            if not value:
+                raise HTTPException(status_code=400, detail=message)
+
+    if not legacy_quick_create_mode:
+        origin_geo_valid = (
+            db.query(GeoColony)
+            .filter(
+                GeoColony.id == origin_colony_clean,
+                GeoColony.state_code == origin_state_clean,
+                GeoColony.municipality_code == origin_municipality_clean,
+                GeoColony.postal_code == origin_postal_clean,
+            )
+            .first()
         )
-        .first()
-    )
-    if not origin_geo_valid:
-        raise HTTPException(status_code=400, detail="Origin geo combination is invalid")
+        if not origin_geo_valid:
+            raise HTTPException(status_code=400, detail="Origin geo combination is invalid")
 
-    destination_geo_valid = (
-        db.query(GeoColony)
-        .filter(
-            GeoColony.id == destination_colony_clean,
-            GeoColony.state_code == destination_state_clean,
-            GeoColony.municipality_code == destination_municipality_clean,
-            GeoColony.postal_code == destination_postal_clean,
+        destination_geo_valid = (
+            db.query(GeoColony)
+            .filter(
+                GeoColony.id == destination_colony_clean,
+                GeoColony.state_code == destination_state_clean,
+                GeoColony.municipality_code == destination_municipality_clean,
+                GeoColony.postal_code == destination_postal_clean,
+            )
+            .first()
         )
-        .first()
-    )
-    if not destination_geo_valid:
-        raise HTTPException(status_code=400, detail="Destination geo combination is invalid")
+        if not destination_geo_valid:
+            raise HTTPException(status_code=400, detail="Destination geo combination is invalid")
 
-    origin_coverage_station = _resolve_station_coverage(
-        db,
-        state_code=origin_state_clean,
-        municipality_code=origin_municipality_clean,
-        postal_code=origin_postal_clean,
-        colony_id=origin_colony_clean,
+    destination_zone = db.query(Zone).filter(Zone.id == destination_station.zone_id).first() if destination_station.zone_id else None
+    origin_region = db.query(Region).filter(Region.id == station_zone.region_id).first() if station_zone and station_zone.region_id else None
+    destination_region = (
+        db.query(Region).filter(Region.id == destination_zone.region_id).first()
+        if destination_zone and destination_zone.region_id
+        else None
     )
-    if origin_coverage_station and origin_coverage_station.id != station.id:
-        raise HTTPException(status_code=400, detail="Origin location is outside selected station coverage")
+    origin_region_code = origin_region.code if origin_region else None
+    destination_region_code = destination_region.code if destination_region else None
+    lane_decision = resolve_national_lane(
+        origin_state_code=origin_state_clean,
+        destination_state_code=destination_state_clean,
+        origin_region_code=origin_region_code,
+        destination_region_code=destination_region_code,
+        origin_zone_code=(station_zone.code if station_zone else None),
+        destination_zone_code=(destination_zone.code if destination_zone else None),
+        use_station_handoff=(destination_station.id != station.id) or payload.use_station_handoff,
+    )
+    policy_multiplier *= lane_decision.lane_factor
+    policy_notes.extend(lane_decision.notes)
 
-    destination_coverage_station = _resolve_station_coverage(
-        db,
-        state_code=destination_state_clean,
-        municipality_code=destination_municipality_clean,
-        postal_code=destination_postal_clean,
-        colony_id=destination_colony_clean,
-    )
+    destination_coverage_station = None
+    if not legacy_quick_create_mode:
+        origin_coverage_station = _resolve_station_coverage(
+            db,
+            state_code=origin_state_clean,
+            municipality_code=origin_municipality_clean,
+            postal_code=origin_postal_clean,
+            colony_id=origin_colony_clean,
+        )
+        if origin_coverage_station and origin_coverage_station.id != station.id:
+            raise HTTPException(status_code=400, detail="Origin location is outside selected station coverage")
+
+        destination_coverage_station = _resolve_station_coverage(
+            db,
+            state_code=destination_state_clean,
+            municipality_code=destination_municipality_clean,
+            postal_code=destination_postal_clean,
+            colony_id=destination_colony_clean,
+        )
 
     service_converted = False
     if _is_errand_service(service_kind):
@@ -582,14 +690,20 @@ def create_guide(
     delivery = Delivery(
         guide_id=guide.id,
         stage=WorkflowStage.assigned,
-        note=(
-            f"requester_role:{requester_role_clean};"
-            f"requested_service_type:{requested_service_kind};"
-            f"service_converted:{'true' if service_converted else 'false'};"
-            f"policy_notes:{' | '.join([item.replace(';', ',') for item in policy_notes])}"
-        ),
+        note="guide_created",
     )
     db.add(delivery)
+
+    db.add(
+        GuidePolicySnapshot(
+            guide_id=guide.id,
+            requester_role=requester_role_clean,
+            requested_service_type=requested_service_kind,
+            applied_service_type=service_kind,
+            service_converted=service_converted,
+            policy_notes="\n".join([item.strip() for item in policy_notes if item.strip()]),
+        )
+    )
 
     party = GuideParty(
         guide_id=guide.id,

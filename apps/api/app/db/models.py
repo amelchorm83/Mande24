@@ -105,6 +105,26 @@ class Guide(Base):
     deliveries: Mapped[list["Delivery"]] = relationship(back_populates="guide", cascade="all, delete-orphan")
     parties: Mapped[list["GuideParty"]] = relationship(back_populates="guide", cascade="all, delete-orphan")
     route_legs: Mapped[list["RouteLeg"]] = relationship(back_populates="guide", cascade="all, delete-orphan")
+    policy_snapshot: Mapped["GuidePolicySnapshot | None"] = relationship(
+        back_populates="guide",
+        cascade="all, delete-orphan",
+        uselist=False,
+    )
+
+
+class GuidePolicySnapshot(Base):
+    __tablename__ = "guide_policy_snapshots"
+
+    id: Mapped[str] = mapped_column(String(32), primary_key=True, default=lambda: uuid4().hex)
+    guide_id: Mapped[str] = mapped_column(String(32), ForeignKey("guides.id", ondelete="CASCADE"), unique=True, index=True)
+    requester_role: Mapped[str] = mapped_column(String(20), default="origin")
+    requested_service_type: Mapped[str] = mapped_column(String(50), default="messaging")
+    applied_service_type: Mapped[str] = mapped_column(String(50), default="messaging")
+    service_converted: Mapped[bool] = mapped_column(Boolean, default=False)
+    policy_notes: Mapped[str] = mapped_column(Text, default="")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+
+    guide: Mapped[Guide] = relationship(back_populates="policy_snapshot")
 
 
 class Delivery(Base):
